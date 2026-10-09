@@ -14,13 +14,16 @@ export const REVIEW_REASONS = {
 
 export function reviewReasons(input: {
   aiClass: string | null;
-  confirm: Pick<EntryConfirm, "damage_class" | "hurt" | "new_photo_since_unclear">;
+  confirm: Pick<EntryConfirm, "damage_class" | "hurt">;
+  // True when the entry has an entry.photo_added event. The server decides this
+  // from the audit trail and ignores new_photo_since_unclear from the phone.
+  hasNewPhoto: boolean;
   reportHurt: number | null;
 }): (keyof typeof REVIEW_REASONS)[] {
   const out: (keyof typeof REVIEW_REASONS)[] = [];
-  const { aiClass, confirm, reportHurt } = input;
+  const { aiClass, confirm, hasNewPhoto, reportHurt } = input;
   if (aiClass === "unclear" || aiClass === null) {
-    if (!confirm.new_photo_since_unclear) out.push("unclear_no_new_photo");
+    if (!hasNewPhoto) out.push("unclear_no_new_photo");
   } else if (aiClass && aiClass !== confirm.damage_class) {
     out.push("class_differs");
   }

@@ -17,6 +17,7 @@ type AssessFormProps = { house: House };
 function AssessForm({ house }: AssessFormProps) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
+  const sending = useRef(false);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [note, setNote] = useState<Blob | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -35,10 +36,20 @@ function AssessForm({ house }: AssessFormProps) {
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
+  // Photos still on screen when the responder leaves give their object URLs back.
+  const shown = useRef<string[]>([]);
+  useEffect(() => {
+    shown.current = photos.map((p) => p.url);
+  }, [photos]);
+  useEffect(() => () => shown.current.forEach((u) => URL.revokeObjectURL(u)), []);
+
   function addPhoto(file: File | undefined) {
     const label = nextLabel(photos.length);
     if (!file || !label) return;
-    setPhotos((p) => [...p, { file, label, url: URL.createObjectURL(file) }]);
+    // Made here, not inside the updater: React may run an updater twice, and the
+    // extra URL would never be revoked.
+    const url = URL.createObjectURL(file);
+    setPhotos((p) => [...p, { file, label, url }]);
   }
 
   function removePhoto(index: number) {
@@ -48,15 +59,19 @@ function AssessForm({ house }: AssessFormProps) {
   }
 
   async function send() {
-    if (busy || photos.length === 0) return;
+    // The ref answers at once. State would still read false for a second tap in
+    // the same frame, and each POST makes its own entry.
+    if (sending.current || photos.length === 0) return;
     const meta = buildMeta(house, photos.map((p) => p.label), gps);
     if (!meta.success) return setError("This house is missing its barangay. Go back and open it again.");
+    sending.current = true;
     setBusy(true);
     setError(null);
     try {
       const res = await fetch("/api/entries", { method: "POST", body: buildForm(meta.data, photos.map((p) => p.file), note) });
       const body = (await res.json().catch(() => null)) as { id?: string; error?: string } | null;
       if (res.ok && body?.id) {
+        // Stay locked while the next screen loads, so a late tap cannot post again.
         router.push(routes.responder.drafting(body.id));
         return;
       }
@@ -65,14 +80,15 @@ function AssessForm({ house }: AssessFormProps) {
       // The hub is out of reach: keep the entry on the phone. It sends from the Queue tab.
       try {
         await enqueue(meta.data, photos.map((p) => p.file), note);
+        // Stay locked while the Queue tab loads, as after a send.
         router.push(routes.responder.queue);
         return;
       } catch {
         setError("Could not reach the hub, and this phone could not save it. Try again.");
       }
-    } finally {
-      setBusy(false);
     }
+    sending.current = false;
+    setBusy(false);
   }
 
   const next = nextLabel(photos.length);
@@ -82,7 +98,7 @@ function AssessForm({ house }: AssessFormProps) {
       <TopBar
         as="p"
         title={house.report_code ?? "New house"}
-        leading={{ kind: "back", onClick: () => router.back() }}
+        leading={{ kind: "back", href: house.report_code ? routes.responder.report(house.report_code) : routes.responder.toVisit }}
         className="[&_p]:font-mono"
       />
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-6">
@@ -106,15 +122,19 @@ function AssessForm({ house }: AssessFormProps) {
                   type="button"
                   aria-label={`Remove ${p.label} photo`}
                   onClick={() => removePhoto(i)}
-                  className="hit absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-surface-dark text-canvas"
+                  className="absolute top-0 right-0 flex size-11 items-center justify-center text-canvas"
                 >
-                  <XIcon aria-hidden="true" className="size-4" />
+                  {/* The tile clips anything outside it, so the 44px tap area is the button itself. */}
+                  <span className="flex size-7 items-center justify-center rounded-full bg-surface-dark">
+                    <XIcon aria-hidden="true" className="size-4" />
+                  </span>
                 </button>
               </div>
             ))}
             {next ? (
               <button
                 type="button"
+                aria-label={`Add ${next} photo`}
                 onClick={() => input.current?.click()}
                 className="flex aspect-3/4 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-caption text-ink"
               >
@@ -154,12 +174,13 @@ function AssessForm({ house }: AssessFormProps) {
           <MapPinIcon aria-hidden="true" className={gps ? "size-4 text-success" : "size-4 text-muted"} />
           {gpsText(gps, gpsFailed)}
         </p>
+        {photos.length === 0 ? <p className="text-body-sm text-body">Add at least one photo to send.</p> : null}
         <p role="alert" className="min-h-5 text-body-sm text-danger">
           {error}
         </p>
       </main>
-      <footer className="px-gutter pb-6">
-        <Button type="button" className="w-full" disabled={busy || photos.length === 0} onClick={() => void send()}>
+      <footer className="px-gutter pb-7">
+        <Button type="button" className="w-full" disabled={busy || photos.length === 0} aria-busy={busy} onClick={() => void send()}>
           {busy ? "Sending" : "Send to hub"}
         </Button>
       </footer>

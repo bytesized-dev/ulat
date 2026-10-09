@@ -16,6 +16,11 @@ export type House = {
 
 export type Gps = { lat: number; lng: number; accuracy_m: number };
 
+/** A new house has no family report to name its barangay, so an empty one, or one the hub no longer lists, is a missing answer. */
+export function barangayError(barangay: string, barangays: string[]): string | null {
+  return barangays.includes(barangay) ? null : "Choose a barangay";
+}
+
 /** The label the next photo will get, or null when all slots are used. */
 export function nextLabel(count: number): string | null {
   return PHOTO_LABELS[count] ?? null;

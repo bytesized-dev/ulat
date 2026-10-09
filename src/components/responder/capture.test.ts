@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildForm, buildMeta, formatDuration, gpsText, nextLabel, sendError } from "./capture";
+import { barangayError, buildForm, buildMeta, formatDuration, gpsText, nextLabel, sendError } from "./capture";
 
 const house = { report_code: "K7P4", barangay: "Dapitan", purok: "Purok 2", household_head: "Maria Santos" };
 
@@ -47,5 +47,21 @@ describe("capture helpers", () => {
     expect(sendError(400, "photo_count")).toMatch(/one to three/);
     expect(sendError(400, "audio_size_not_allowed")).toMatch(/too big/);
     expect(sendError(500, undefined)).toMatch(/Try again/);
+  });
+});
+
+describe("barangayError", () => {
+  const listed = ["Sinonoc", "Dawo (Pob.)"];
+
+  it("asks for a barangay when a new house has none", () => {
+    expect(barangayError("", listed)).toBe("Choose a barangay");
+  });
+
+  it("asks again for a barangay the hub no longer lists", () => {
+    expect(barangayError("Gone", listed)).toBe("Choose a barangay");
+  });
+
+  it("accepts a listed barangay", () => {
+    expect(barangayError("Dawo (Pob.)", listed)).toBeNull();
   });
 });

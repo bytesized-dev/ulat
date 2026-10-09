@@ -52,6 +52,11 @@ export function saveCheckedIn(value: CheckedIn, store: Store | null = browserSto
   }
 }
 
+/** Nothing is preselected, so an empty barangay, or one the hub no longer lists, is a missing answer. */
+export function barangayError(barangay: string, barangays: string[]): string | null {
+  return barangays.includes(barangay) ? null : "Choose a barangay";
+}
+
 export type SafeForm = { name: string; barangay: string; staying_at: string; message: string };
 
 /** The form as a SafeCheckin from a phone. An empty message is sent as null. */

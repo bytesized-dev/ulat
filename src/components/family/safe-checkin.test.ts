@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { initials, parseCheckedIn, parseFound, saveCheckedIn, searchUrl, sendCheckin, toCheckin } from "./safe-checkin";
+import { barangayError, initials, parseCheckedIn, parseFound, saveCheckedIn, searchUrl, sendCheckin, toCheckin } from "./safe-checkin";
 
 const form = { name: "  Lourdes Ramos ", barangay: "Poblacion", staying_at: "At home", message: "  " };
 
@@ -65,5 +65,22 @@ describe("saved check-in", () => {
     expect(parseCheckedIn(null)).toBeNull();
     expect(parseCheckedIn("{")).toBeNull();
     expect(parseCheckedIn("{}")).toBeNull();
+  });
+});
+
+describe("barangayError", () => {
+  const listed = ["Sinonoc", "Dawo (Pob.)"];
+
+  it("asks for a barangay when none is chosen", () => {
+    expect(barangayError("", listed)).toBe("Choose a barangay");
+    expect(barangayError("", [])).toBe("Choose a barangay");
+  });
+
+  it("asks again for a barangay the hub no longer lists", () => {
+    expect(barangayError("Gone", listed)).toBe("Choose a barangay");
+  });
+
+  it("accepts a listed barangay", () => {
+    expect(barangayError("Sinonoc", listed)).toBeNull();
   });
 });

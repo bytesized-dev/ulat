@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchPill } from "@/components/ui/search-pill";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { formatTime } from "@/lib/time";
-import { parseFound, saveCheckedIn, searchUrl, sendCheckin, initials, type Found } from "./safe-checkin";
+import { barangayError, parseFound, saveCheckedIn, searchUrl, sendCheckin, initials, type Found } from "./safe-checkin";
 
 type SafeFormProps = {
   /** The barangays from the hub's settings. */
@@ -46,7 +47,10 @@ const fieldLabel = "text-body-sm font-semibold text-ink";
 export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [barangay, setBarangay] = useState(barangays[0] ?? "");
+  const [barangay, setBarangay] = useState("");
+  // An object, so each tap on send is a new error and focus returns to the field.
+  const [barangayMissing, setBarangayMissing] = useState<{ message: string } | null>(null);
+  const barangayField = useRef<HTMLButtonElement>(null);
   const [stayingAt, setStayingAt] = useState(stayingOptions[0] ?? "");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,8 +86,16 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
   const people = answer?.people ?? null;
   const searchFailed = answer !== null && answer.people === null;
 
+  // Focus follows the message, once it is on screen.
+  useEffect(() => {
+    if (barangayMissing) barangayField.current?.focus();
+  }, [barangayMissing]);
+
   async function submit() {
     if (busy) return;
+    const missing = barangayError(barangay, barangays);
+    setBarangayMissing(missing ? { message: missing } : null);
+    if (missing) return;
     setBusy(true);
     setError(null);
     const result = await sendCheckin({ name, barangay, staying_at: stayingAt, message });
@@ -119,7 +131,25 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
             <Label htmlFor="safe-barangay" className={fieldLabel}>
               Barangay
             </Label>
-            <ListSelect id="safe-barangay" value={barangay} options={barangays} onChange={setBarangay} />
+            <SearchSelect
+              id="safe-barangay"
+              ref={barangayField}
+              title="Barangay"
+              placeholder="Choose barangay"
+              options={barangays}
+              value={barangay}
+              onValueChange={(value) => {
+                setBarangay(value);
+                setBarangayMissing(null);
+              }}
+              aria-invalid={barangayMissing ? true : undefined}
+              aria-describedby={barangayMissing ? "safe-barangay-error" : undefined}
+            />
+            {barangayMissing ? (
+              <p id="safe-barangay-error" className="text-body-sm text-danger">
+                {barangayMissing.message}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="safe-staying" className={fieldLabel}>

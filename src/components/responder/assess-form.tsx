@@ -8,8 +8,8 @@ import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
+import { SearchSelect } from "@/components/ui/search-select";
+import { barangayError, buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
 import { announceQueueChange } from "./use-queue-sync";
@@ -28,6 +28,9 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     : given;
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
+  const barangayField = useRef<HTMLButtonElement>(null);
+  // An object, so each tap on send is a new error and focus returns to the field.
+  const [barangayMissing, setBarangayMissing] = useState<{ message: string } | null>(null);
   const sending = useRef(false);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [note, setNote] = useState<Blob | null>(null);
@@ -46,6 +49,11 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     );
     return () => navigator.geolocation.clearWatch(id);
   }, []);
+
+  // Focus follows the message, once it is on screen.
+  useEffect(() => {
+    if (barangayMissing) barangayField.current?.focus();
+  }, [barangayMissing]);
 
   // Photos still on screen when the responder leaves give their object URLs back.
   const shown = useRef<string[]>([]);
@@ -73,6 +81,11 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     // The ref answers at once. State would still read false for a second tap in
     // the same frame, and each POST makes its own entry.
     if (sending.current || photos.length === 0) return;
+    if (newHouse) {
+      const missing = barangayError(house.barangay, barangays);
+      setBarangayMissing(missing ? { message: missing } : null);
+      if (missing) return;
+    }
     const meta = buildMeta(house, photos.map((p) => p.label), gps);
     if (!meta.success) return setError("This house is missing its barangay. Go back and open it again.");
     sending.current = true;
@@ -122,18 +135,25 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
               <Label htmlFor="nb" className={fieldLabel}>
                 Barangay
               </Label>
-              <Select value={fields.barangay} onValueChange={(barangay) => setFields((f) => ({ ...f, barangay }))}>
-                <SelectTrigger id="nb">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {barangays.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchSelect
+                id="nb"
+                ref={barangayField}
+                title="Barangay"
+                placeholder="Choose barangay"
+                options={barangays}
+                value={fields.barangay}
+                onValueChange={(barangay) => {
+                  setFields((f) => ({ ...f, barangay }));
+                  setBarangayMissing(null);
+                }}
+                aria-invalid={barangayMissing ? true : undefined}
+                aria-describedby={barangayMissing ? "nb-error" : undefined}
+              />
+              {barangayMissing ? (
+                <p id="nb-error" className="text-body-sm text-danger">
+                  {barangayMissing.message}
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="np" className={fieldLabel}>
@@ -229,7 +249,7 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
         </p>
       </main>
       <footer className="px-gutter pb-7">
-        <Button type="button" className="w-full" disabled={busy || photos.length === 0 || !house.barangay} aria-busy={busy} onClick={() => void send()}>
+        <Button type="button" className="w-full" disabled={busy || photos.length === 0} aria-busy={busy} onClick={() => void send()}>
           {busy ? "Sending" : "Send to hub"}
         </Button>
       </footer>

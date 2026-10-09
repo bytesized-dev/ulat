@@ -1,0 +1,246 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Tokens from DESIGN.md. Never use a hex value in a component. Dark mode is the
+  same token names with the second set of values, applied by next-themes as a
+  class on <html>. The shadcn variables below are pointed at these tokens so the
+  generated ui/ components take the system without per component edits.
+*/
+
+:root {
+  --page: #f5f5f7;
+  --sheet: #ffffff;
+  --field: #f2f2f4;
+  --text: #0a0a0a;
+  --text-2: #656569;
+  --text-3: #a0a0a6;
+  --divider: #e5e5ea;
+  --action: #0a0a0a;
+  --on-action: #ffffff;
+  --action-pressed: #262626;
+  --pill-2: #ebebee;
+  --tint: #d9e5f5;
+  --error: #c4281c;
+  --focus: #0a0a0a;
+
+  /* shadcn mapping */
+  --background: var(--page);
+  --foreground: var(--text);
+  --card: var(--sheet);
+  --card-foreground: var(--text);
+  --popover: var(--sheet);
+  --popover-foreground: var(--text);
+  --primary: var(--action);
+  --primary-foreground: var(--on-action);
+  --secondary: var(--pill-2);
+  --secondary-foreground: var(--text);
+  --muted: var(--field);
+  --muted-foreground: var(--text-2);
+  --accent: var(--field);
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --border: var(--divider);
+  --input: var(--field);
+  --ring: var(--focus);
+  --radius: 14px;
+  --chart-1: var(--text);
+  --chart-2: var(--text-2);
+  --chart-3: var(--text-3);
+  --chart-4: var(--divider);
+  --chart-5: var(--tint);
+  --sidebar: var(--page);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--action);
+  --sidebar-primary-foreground: var(--on-action);
+  --sidebar-accent: var(--field);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--divider);
+  --sidebar-ring: var(--focus);
+}
+
+.dark {
+  --page: #0a0a0a;
+  --sheet: #161618;
+  --field: #1f1f22;
+  --text: #f5f5f7;
+  --text-2: #9a9aa1;
+  --text-3: #6b6b70;
+  --divider: #26262a;
+  --action: #f5f5f7;
+  --on-action: #0a0a0a;
+  --action-pressed: #d9d9de;
+  --pill-2: #26262a;
+  --tint: #1b2a40;
+  --error: #f97066;
+  --focus: #f5f5f7;
+
+}
+
+@theme inline {
+  /* Design tokens as Tailwind utilities: bg-page, text-text-2, ring-focus, rounded-sheet, and so on. */
+  --color-page: var(--page);
+  --color-sheet: var(--sheet);
+  --color-field: var(--field);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-divider: var(--divider);
+  --color-action: var(--action);
+  --color-on-action: var(--on-action);
+  --color-action-pressed: var(--action-pressed);
+  --color-pill-2: var(--pill-2);
+  --color-tint: var(--tint);
+  --color-error: var(--error);
+  --color-focus: var(--focus);
+
+  /* The shape scale. DESIGN.md has three presets; change all six together.
+     Circles such as avatars stay rounded-full and are not on this scale. */
+  --radius-pill: 9999px;
+  --radius-sheet: 24px;
+  --radius-card: 20px;
+  --radius-guide: 16px;
+  --radius-input: 14px;
+  --radius-tag: 8px;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-sans);
+
+  /* The type scale. Five sizes and nothing added casually. */
+  --text-label: 13px;
+  --text-label--line-height: 1.3;
+  --text-small: 15px;
+  --text-small--line-height: 1.4;
+  --text-body: 17px;
+  --text-body--line-height: 1.4;
+  --text-heading: 20px;
+  --text-heading--line-height: 1.25;
+  --text-title: 28px;
+  --text-title--line-height: 1.2;
+
+  /* Layout. The numbers DESIGN.md names, so no component measures its own.
+     Sizes become h-control, w-sidebar, px-gutter. Widths become max-w-auth,
+     max-w-prose, max-w-content. */
+  --spacing-control: 52px;
+  --spacing-input: 48px;
+  --spacing-gutter: 20px;
+  --spacing-sidebar: 272px;
+  /* The smallest thing a thumb is asked to hit. A control drawn smaller
+     takes the hit utility below instead of growing. */
+  --spacing-touch: 44px;
+
+  --container-auth: 480px;
+  --container-prose: 640px;
+  --container-content: 1200px;
+  --container-sidebar: 272px;
+
+  /* One shadow, and only for something that floats over the page: a dialog,
+     a menu, a toast. Nothing that sits on the page has one. */
+  --shadow-lifted: 0 12px 32px rgb(0 0 0 / 0.12);
+
+  /* shadcn expects these */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+  --radius-4xl: 32px;
+}
+
+@layer base {
+  * {
+    @apply border-divider outline-focus/50;
+  }
+  html {
+    @apply font-sans antialiased;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-page text-text text-body;
+    font-feature-settings: "cv11", "ss01";
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  /* A text link gets the same ring as a pill: 2 px of --focus, 2 px out. */
+  a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-tag);
+  }
+  ::selection {
+    background: var(--tint);
+    color: var(--text);
+  }
+
+  /* Almost no motion, and none at all when the person asks for none. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* A control drawn under 44 px keeps its look and still takes a 44 px tap:
+   an invisible layer centred on it, at least the touch size each way. */
+@utility hit {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, var(--spacing-touch));
+    height: max(100%, var(--spacing-touch));
+    transform: translate(-50%, -50%);
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

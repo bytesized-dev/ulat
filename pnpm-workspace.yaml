@@ -1,0 +1,12 @@
+# pnpm 10 and later run no dependency build scripts unless the package is
+# approved here, and pnpm 12 fails the install rather than warn. esbuild
+# fetches a binary, and the resolver eslint uses does the same. Approve a new
+# one with: pnpm approve-builds <name>
+#
+# better-sqlite3 13 ships prebuilt bindings for macOS, Linux and Windows in
+# its tarball. Its only script is the node-gyp fallback, which needs a C++
+# toolchain most of the team does not have, so it stays off.
+allowBuilds:
+  better-sqlite3: false
+  esbuild: true
+  unrs-resolver: true

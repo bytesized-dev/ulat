@@ -4,7 +4,7 @@ import { HubEvent, HubStatus } from "@/lib/contracts";
 import { subscribe } from "@/lib/live/bus";
 import { readHubStatus, startStatusTicker } from "./index";
 import { markSeen, phoneCount } from "./phones";
-import { parsePmset, readBattery, readModelLoaded } from "./probes";
+import { parsePmset, readBattery, readModelLoaded, readStorageFreeGb } from "./probes";
 
 // There is no Windows machine to check "returns nulls instead of failing", so
 // these tests take pmset, the network, the disk and Ollama away and look at
@@ -19,7 +19,8 @@ vi.mock("node:dns/promises", () => ({
     cancel() {}
   },
 }));
-vi.mock("node:fs/promises", () => ({ statfs: () => Promise.reject(new Error("ENOENT")) }));
+const statfs = vi.hoisted(() => vi.fn());
+vi.mock("node:fs/promises", () => ({ statfs }));
 vi.mock("@/lib/auth/settings", () => ({ readSetting: () => "true" }));
 
 const globalForStatus = globalThis as unknown as {
@@ -36,6 +37,8 @@ beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
   execFile.mockReset();
   noPmset();
+  statfs.mockReset();
+  statfs.mockRejectedValue(new Error("ENOENT"));
   delete globalForStatus.ulatInternetCache;
   globalForStatus.ulatPhonesSeen?.clear();
 });
@@ -94,6 +97,20 @@ describe("readHubStatus", () => {
     expect(execFile).not.toHaveBeenCalled();
   });
 
+  it("gives up on a disk that does not answer", async () => {
+    vi.useFakeTimers();
+    statfs.mockReturnValue(new Promise(() => {}));
+    const read = readStorageFreeGb();
+    await vi.advanceTimersByTimeAsync(1_499);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await read).toBeNull();
+  });
+
+  it("reads free space in GB", async () => {
+    statfs.mockResolvedValue({ bavail: 5_000_000, bsize: 4096 });
+    expect(await readStorageFreeGb()).toBe(20.5);
+  });
+
   it("finds the model in the Ollama tag list, and trusts MOCK_AI", async () => {
     const tags = (names: string[]) =>
       vi.fn().mockResolvedValue(Response.json({ models: names.map((name) => ({ name, model: name })) }));
@@ -144,6 +161,40 @@ describe("GET /api/health", () => {
 });
 
 describe("status ticker", () => {
+  it("skips a beat while the previous read is still running", async () => {
+    vi.useFakeTimers();
+    clearInterval(globalForStatus.ulatStatusTicker);
+    delete globalForStatus.ulatStatusTicker;
+
+    // The first Ollama call hangs until release(). Every later one fails fast.
+    let release = () => {};
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise((_, fail) => (release = () => fail(new Error("late")))))
+      .mockRejectedValue(new TypeError("fetch failed"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const seen: HubEvent[] = [];
+    const off = subscribe({ role: "staff" }, (event) => seen.push(event));
+    try {
+      startStatusTicker();
+      await vi.advanceTimersByTimeAsync(90_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(seen).toEqual([]);
+
+      release();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(seen).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(seen).toHaveLength(2);
+    } finally {
+      off();
+      clearInterval(globalForStatus.ulatStatusTicker);
+      delete globalForStatus.ulatStatusTicker;
+    }
+  });
+
   it("publishes hub.status every 30 seconds, once, however often it starts", async () => {
     vi.useFakeTimers();
     clearInterval(globalForStatus.ulatStatusTicker);

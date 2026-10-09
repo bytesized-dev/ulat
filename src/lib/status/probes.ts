@@ -12,6 +12,22 @@ import { databasePath } from "@/db/path";
 
 const PROBE_TIMEOUT_MS = 1500;
 
+/**
+ * The promise's result, or a rejection after ms. The timer is unref'd and
+ * cleared, and onTimeout lets the caller cancel the work that lost the race.
+ */
+function within<T>(promise: Promise<T>, ms: number, onTimeout?: () => void): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, fail) => {
+    timer = setTimeout(() => {
+      onTimeout?.();
+      fail(new Error("probe timeout"));
+    }, ms);
+    timer.unref();
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 /* ---------- Battery ---------- */
 
 export type Battery = { percent: number | null; charging: boolean | null };
@@ -74,10 +90,14 @@ export async function readModelLoaded(): Promise<boolean> {
 
 /* ---------- Storage ---------- */
 
-/** Free space, in GB, on the disk that holds the database file. */
+/**
+ * Free space, in GB, on the disk that holds the database file. statfs waits as
+ * long as the filesystem does, so a database on a USB drive or a network mount
+ * that went away would hang the status read without the timeout.
+ */
 export async function readStorageFreeGb(): Promise<number | null> {
   try {
-    const stats = await statfs(dirname(resolve(databasePath)));
+    const stats = await within(statfs(dirname(resolve(databasePath))), PROBE_TIMEOUT_MS);
     const gb = (stats.bavail * stats.bsize) / 1e9;
     return Number.isFinite(gb) ? Math.round(gb * 10) / 10 : null;
   } catch {
@@ -98,21 +118,11 @@ const globalForStatus = globalThis as unknown as { ulatInternetCache?: InternetC
 
 async function lookupInternet(): Promise<boolean> {
   const resolver = new Resolver({ timeout: PROBE_TIMEOUT_MS, tries: 1 });
-  let timer: NodeJS.Timeout | undefined;
   try {
-    const timeout = new Promise<never>((_, fail) => {
-      timer = setTimeout(() => {
-        resolver.cancel();
-        fail(new Error("dns timeout"));
-      }, PROBE_TIMEOUT_MS);
-      timer.unref();
-    });
-    const addresses = await Promise.race([resolver.resolve4(INTERNET_NAME), timeout]);
+    const addresses = await within(resolver.resolve4(INTERNET_NAME), PROBE_TIMEOUT_MS, () => resolver.cancel());
     return addresses.length > 0;
   } catch {
     return false;
-  } finally {
-    clearTimeout(timer);
   }
 }
 

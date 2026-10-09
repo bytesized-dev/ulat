@@ -9,7 +9,7 @@
 - **Hub:** a MacBook running the Next.js app, SQLite, Ollama and Caddy. It runs on battery.
 - **Network:** any Wi-Fi router with nothing in its internet port, powered by a power bank. Give the hub a fixed IP with a DHCP reservation. Wi-Fi name `ULAT-HUB`.
 - **Phones:** any phone with a browser. Nothing to install.
-- **Address:** phones open `https://hub.[your-domain]`. The router hands out the hub as the DNS server, dnsmasq on the hub answers that name with the hub's local IP, and Caddy serves a real Let's Encrypt certificate fetched before the storm with a DNS challenge. Phones trust it with no setup, so camera, microphone, GPS and offline caching all work. Details in `infra/README.md`.
+- **Address:** phones open `https://hub.cjjutba.dev`. The router hands out the hub as the DNS server, dnsmasq on the hub answers that name with the hub's local IP, and Caddy serves a real Let's Encrypt certificate fetched before the storm with a DNS challenge. Phones trust it with no setup, so camera, microphone, GPS and offline caching all work. Details in `infra/README.md`.
 - **Fallback:** if the certificate fails, Caddy's internal certificate installed on the demo phones, or plain HTTP with file inputs for photos and typed notes.
 
 ### Software

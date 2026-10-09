@@ -1,6 +1,6 @@
 // Tiny DNS server for the hub, for machines without dnsmasq (Windows).
 // Answers an A record for HUB_DOMAIN with HUB_IP and nothing else. No upstream DNS.
-// Usage: HUB_DOMAIN=hub.example.dev HUB_IP=192.168.8.10 node infra/dns-stub.mjs
+// Usage: HUB_DOMAIN=hub.cjjutba.dev HUB_IP=192.168.8.10 node infra/dns-stub.mjs
 import dgram from "node:dgram";
 
 const domain = (process.env.HUB_DOMAIN ?? "").toLowerCase();
@@ -9,7 +9,7 @@ const port = Number(process.env.DNS_PORT ?? 53);
 const octets = ip.split(".").map(Number);
 
 if (!domain || octets.length !== 4 || octets.some((n) => !(n >= 0 && n <= 255))) {
-  console.error("Set HUB_DOMAIN (hub.example.dev) and HUB_IP (192.168.8.10).");
+  console.error("Set HUB_DOMAIN (hub.cjjutba.dev) and HUB_IP (192.168.8.10).");
   process.exit(1);
 }
 

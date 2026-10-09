@@ -7,10 +7,12 @@ import { SimulationSwitch } from "@/components/hub/kit/simulation-switch";
 import { HubPage } from "@/components/hub/hub-page";
 import { buttonVariants } from "@/components/ui/button";
 import { db } from "@/db/client";
+import { readSetting } from "@/lib/auth/settings";
 import { routes } from "@/lib/contracts/routes";
 import { modelLabel } from "@/lib/hub/kit-format";
 import { OLLAMA_MODEL } from "@/lib/ai/config";
 import { readKitSetup } from "@/lib/hub/setup";
+import { requireStaffPage } from "@/lib/hub/staff-page";
 import { readHubStatus } from "@/lib/status";
 
 export const metadata: Metadata = { title: "Kit setup" };
@@ -23,7 +25,9 @@ const secondary = buttonVariants({ variant: "secondary", size: "hub" });
 // The status is the one GET /api/hub/status sends. Values the hub cannot read
 // show as Unknown, Not set or None, and nothing is filled in.
 export default async function KitSetupPage() {
-  const kit = readKitSetup(db, await readHubStatus());
+  // The responders card names people, so the page is staff only, like GET /api/hub/status.
+  await requireStaffPage();
+  const kit = readKitSetup(db, await readHubStatus(), readSetting("wifi_name"));
 
   return (
     <HubPage title="Kit setup" active={routes.hub.setup}>

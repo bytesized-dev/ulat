@@ -145,6 +145,15 @@ describe("buildKitSetup", () => {
   it("shows the status it was given and nothing else", () => {
     const kit = buildKitSetup(inputs());
     expect(kit.network).toEqual({ pill: { label: "Working", tone: "success" }, wifi: "ULAT-HUB", phones: 9, internet: "None" });
+  });
+
+  it("shows the wifi_name setting, and ULAT-HUB when it is empty", () => {
+    expect(buildKitSetup(inputs({ wifiName: "ULAT-DRILL" })).network.wifi).toBe("ULAT-DRILL");
+    expect(buildKitSetup(inputs({ wifiName: "  " })).network.wifi).toBe("ULAT-HUB");
+  });
+
+  it("builds the other cards from the status", () => {
+    const kit = buildKitSetup(inputs());
     expect(kit.power).toEqual({ pill: { label: "On battery", tone: "warning" }, battery: "68%", storageFree: "120.5 GB" });
     expect(kit.ai.pill).toEqual({ label: "Loaded", tone: "success" });
     expect(kit.address).toEqual({ pill: { label: "Trusted", tone: "success" }, domain: "hub.example.dev", expires: "7 Jan 2027" });

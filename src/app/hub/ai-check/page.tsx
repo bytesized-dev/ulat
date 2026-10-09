@@ -3,6 +3,7 @@ import { AiCheckEmpty, AiCheckHero, AiCheckRail, DamageClassTable, VoiceNotesTab
 import { HubPage } from "@/components/hub/hub-page";
 import { routes } from "@/lib/contracts/routes";
 import { readEvalResults } from "@/lib/hub/ai-check";
+import { requireStaffPage } from "@/lib/hub/staff-page";
 
 export const metadata: Metadata = { title: "AI check" };
 
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 // Shows what `pnpm eval` wrote. It never calls the model.
 export default async function AiCheckPage() {
+  await requireStaffPage();
   const reading = await readEvalResults();
   return (
     <HubPage title="AI check" active={routes.hub.aiCheck} rail={<AiCheckRail reading={reading} />}>

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { DarkHero } from "@/components/ui/dark-hero";
+import { StatusDot } from "@/components/ui/status-dot";
 import { cn } from "@/lib/utils";
 import { formatDate, formatTime } from "@/lib/time";
 import {
@@ -49,7 +50,7 @@ export function AiCheckEmpty({ reading }: { reading: Exclude<AiCheckReading, { s
   );
 }
 
-/** Labeled by people on the left, answered by the AI across the top. Partial and total mixed up are marked. */
+/** Labeled by people on the left, answered by the AI across the top. Partial and total mixed up carry a warning dot. */
 export function DamageClassTable({ results }: { results: EvalResultsFile }) {
   const matrix = results.photos.confusion_matrix;
   return (
@@ -81,10 +82,11 @@ export function DamageClassTable({ results }: { results: EvalResultsFile }) {
                   key={answer.id}
                   role="cell"
                   className={cn(
-                    "flex h-12 items-center justify-center rounded-md font-mono text-mono-sm tabular",
-                    correct ? "bg-surface-dark text-canvas" : mixedUp ? "bg-warning/15 text-ink" : "bg-surface-soft text-ink",
+                    "flex h-12 items-center justify-center gap-2 rounded-md font-mono text-mono-sm tabular",
+                    correct ? "bg-surface-dark text-canvas" : "bg-surface-soft text-ink",
                   )}
                 >
+                  {mixedUp ? <StatusDot tone="warning" label="Partial and total mixed up" /> : null}
                   {formatCount(matrix[row.id][answer.id])}
                 </span>
               );
@@ -92,7 +94,7 @@ export function DamageClassTable({ results }: { results: EvalResultsFile }) {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-caption text-muted-text">Yellow cells: partial and total mixed up.</p>
+      <p className="mt-3 text-caption text-muted-text">Yellow dots: partial and total mixed up.</p>
     </section>
   );
 }

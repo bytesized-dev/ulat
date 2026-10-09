@@ -14,8 +14,8 @@ import { formatBattery } from "./status";
 // hub's own files and database. A value the hub cannot read says so, and is
 // never filled in. Server only.
 
-/** The Wi-Fi name SPEC section 1 gives the router. The hub cannot read it from the router. */
-export const WIFI_NAME = "ULAT-HUB";
+/** The Wi-Fi name SPEC section 1 gives the router, used when the wifi_name setting is empty. */
+export const DEFAULT_WIFI_NAME = "ULAT-HUB";
 
 export type Tone = "success" | "warning" | "danger" | "primary" | "muted-soft";
 export type SetupPill = { label: string; tone: Tone };
@@ -102,10 +102,12 @@ export type SetupInputs = {
   domain: string | undefined;
   map: MapPackage;
   responders: ResponderRow[];
+  /** The wifi_name setting, as the overview reads it. */
+  wifiName?: string;
 };
 
 /** Turns what the hub read into the cards. Pure, so a test can hand it any state. */
-export function buildKitSetup({ status, certificate, domain, map, responders }: SetupInputs): KitSetup {
+export function buildKitSetup({ status, certificate, domain, map, responders, wifiName }: SetupInputs): KitSetup {
   const address: SetupPill =
     certificate.state === "valid"
       ? { label: "Trusted", tone: "success" }
@@ -120,7 +122,7 @@ export function buildKitSetup({ status, certificate, domain, map, responders }: 
   return {
     network: {
       pill: status.phones > 0 ? { label: "Working", tone: "success" } : { label: "No phones", tone: "muted-soft" },
-      wifi: WIFI_NAME,
+      wifi: wifiName?.trim() || DEFAULT_WIFI_NAME,
       phones: status.phones,
       internet: status.internet ? "Connected" : "None",
     },
@@ -162,12 +164,13 @@ export function buildKitSetup({ status, certificate, domain, map, responders }: 
 }
 
 /** Reads the hub and builds the cards. status is the readHubStatus result, the same one GET /api/hub/status sends. */
-export function readKitSetup(db: Db, status: HubStatus, now: Date = new Date()): KitSetup {
+export function readKitSetup(db: Db, status: HubStatus, wifiName?: string, now: Date = new Date()): KitSetup {
   return buildKitSetup({
     status,
     certificate: readCertificate(certDir(), now),
     domain: process.env.HUB_DOMAIN,
     map: readMapPackage(),
     responders: readActiveResponders(db),
+    wifiName,
   });
 }

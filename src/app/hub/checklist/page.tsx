@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { routes } from "@/lib/contracts/routes";
 import { readChecklist } from "@/lib/hub/checklist";
 import { readKitSetup } from "@/lib/hub/setup";
+import { requireStaffPage } from "@/lib/hub/staff-page";
 import { readHubStatus } from "@/lib/status";
 
 export const metadata: Metadata = { title: "Before the storm" };
@@ -14,6 +15,7 @@ export const metadata: Metadata = { title: "Before the storm" };
 export const dynamic = "force-dynamic";
 
 export default async function ChecklistPage() {
+  await requireStaffPage();
   const checklist = readChecklist(db);
   const { kitNow } = readKitSetup(db, await readHubStatus());
 

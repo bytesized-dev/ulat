@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -342,5 +342,94 @@ describe("entries API", () => {
     await one.PATCH(patch(body.id, confirmBody()), ctx(body.id));
     const report = db.select().from(schema.reports).all().find((r) => r.id === "rep1");
     expect(report?.status).toBe("visited");
+    // The family timeline reads report.status_changed, so that is the row it writes.
+    const rows = db.select().from(schema.events).where(eq(schema.events.entity_id, "rep1")).all();
+    expect(rows.map((r) => r.type)).toEqual(["report.status_changed"]);
+    expect(rows[0]).toMatchObject({ actor: "r1", data: { status: "visited", entry_id: body.id } });
+  });
+
+  describe("files of a refused upload", () => {
+    const stored = () => (readdirSync(process.env.UPLOAD_DIR!, { recursive: true }) as string[]).filter((f) => /\.\w+$/.test(f)).length;
+    const withNote = (note: File) => {
+      const form = new FormData();
+      form.set("meta", meta());
+      for (let i = 0; i < 2; i++) form.append("photos", new File([PNG], `p${i}.png`, { type: "image/png" }));
+      form.set("note", note);
+      return new TestRequest("http://hub/api/entries", { method: "POST", body: form, headers: resp });
+    };
+
+    it("deletes the photos already stored when the note is refused", async () => {
+      await create(1);
+      const before = stored();
+      const res = await entries.POST(withNote(new File(["x"], "note.exe", { type: "application/x-msdownload" })));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "audio_type_not_allowed" });
+      expect(stored()).toBe(before);
+    });
+
+    it("deletes the earlier photos when a later photo is refused", async () => {
+      const before = stored();
+      const form = new FormData();
+      form.set("meta", meta());
+      form.append("photos", new File([PNG], "ok.png", { type: "image/png" }));
+      form.append("photos", new File(["x"], "bad.exe", { type: "application/x-msdownload" }));
+      const res = await entries.POST(new TestRequest("http://hub/api/entries", { method: "POST", body: form, headers: resp }));
+      expect(res.status).toBe(400);
+      expect(stored()).toBe(before);
+    });
+
+    it("keeps the files of a note that is accepted", async () => {
+      const before = stored();
+      const res = await entries.POST(withNote(new File([PNG], "note.webm", { type: "audio/webm" })));
+      expect(res.status).toBe(201);
+      expect(stored()).toBe(before + 3);
+    });
+  });
+
+  describe("PATCH by a responder", () => {
+    const row = (id: string) => db.select().from(schema.entries).where(eq(schema.entries.id, id)).get()!;
+
+    it("answers 404 for an entry that belongs to another responder, and changes nothing", async () => {
+      db.insert(schema.responders).values({ id: "r2", name: "Ben", team: "B", active: true }).run();
+      const { body } = await create(2);
+      db.update(schema.entries).set({ responder_id: "r2" }).where(eq(schema.entries.id, body.id)).run();
+      const before = row(body.id);
+      const res = await one.PATCH(patch(body.id, confirmBody()), ctx(body.id));
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "not_found" });
+      expect(row(body.id)).toEqual(before);
+      // Staff are not tied to an owner, but the entry must wait for review.
+      expect((await one.PATCH(patch(body.id, confirmBody(), staff), ctx(body.id))).status).toBe(409);
+    });
+
+    it("refuses a confirmed entry with 409 not_a_draft and changes nothing", async () => {
+      const { body } = await create(2);
+      expect((await one.PATCH(patch(body.id, confirmBody()), ctx(body.id))).status).toBe(200);
+      const before = row(body.id);
+      const res = await one.PATCH(patch(body.id, confirmBody({ damage_class: "none", people: 9 })), ctx(body.id));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "not_a_draft" });
+      expect(row(body.id)).toEqual(before);
+    });
+
+    it("refuses a needs_review entry with 409 not_a_draft, also when it sends the status it saw", async () => {
+      const { body } = await create(2);
+      expect((await (await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" })), ctx(body.id))).json()).status).toBe("needs_review");
+      const before = row(body.id);
+      for (const headers of [resp, { ...resp, "x-ulat-expect-status": "needs_review" }]) {
+        const res = await one.PATCH(patch(body.id, confirmBody({ damage_class: "total" }), headers), ctx(body.id));
+        expect(res.status).toBe(409);
+        expect(await res.json()).toEqual({ error: "not_a_draft" });
+      }
+      expect(row(body.id)).toEqual(before);
+    });
+
+    it("still lets staff settle a needs_review entry", async () => {
+      const { body } = await create(2);
+      await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" })), ctx(body.id));
+      const res = await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" }), staff), ctx(body.id));
+      expect((await res.json()).status).toBe("confirmed");
+      expect(row(body.id).status).toBe("confirmed");
+    });
   });
 });

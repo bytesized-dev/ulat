@@ -46,7 +46,7 @@ function newReport() {
     .get();
 }
 
-function newEntry(status: "needs_review" | "confirmed" = "needs_review", reportId: string | null = null) {
+function newEntry(status: "draft" | "needs_review" | "confirmed" = "needs_review", reportId: string | null = null) {
   return db
     .insert(schema.entries)
     .values({
@@ -144,11 +144,21 @@ describe("PATCH /api/entries/[id] with x-ulat-expect-status", () => {
 });
 
 describe("PATCH /api/entries/[id] without the header", () => {
-  it("behaves as before: a confirmed entry can be edited again", async () => {
-    const id = newEntry("confirmed");
+  it("lets staff settle an entry that waits for review", async () => {
+    const id = newEntry("needs_review");
     const res = await patch(id, body("none"));
     expect(res.status).toBe(200);
     expect(saved(id)).toMatchObject({ status: "confirmed", damage_class: "none" });
-    expect(history(id).filter((e) => e.type === "entry.confirmed")).toHaveLength(1);
+  });
+
+  it.each(["confirmed", "draft"] as const)("refuses staff on a %s entry: 409 not_in_review, nothing written", async (status) => {
+    const id = newEntry(status);
+    const before = saved(id);
+    const res = await patch(id, body("none"));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "not_in_review" });
+    expect(saved(id)).toEqual(before);
+    expect(history(id)).toHaveLength(0);
+    expect(published).toHaveLength(0);
   });
 });

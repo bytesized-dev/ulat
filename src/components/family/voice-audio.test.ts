@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { setVoiceAudio, voiceAudioUrl } from "./voice-audio";
+import { setVoiceAudio, voiceAudioBlob, voiceAudioUrl, voiceFileName } from "./voice-audio";
 
 afterEach(() => setVoiceAudio(null));
 
@@ -21,5 +21,16 @@ describe("voice audio", () => {
     setVoiceAudio(new Blob(["a"], { type: "audio/webm" }));
     setVoiceAudio(null);
     expect(voiceAudioUrl()).toBeNull();
+  });
+
+  it("hands the send screen the recording itself, and names it from its type", () => {
+    const note = new Blob(["a"], { type: "audio/mp4" });
+    setVoiceAudio(note);
+    expect(voiceAudioBlob()).toBe(note);
+    setVoiceAudio(null);
+    expect(voiceAudioBlob()).toBeNull();
+    expect(voiceFileName(new Blob([], { type: "audio/webm;codecs=opus" }))).toBe("note.webm");
+    expect(voiceFileName(new Blob([], { type: "audio/mp4" }))).toBe("note.mp4");
+    expect(voiceFileName(new Blob([]))).toBe("note.webm");
   });
 });

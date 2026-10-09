@@ -157,3 +157,92 @@ describe("flushQueue", () => {
     expect(result).toMatchObject({ left: 0 });
   });
 });
+
+describe("flushQueue with a voice note", () => {
+  const voiceId = "7d5c1e2a-3b4f-4a6d-9c8e-0f1a2b3c4d5e";
+  const spoken: NewReport = { ...report, voice_id: voiceId };
+  const note = { kind: "audio" as const, name: "note.webm", blob: new Blob(["opus"], { type: "audio/webm" }) };
+
+  /** Answers health, the voice route and the report route, and records the order of the calls. */
+  function voiceHub(voice: Reply[], reports: Reply[]) {
+    const voices = [...voice];
+    const posts = [...reports];
+    const calls: string[] = [];
+    const bodies: NewReport[] = [];
+    const send = vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push(url);
+      if (url.startsWith("/api/health")) return { ok: true, status: 200, json: async () => ({}) };
+      const next = url === "/api/reports/voice" ? voices.shift() : posts.shift();
+      if (url === "/api/reports") bodies.push(JSON.parse(init?.body as string));
+      const r = next ?? { status: 500 };
+      if (r === "throw") throw new TypeError("Failed to fetch");
+      return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body ?? {} };
+    });
+    return { send: send as unknown as typeof fetch, calls, bodies };
+  }
+  const stored: Reply = { status: 201, body: { voice_id: voiceId } };
+
+  it("uploads the audio before the report and sends the voice_id", async () => {
+    const store = memoryStore();
+    await enqueue(store, spoken, [note]);
+    const h = voiceHub([stored], [created("K7M4")]);
+    const result = await flushQueue(store, h.send);
+    expect(h.calls).toEqual(["/api/health", "/api/reports/voice", "/api/reports"]);
+    expect(h.bodies[0].voice_id).toBe(voiceId);
+    expect(result).toMatchObject({ sent: [expect.objectContaining({ code: "K7M4" })], left: 0 });
+  });
+
+  it("uploads once even when the report has to be tried again", async () => {
+    const store = memoryStore();
+    await enqueue(store, spoken, [note]);
+    const h = voiceHub([stored], [{ status: 503 }, created("K7M4")]);
+    await flushQueue(store, h.send);
+    // The hub took the audio, so the queue let go of its copy and the report still waits.
+    const [waiting] = await store.list();
+    expect([waiting.state, waiting.attachments, waiting.report.voice_id]).toEqual(["waiting", [], voiceId]);
+    const result = await flushQueue(store, h.send);
+    expect(h.calls.filter((c) => c === "/api/reports/voice")).toHaveLength(1);
+    expect(h.bodies.map((b) => b.voice_id)).toEqual([voiceId, voiceId]);
+    expect(result.sent.map((s) => s.code)).toEqual(["K7M4"]);
+  });
+
+  it("stops and keeps the report and its audio when the hub goes away during the upload", async () => {
+    const store = memoryStore();
+    await enqueue(store, spoken, [note], new Date("2026-10-09T06:00:00Z"));
+    await enqueue(store, report, [], new Date("2026-10-09T06:05:00Z"));
+    const h = voiceHub(["throw"], [created("K7M4")]);
+    const result = await flushQueue(store, h.send);
+    expect(result).toMatchObject({ reachable: false, sent: [], left: 2 });
+    expect(h.calls).toEqual(["/api/health", "/api/reports/voice"]);
+    const [first] = await store.list();
+    expect(first.attachments).toHaveLength(1);
+  });
+
+  it("sends the report without audio when the hub answers but refuses the recording", async () => {
+    const store = memoryStore();
+    await enqueue(store, spoken, [note]);
+    const h = voiceHub([{ status: 413, body: { error: "too_large" } }], [created("K7M4")]);
+    const result = await flushQueue(store, h.send);
+    expect(h.bodies[0].voice_id).toBeNull();
+    expect(result).toMatchObject({ sent: [expect.objectContaining({ code: "K7M4" })], left: 0 });
+  });
+
+  it("sends a typed report with no audio and never calls the voice route", async () => {
+    const store = memoryStore();
+    await enqueue(store, report);
+    const h = voiceHub([], [created("K7M4")]);
+    await flushQueue(store, h.send);
+    expect(h.calls).toEqual(["/api/health", "/api/reports"]);
+    expect(h.bodies[0].voice_id).toBeNull();
+  });
+
+  it("hands photos to upload but not the audio the queue already sent", async () => {
+    const store = memoryStore();
+    const photo = { kind: "photo" as const, name: "house.jpg", blob: new Blob(["p"]) };
+    await enqueue(store, spoken, [note, photo]);
+    const upload = vi.fn(async () => {});
+    await flushQueue(store, voiceHub([stored], [created("K7M4")]).send, upload);
+    expect(upload).toHaveBeenCalledWith(expect.objectContaining({ attachments: [photo] }), "K7M4");
+  });
+});
+

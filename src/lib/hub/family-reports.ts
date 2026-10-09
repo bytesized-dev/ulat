@@ -28,6 +28,8 @@ const FILTER_STATUSES: Record<Exclude<FamilyFilter, "all">, Status[]> = {
 };
 
 export type FamilyReportRow = {
+  /** The report id, which /api/files serves the family's recording by. */
+  id: string;
   code: string;
   household_head: string;
   barangay: string;
@@ -40,12 +42,15 @@ export type FamilyReportRow = {
   assigned_name: string | null;
   transcript: string | null;
   what_happened: string | null;
+  /** True when the family's recording is stored. The path itself stays on the server. */
+  has_voice: boolean;
   created_at: string;
 };
 
 const listed: SQL[] = [inArray(reports.source, ["family", "neighbor"]), ne(reports.status, "merged")];
 
 const rowColumns = {
+  id: reports.id,
   code: reports.code,
   household_head: reports.household_head,
   barangay: reports.barangay,
@@ -58,6 +63,7 @@ const rowColumns = {
   assigned_name: responders.name,
   transcript: reports.transcript,
   what_happened: reports.what_happened,
+  has_voice: sql<boolean>`${reports.voice_path} is not null`.mapWith(Boolean),
   created_at: reports.created_at,
 };
 

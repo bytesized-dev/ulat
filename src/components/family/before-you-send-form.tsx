@@ -17,6 +17,7 @@ import { queueStore } from "./queue-db";
 import { clearDraft, toNewReport } from "./report-draft";
 import { canSend, sendReport, summarizeDraft } from "./send-report";
 import { markSentFromDraft, saveSentReport } from "./sent-report";
+import { setVoiceAudio, voiceAudioBlob, voiceFileName } from "./voice-audio";
 import { announceQueueChange } from "./use-offline-queue";
 import { useReportDraft } from "./use-report-draft";
 
@@ -47,15 +48,21 @@ function BeforeYouSendForm() {
     // One id per tap. The direct post and the queued copy carry it, so the hub
     // makes one report even when a reply is lost and the phone sends again.
     const clientId = newClientId();
-    const result = await sendReport(draft, fetch, clientId);
+    // A typed note has no voice_id, and a reload loses the recording in memory.
+    // Either way the report goes without audio.
+    const audio = draft.voice_id ? voiceAudioBlob() : null;
+    const result = await sendReport(draft, fetch, clientId, audio);
     if (!result.ok && result.unreachable) {
-      // The hub is out of reach. Keep the report on the phone, where the saved
-      // screen takes over and sends it when the hub is back.
+      // The hub is out of reach. Keep the report on the phone with its
+      // recording, where the saved screen takes over and sends both when the
+      // hub is back.
       const body = toNewReport(draft);
       if (body.success) {
         try {
-          await enqueue(queueStore(), { ...body.data, client_id: clientId });
+          const report = { ...body.data, voice_id: audio ? body.data.voice_id : null, client_id: clientId };
+          await enqueue(queueStore(), report, audio ? [{ kind: "audio", name: voiceFileName(audio), blob: audio }] : []);
           clearDraft();
+          setVoiceAudio(null);
           announceQueueChange();
           setBusy(false);
           return;
@@ -71,6 +78,7 @@ function BeforeYouSendForm() {
     }
     saveSentReport(result.code);
     markSentFromDraft(result.code);
+    setVoiceAudio(null);
     // Replace, so Back from the next screen does not offer to send it again.
     router.replace(routes.family.sent);
   }

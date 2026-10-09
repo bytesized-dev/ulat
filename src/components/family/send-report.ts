@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { Need, ReportCode, type NewReport } from "@/lib/contracts";
+import { Need, ReportCode, VoiceStored, type NewReport } from "@/lib/contracts";
 import { toNewReport, type ReportDraft } from "./report-draft";
+import { voiceFileName } from "./voice-audio";
 
 // Pure parts of the send screen: what the family sees in the summary, the
 // request to the hub and what they read when it fails. The screen only wires
@@ -67,13 +68,53 @@ export async function postReport(body: NewReport, send: typeof fetch = fetch): P
   }
 }
 
+/** `unreachable` means the hub never answered, so the recording can wait on the phone with its report. */
+export type VoiceUpload = { ok: true } | { ok: false; unreachable: boolean };
+
+/**
+ * Sends a recording to the hub under the voice_id the report will carry. The
+ * hub answers the same for a repeat, so sending it again after a lost reply
+ * stores one file. Never throws.
+ */
+export async function uploadVoice(audio: Blob, voiceId: string, send: typeof fetch = fetch): Promise<VoiceUpload> {
+  try {
+    const form = new FormData();
+    form.set("voice_id", voiceId);
+    form.set("audio", audio, voiceFileName(audio));
+    const res = await send("/api/reports/voice", { method: "POST", body: form });
+    if (res.status === 502 || res.status === 504) return { ok: false, unreachable: true };
+    if (!res.ok) return { ok: false, unreachable: false };
+    const stored = VoiceStored.safeParse(await res.json().catch(() => null));
+    return stored.success && stored.data.voice_id === voiceId ? { ok: true } : { ok: false, unreachable: false };
+  } catch {
+    return { ok: false, unreachable: true };
+  }
+}
+
 /**
  * Sends the draft to the hub as a NewReport with consent true. Never throws, and
  * never touches the draft, so a failed send leaves it for another try. The
  * clientId is made once per tap on Send and reused if the report is queued.
+ *
+ * A recording goes first, so the report can name it. The report wins over the
+ * recording: if the hub answers but refuses the audio, the report goes without
+ * it, because the transcript is already in the report and a house in need
+ * should not wait on an attachment. If the hub does not answer, nothing is
+ * sent and the caller queues the report with its audio.
  */
-export async function sendReport(draft: ReportDraft, send: typeof fetch = fetch, clientId?: string): Promise<SendResult> {
+export async function sendReport(
+  draft: ReportDraft,
+  send: typeof fetch = fetch,
+  clientId?: string,
+  audio: Blob | null = null,
+): Promise<SendResult> {
   const body = toNewReport(draft);
   if (!body.success) return { ok: false, message: CHECK_REPORT, retry: false };
-  return postReport(clientId ? { ...body.data, client_id: clientId } : body.data, send);
+  let voiceId = audio ? body.data.voice_id : null;
+  if (audio && voiceId) {
+    const upload = await uploadVoice(audio, voiceId, send);
+    if (!upload.ok && upload.unreachable) return { ok: false, message: UNREACHABLE, retry: true, unreachable: true };
+    if (!upload.ok) voiceId = null;
+  }
+  return postReport({ ...body.data, voice_id: voiceId, ...(clientId ? { client_id: clientId } : {}) }, send);
 }

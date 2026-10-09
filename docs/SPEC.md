@@ -55,6 +55,8 @@ Tier 1 is the demo loop and must work end to end. Tier 2 makes it feel complete.
 
 The report draft lives in `sessionStorage` until it is sent. Tier 2 adds an IndexedDB queue so a sent report survives leaving the hub's range.
 
+A recorded note keeps its audio in memory on the phone. The phone makes a `voice_id` (a UUID) when the recording is read, and a typed note clears it. On Agree and send the phone uploads the audio to `POST /api/reports/voice` under that id, then posts the report with the same `voice_id`. The hub sets `reports.voice_path` from it. If the hub answers but refuses the audio, the report goes without it, because the transcript is already in the report. If the hub does not answer, the report is queued with the audio as an attachment.
+
 ### Responder
 
 | Route | Canvas screens | Tier |
@@ -101,7 +103,7 @@ Drizzle with SQLite. IDs are UUID strings unless noted. Timestamps are ISO strin
 |---|---|
 | `settings` | `key` primary, `value`. Keys: `town`, `barangays` (JSON list), `map_bbox` (west, south, east, north), `team_pin_hash`, `staff_pin_hash`, `simulation` (`true` or `false`), `wifi_name`, `hub_address` |
 | `responders` | `id`, `name`, `team`, `active` |
-| `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `voice_path`, `transcript`, `transcript_en`, `language`, `photo_path`, `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `client_id` (nullable and unique, set by a phone so a resend of the same tap finds the report it already made), `created_at`, `updated_at` |
+| `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `voice_path` (the family's recording, relative to the uploads folder, set from `voice_id`), `transcript`, `transcript_en`, `language`, `photo_path`, `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `client_id` (nullable and unique, set by a phone so a resend of the same tap finds the report it already made), `created_at`, `updated_at` |
 | `entries` | `id`, `number` (integer, shown as 0231), `report_id` (nullable), `responder_id`, `barangay`, `purok`, `household_head`, `lat`, `lng`, `gps_accuracy_m`, `families` (default 1, more when families share a house), `people`, `hurt`, `missing`, `needs` (JSON), `material`, `hazards` (JSON), `damage_class` (`none`, `partial`, `total`), `ai_class`, `ai_confidence`, `ai_reason`, `ai_need_more`, `note_path`, `note_transcript`, `note_en`, `status` (`draft`, `needs_review`, `confirmed`), `review_reason`, `confirmed_by`, `confirmed_at`, `created_at` |
 | `photos` | `id`, `entry_id` or `report_id`, `path`, `label`, `taken_at` |
 | `events` | `id`, `entity` (`report`, `entry`, `update`, `place`, `safe`, `ai`), `entity_id`, `type`, `actor`, `data` (JSON), `at`. This is the audit trail. Model calls log as type `ai.voice`, `ai.text`, `ai.photo` or `ai.translate`, with `.failed` added on a timeout or a schema failure, and the raw output in `data`. Voice, text and translate calls use entity `ai` with a fresh UUID per call. The photo draft belongs to an entry, so it logs as entity `entry` with the entry id and shows in that entry's history |
@@ -128,9 +130,11 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 | `POST /api/auth/staff` | Staff | PIN, sets session |
 | `POST /api/ai/voice` | Family, responder | Audio up to 30 s. Returns `AiVoiceExtract` |
 | `POST /api/ai/text` | Family | Typed note. Returns `AiVoiceExtract` with an empty transcript |
-| `POST /api/reports` | Family, desk | `NewReport`. Returns the code |
+| `POST /api/reports/voice` | Family | One family recording, no PIN. Multipart with `voice_id` (UUID made on the phone) and `audio`. Same types and size limits as `POST /api/ai/voice`, and the length must be declared. Stores it at `data/uploads/<yyyy-mm-dd>/<voice_id>.<ext>` and returns `{ voice_id }` with no URL. Sending the same `voice_id` again stores nothing new. Nothing serves the audio from this route |
+| `POST /api/reports` | Family, desk | `NewReport`. Returns the code. A `voice_id` is linked to the stored file and set as `voice_path`, once per recording. One that was never uploaded or that another report already holds is ignored: the report is saved without audio, the same 201 comes back, and the `report.created` audit row records `voice` as `unknown` or `used` |
 | `GET /api/reports/[code]` | Family | `ReportStatus`, minimal fields only |
 | `GET /api/reports` | Responder, staff | List with filters, urgent first |
+| `GET /api/files/[id]` | Responder, staff | A photo by photo id, an entry's voice note by entry id, or a family's voice note by report id. Range requests work. Without a PIN it answers 401 |
 | `POST /api/reports/[code]/assign` | Staff | Assign to a responder |
 | `POST /api/reports/[code]/cant-assess` | Responder | Reason and note |
 | `POST /api/entries` | Responder | Creates a draft from photos, note, GPS and an optional report code, then runs the photo pipeline |
@@ -209,7 +213,7 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 ## 9. Offline behavior on phones
 
 - **Tier 1:** the page keeps the draft in `sessionStorage`. Failed sends show "Try again".
-- **Tier 2:** a service worker caches the app shell, and IndexedDB queues reports and entries with their photos and audio. The queue sends when `/api/health` answers. The family "Saved on this phone" screen and the responder Queue tab read this queue.
+- **Tier 2:** a service worker caches the app shell, and IndexedDB queues reports and entries with their photos and audio. The queue sends when `/api/health` answers. A family report with a recording uploads the audio first, then posts the report with its `voice_id`, and the queue drops its copy of the audio once the hub has it, so a retry does not send it again. The family "Saved on this phone" screen and the responder Queue tab read this queue.
 
 ## 10. Simulation mode
 

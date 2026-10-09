@@ -6,6 +6,7 @@ import { routes } from "@/lib/contracts";
 import { QUEUE_EVENT, type QueuedReport } from "./offline-queue";
 import { queueStore } from "./queue-db";
 import { draftFromReport, saveDraft } from "./report-draft";
+import { setVoiceAudio } from "./voice-audio";
 import { SavedOnPhone } from "./saved-on-phone";
 import { refreshQueue, useOfflineQueue } from "./use-offline-queue";
 
@@ -60,6 +61,8 @@ function OfflineGate({ children }: { children: React.ReactNode }) {
   async function fix(item: QueuedReport) {
     // The draft holds the report again, then the queue lets go of it, so it cannot be lost between the two.
     saveDraft(draftFromReport(item.report));
+    // The recording comes back with it, so the send screen can upload it again.
+    setVoiceAudio(item.attachments.find((a) => a.kind === "audio")?.blob ?? null);
     try {
       await queueStore().remove(item.id);
     } catch {

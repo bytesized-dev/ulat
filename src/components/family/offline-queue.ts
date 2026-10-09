@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NewReport } from "@/lib/contracts";
 import { newClientId } from "./client-id";
-import { postReport } from "./send-report";
+import { postReport, uploadVoice } from "./send-report";
 
 // Reports a family agreed to send while the hub could not be reached. They wait
 // here, on the phone, with any audio and photos, and go out once /api/health
@@ -100,11 +100,16 @@ export type FlushResult = { reachable: boolean; sent: SentItem[]; refused: numbe
  * Sends the waiting reports, oldest first, when the hub answers. A sent report
  * leaves the queue. One the hub refuses stays, marked refused, and the rest go
  * on. If the hub goes away part way, the rest stay waiting for the next try.
+ *
+ * A report with a recording sends the recording first, under the voice_id the
+ * report carries. Once the hub has it, the queue drops its copy, so a retry
+ * does not send it again. If the hub answers but refuses the recording, the
+ * report goes without it: the report matters more than its audio.
  */
 export async function flushQueue(
   store: QueueStore,
   send: typeof fetch = fetch,
-  /** Sends an item's audio and photos once its report has a code. */
+  /** Sends an item's photos once its report has a code. The audio has gone before the report. */
   upload?: (item: QueuedReport, code: string) => Promise<void>,
 ): Promise<FlushResult> {
   const items = readQueue(await store.list());
@@ -114,8 +119,24 @@ export async function flushQueue(
 
   const sent: SentItem[] = [];
   let reachable = true;
-  for (const item of waiting) {
-    const result = await postReport(item.report, send);
+  for (const queued of waiting) {
+    let item = queued;
+    let report = item.report;
+    const audio = item.attachments.find((a) => a.kind === "audio");
+    if (audio && report.voice_id) {
+      const voice = await uploadVoice(audio.blob, report.voice_id, send);
+      if (!voice.ok && voice.unreachable) {
+        reachable = false;
+        break;
+      }
+      if (voice.ok) {
+        item = { ...item, attachments: item.attachments.filter((a) => a !== audio) };
+        await store.put(item);
+      } else {
+        report = { ...report, voice_id: null };
+      }
+    }
+    const result = await postReport(report, send);
     if (result.ok) {
       try {
         await upload?.(item, result.code);

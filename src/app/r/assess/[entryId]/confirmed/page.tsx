@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -82,11 +82,13 @@ export default async function ConfirmedPage({ params }: { params: Promise<{ entr
               href={routes.responder.report(next.code)}
               label="Next urgent"
               value={householdName(next.household_head)}
+              // Row drops its chevron when it has a trailing slot, so the page draws it.
               trailing={
                 tag ? (
                   <span className="flex items-center gap-1.5 text-caption-strong text-danger">
                     <StatusDot tone="danger" />
                     {tag}
+                    <ChevronRightIcon aria-hidden="true" className="size-5 shrink-0 text-muted-soft" />
                   </span>
                 ) : null
               }

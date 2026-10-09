@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../../db/client";
-import { responders } from "../../db/schema";
+import { responders, settings } from "../../db/schema";
 import type { HubStatus } from "../contracts";
 import { formatDate, secondsUntil } from "../time";
 import { formatBattery } from "./status";
@@ -13,6 +13,23 @@ import { formatBattery } from "./status";
 // readHubStatus call behind GET /api/hub/status, and the rest is read from the
 // hub's own files and database. A value the hub cannot read says so, and is
 // never filled in. Server only.
+
+/** "https://hub.example.ph/" becomes "hub.example.ph". */
+export function addressHost(address: string): string {
+  return address.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/\/+$/, "");
+}
+
+/**
+ * The hub's address as setup and the poster both read it. The hub_address
+ * setting wins, as saved. HUB_DOMAIN, passed in as env, is the fallback: a bare
+ * host served over https. host is the part people type.
+ */
+export function readHubAddress(db: Db, env: string | undefined): { address: string; host: string } | null {
+  const saved = db.select({ value: settings.value }).from(settings).where(eq(settings.key, "hub_address")).get()?.value?.trim();
+  if (saved) return { address: saved, host: addressHost(saved) };
+  const domain = env?.trim();
+  return domain ? { address: `https://${domain}`, host: domain } : null;
+}
 
 /** The Wi-Fi name SPEC section 1 gives the router, used when the wifi_name setting is empty. */
 export const DEFAULT_WIFI_NAME = "ULAT-HUB";
@@ -168,7 +185,7 @@ export function readKitSetup(db: Db, status: HubStatus, wifiName?: string, now: 
   return buildKitSetup({
     status,
     certificate: readCertificate(certDir(), now),
-    domain: process.env.HUB_DOMAIN,
+    domain: readHubAddress(db, process.env.HUB_DOMAIN)?.host,
     map: readMapPackage(),
     responders: readActiveResponders(db),
     wifiName,

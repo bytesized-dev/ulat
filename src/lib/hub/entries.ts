@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Db } from "../../db/client";
 import { entries, events, photos, reports, responders } from "../../db/schema";
 import { ConfirmedDamageClass } from "../contracts/schemas";
+import { likePattern } from "./safe";
 
 // docs/SPEC.md sections 3 and 4. What the hub entries pages read: a paged,
 // filtered list and one entry with its photos, AI draft comparison and history.
@@ -54,7 +55,7 @@ export type EntryPage = {
 
 /** A LIKE pattern that matches the text as typed, so a % or _ in a name is not a wildcard. */
 const contains = (column: SQL | AnyColumn, text: string) =>
-  sql`${column} like ${`%${text.replace(/[\\%_]/g, "\\$&")}%`} escape '\\'`;
+  sql`${column} like ${likePattern(text)} escape '\\'`;
 
 /** Confirmed entries, newest first. Only confirmed entries reach the hub lists and totals. */
 export function listEntries(db: Db, query: Partial<EntryQuery> = {}, perPage = ENTRIES_PER_PAGE): EntryPage {

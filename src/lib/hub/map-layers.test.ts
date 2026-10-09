@@ -75,7 +75,7 @@ describe("shading", () => {
 
 describe("layer counts", () => {
   it("counts the pins in each layer and the shaded barangays", () => {
-    expect(layerCounts(points, { Sinonoc: 1, Napo: 3 }, 3)).toEqual({
+    expect(layerCounts(points, { Sinonoc: 1, Napo: 3 }, { confirmed: 3, notYetVisited: 1 })).toEqual({
       shading: 2,
       confirmed: 3,
       unvisited: 1,
@@ -86,24 +86,31 @@ describe("layer counts", () => {
   });
 
   it("is zero everywhere when nothing is confirmed or on the map", () => {
-    expect(Object.values(layerCounts([], {}, 0))).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(Object.values(layerCounts([], {}, { confirmed: 0, notYetVisited: 0 }))).toEqual([0, 0, 0, 0, 0, 0]);
   });
 
   it("counts Confirmed from confirmed entries, including houses with no pin", () => {
     // 3 pins on the map, 5 confirmed entries: two have damage class none.
-    const counts = layerCounts(points, {}, 5);
+    const counts = layerCounts(points, {}, { confirmed: 5, notYetVisited: 1 });
     expect(counts.confirmed).toBe(5);
     expect(visiblePins(points, ALL_LAYERS_ON).filter((p) => layerOf(p.kind) === "confirmed")).toHaveLength(3);
   });
 
+  it("counts Not visited from the summary, including reports with no location", () => {
+    // 1 unvisited pin on the map, 2 open reports: one has no location, so no pin.
+    const counts = layerCounts(points, {}, { confirmed: 3, notYetVisited: 2 });
+    expect(counts.unvisited).toBe(2);
+    expect(visiblePins(points, ALL_LAYERS_ON).filter((p) => layerOf(p.kind) === "unvisited")).toHaveLength(1);
+  });
+
   it("still counts the other layers from their pins", () => {
-    expect(layerCounts(points, {}, 5)).toMatchObject({ unvisited: 1, relief: 1, shelter: 2, hazard: 1 });
+    expect(layerCounts(points, {}, { confirmed: 5, notYetVisited: 1 })).toMatchObject({ unvisited: 1, relief: 1, shelter: 2, hazard: 1 });
   });
 
   it("does not change when a layer is turned off", () => {
     const off = toggleLayer(ALL_LAYERS_ON, "shelter");
     expect(visiblePins(points, off)).toHaveLength(6);
-    expect(layerCounts(points, {}, 3).shelter).toBe(2);
+    expect(layerCounts(points, {}, { confirmed: 3, notYetVisited: 1 }).shelter).toBe(2);
   });
 });
 

@@ -4,10 +4,12 @@ import { audit, setStatus, type Tx } from "@/app/api/reports/_lib/audit";
 import type { Db } from "../../db/client";
 import { duplicates, entries, events, reports } from "../../db/schema";
 import type { HubEvent, Need } from "../contracts/schemas";
+import { withoutHousehold } from "./desk-name";
 
 // Possible duplicates, docs/SPEC.md section 6. Two reports, or a report and an
 // entry, in the same barangay with the same household name, within 50 m when
-// both have GPS. Plain SQL and TypeScript: the model never decides this.
+// both have GPS. A trailing "household" is not part of the name, so "Aquino"
+// and "Aquino household" match. The full names are compared, never a surname. Plain SQL and TypeScript: the model never decides this.
 // Callers pass the database so tests can use their own file.
 
 export const DUPLICATE_RADIUS_M = 50;
@@ -17,6 +19,9 @@ type Point = { lat: number; lng: number };
 
 /** The name rule: lowercased and trimmed, so "  Ramil AQUINO " matches "ramil aquino". */
 export const normalizeName = (value: string | null | undefined): string => (value ?? "").trim().toLowerCase();
+
+/** The name rule with spaces collapsed and one trailing "household" dropped, so "Aquino household" reads "aquino". */
+export const householdKey = (value: string | null | undefined): string => normalizeName(withoutHousehold(value ?? "")).replace(/\s+/g, " ");
 
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -76,7 +81,7 @@ export function detectDuplicates(db: Db): number {
 
     const buckets = new Map<string, Candidate[]>();
     const add = (name: string | null, barangay: string, candidate: Candidate) => {
-      const who = normalizeName(name);
+      const who = householdKey(name);
       if (!who) return;
       const key = `${normalizeName(barangay)}\u0000${who}`;
       buckets.set(key, [...(buckets.get(key) ?? []), candidate]);
@@ -225,6 +230,11 @@ export function needsLabel(needs: readonly z.infer<typeof Need>[]): string {
   if (needs.length === 0) return "None";
   const text = needs.map((n) => NEED_LABELS[n]).join(", ");
   return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** "K9D2, family, Purok 3": what tells two sides with the same name apart. The purok is left out when there is none. */
+export function sideLine(side: Pick<DuplicateSide, "label" | "sent_by" | "purok">): string {
+  return [side.label, side.sent_by, side.purok?.trim()].filter(Boolean).join(", ");
 }
 
 /** "30 m apart", or "No GPS" when a side has no position to measure from. */

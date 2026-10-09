@@ -10,6 +10,12 @@ describe("lastName", () => {
     expect(lastName("Ramos")).toBe("Ramos");
     expect(lastName("")).toBe("");
   });
+
+  it("ignores a trailing household word", () => {
+    expect(lastName("Aquino household")).toBe("Aquino");
+    expect(lastName("  Pedro Santiago Household ")).toBe("Santiago");
+    expect(lastName("household")).toBe("household");
+  });
 });
 
 describe("desk reads", () => {

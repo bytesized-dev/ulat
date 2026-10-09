@@ -58,18 +58,28 @@ export function toggleLayer(visibility: LayerVisibility, layer: MapLayer): Layer
   return { ...visibility, [layer]: !visibility[layer] };
 }
 
+export type SummaryCounts = { confirmed: number; notYetVisited: number };
+
 /**
  * The number beside each toggle. The pin layers count their pins and shading
- * counts shaded barangays. Confirmed counts every confirmed entry, from the
- * summary, because houses with damage class none are confirmed but have no
- * pin. Counted whether or not the layer is on, so a hidden layer still says
- * what it would show.
+ * counts shaded barangays. Confirmed and Not visited use the summary's
+ * numbers, the ones the overview shows. Houses with damage class none are
+ * confirmed but have no pin, and a desk report with no location is not
+ * visited but has no pin either. Counted whether or not the layer is on, so a
+ * hidden layer still says what it would show.
  */
-export function layerCounts(points: readonly MapPoint[], shading: BarangayShading, confirmedEntries: number): Record<MapLayer, number> {
-  const counts: Record<MapLayer, number> = { shading: Object.keys(shading).length, confirmed: confirmedEntries, unvisited: 0, relief: 0, shelter: 0, hazard: 0 };
+export function layerCounts(points: readonly MapPoint[], shading: BarangayShading, summary: SummaryCounts): Record<MapLayer, number> {
+  const counts: Record<MapLayer, number> = {
+    shading: Object.keys(shading).length,
+    confirmed: summary.confirmed,
+    unvisited: summary.notYetVisited,
+    relief: 0,
+    shelter: 0,
+    hazard: 0,
+  };
   for (const { pin } of points) {
     const layer = layerOf(pin.kind);
-    if (layer && layer !== "confirmed") counts[layer] += 1;
+    if (layer && layer !== "confirmed" && layer !== "unvisited") counts[layer] += 1;
   }
   return counts;
 }

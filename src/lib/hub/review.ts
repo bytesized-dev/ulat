@@ -27,9 +27,13 @@ export type ReviewEntry = {
   ai_reason: string | null;
   ai_need_more: string | null;
   note: string | null;
+  people: number;
   hurt: number;
-  /** The hurt count in the linked family report, null when there is none. */
+  missing: number;
+  /** The counts in the linked family report, null when there is none. */
+  report_people: number | null;
   report_hurt: number | null;
+  report_missing: number | null;
   /** The stored reason, in the long form the entries route writes or the short form of the seed. */
   review_reason: string | null;
   /** When staff noted an ask for photos that is still open. */
@@ -57,11 +61,22 @@ const pendingAsk = (entryId: unknown) => sql<string | null>`(
 const columns = {
   entry: entries,
   responder_name: responders.name,
+  report_people: reports.people,
   report_hurt: reports.hurt,
+  report_missing: reports.missing,
   photos_asked_at: pendingAsk(entries.id),
 };
 
-function toReviewEntry(row: { entry: EntryRow; responder_name: string; report_hurt: number | null; photos_asked_at: string | null }): ReviewEntry {
+type ReviewRow = {
+  entry: EntryRow;
+  responder_name: string;
+  report_people: number | null;
+  report_hurt: number | null;
+  report_missing: number | null;
+  photos_asked_at: string | null;
+};
+
+function toReviewEntry(row: ReviewRow): ReviewEntry {
   const e = row.entry;
   return {
     id: e.id,
@@ -76,8 +91,12 @@ function toReviewEntry(row: { entry: EntryRow; responder_name: string; report_hu
     ai_reason: e.ai_reason,
     ai_need_more: e.ai_need_more,
     note: e.note_en ?? e.note_transcript,
+    people: e.people,
     hurt: e.hurt,
+    missing: e.missing,
+    report_people: row.report_people,
     report_hurt: row.report_hurt,
+    report_missing: row.report_missing,
     review_reason: e.review_reason,
     photos_asked_at: row.photos_asked_at,
     confirm: {
@@ -175,17 +194,48 @@ export function aiSide(entry: Pick<ReviewEntry, "ai_class" | "ai_reason" | "ai_n
   return { label: CLASS_LABELS[entry.ai_class], tone: CLASS_TONES[entry.ai_class], text: entry.ai_reason ?? "" };
 }
 
-/** The responder side: their class, their note, and the hurt count when it differs from the family report. */
-export function responderSide(entry: Pick<ReviewEntry, "damage_class" | "note" | "hurt" | "report_hurt">): Side {
+/** The responder side: their class and their note. The counts are on CountLine rows. */
+export function responderSide(entry: Pick<ReviewEntry, "damage_class" | "note">): Side {
   const cls = entry.damage_class;
-  const hurt =
-    entry.report_hurt !== null && entry.report_hurt !== entry.hurt ? `Hurt: ${entry.hurt}. The family report says ${entry.report_hurt}.` : null;
-  const text = [entry.note, hurt].filter(Boolean).join(" ");
   return {
     label: cls ? CLASS_LABELS[cls] : "No class chosen",
     tone: cls ? CLASS_TONES[cls] : "muted-soft",
-    text: text || "No note.",
+    text: entry.note || "No note.",
   };
+}
+
+/** One number a card shows under its text, such as Hurt 2. */
+export type CountLine = { label: string; value: string };
+
+type CountEntry = Pick<ReviewEntry, "people" | "hurt" | "missing" | "report_people" | "report_hurt" | "report_missing" | "review_reason">;
+
+const COUNT_FIELDS = [
+  { label: "People", own: "people", report: "report_people" },
+  { label: "Hurt", own: "hurt", report: "report_hurt" },
+  { label: "Missing", own: "missing", report: "report_missing" },
+] as const;
+
+/**
+ * The counts the review is about. Hurt shows whenever the reason says it differs,
+ * and people or missing show when they differ from the family report.
+ */
+function comparedCounts(entry: CountEntry) {
+  const hurtReason = reasonLabels(entry.review_reason).includes(SHORT_REASONS.hurt_differs);
+  return COUNT_FIELDS.filter(({ label, own, report }) => (label === "Hurt" && hurtReason) || (entry[report] !== null && entry[report] !== entry[own])).map(
+    ({ label, own, report }) => ({ label, own: entry[own], report: entry[report] }),
+  );
+}
+
+/**
+ * The counts under the responder's card: their own, then the family report's
+ * for the same fields. A report that is not linked says so. The AI draft stores
+ * no counts, so its card has none.
+ */
+export function responderCounts(entry: CountEntry): CountLine[] {
+  return comparedCounts(entry).flatMap(({ label, own, report }) => [
+    { label, value: String(own) },
+    { label: `Family report, ${label.toLowerCase()}`, value: report === null ? "Not linked" : String(report) },
+  ]);
 }
 
 export type ReviewAction = { label: string; body: EntryConfirm };

@@ -85,6 +85,40 @@ describe("name rule", () => {
     expect(lib.detectDuplicates(db)).toBe(1);
   });
 
+  it("compares names with a trailing household word removed", () => {
+    report({ household_head: "Aquino household" });
+    report({ household_head: "  aquino HOUSEHOLD " });
+    report({ household_head: "Aquino" });
+    expect(lib.detectDuplicates(db)).toBe(3);
+  });
+
+  it("collapses spaces inside a name", () => {
+    report({ household_head: "Ramil   Aquino" });
+    report({ household_head: "ramil aquino household" });
+    expect(lib.detectDuplicates(db)).toBe(1);
+  });
+
+  it("pairs Aquino with Aquino household", () => {
+    report({ household_head: "Aquino" });
+    report({ household_head: "Aquino household", source: "desk" });
+    expect(lib.detectDuplicates(db)).toBe(1);
+  });
+
+  it("does not match on a surname alone", () => {
+    report({ household_head: "Santiago household" });
+    report({ household_head: "Pedro Santiago", source: "desk" });
+    report({ household_head: "Cruz household" });
+    report({ household_head: "Dela Cruz household" });
+    expect(lib.detectDuplicates(db)).toBe(0);
+  });
+
+  it("does not match two full names that only share a surname", () => {
+    report({ household_head: "Pedro Santiago" });
+    report({ household_head: "Maria Santiago" });
+    report({ household_head: "Santiago Reyes household" });
+    expect(lib.detectDuplicates(db)).toBe(0);
+  });
+
   it("does not flag different names, or two empty names", () => {
     report({ household_head: "Ramil Aquino" });
     report({ household_head: "Ramil Aquino Jr" });
@@ -232,6 +266,15 @@ describe("listing", () => {
   it("labels distances", () => {
     expect(lib.distanceLabel(29.6)).toBe("30 m apart");
     expect(lib.distanceLabel(null)).toBe("No GPS");
+  });
+
+  it("tells two sides with the same name apart by code, source and purok", () => {
+    expect(lib.sideLine({ label: "K9D2", sent_by: "family", purok: "Purok 3" })).toBe("K9D2, family, Purok 3");
+    expect(lib.sideLine({ label: "K9F5", sent_by: "desk", purok: null })).toBe("K9F5, desk");
+    expect(lib.sideLine({ label: "0238", sent_by: "responder", purok: " " })).toBe("0238, responder");
+  });
+
+  it("labels needs", () => {
     expect(lib.needsLabel([])).toBe("None");
   });
 });

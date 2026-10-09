@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { StatusDot } from "@/components/ui/status-dot";
-import { aiSide, responderSide, reviewActions, type ReviewEntry, type ReviewPhoto, type Side } from "@/lib/hub/review";
+import { aiSide, responderCounts, responderSide, reviewActions, type CountLine, type ReviewEntry, type ReviewPhoto, type Side } from "@/lib/hub/review";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ReviewActions } from "./review-actions";
@@ -31,7 +31,7 @@ function PhotoTiles({ photos }: { photos: ReviewPhoto[] }) {
 
 // One side of the comparison. The responder's side has the heavier border, as
 // on the canvas, because it is the value that counts unless staff change it.
-function SideCard({ title, side, emphasis }: { title: string; side: Side; emphasis?: boolean }) {
+function SideCard({ title, side, counts = [], emphasis }: { title: string; side: Side; counts?: CountLine[]; emphasis?: boolean }) {
   return (
     <section aria-label={title} className={cn("flex flex-col gap-3 rounded-lg border p-6", emphasis ? "border-ink" : "border-hairline")}>
       <p className="text-caption text-muted-text">{title}</p>
@@ -40,6 +40,16 @@ function SideCard({ title, side, emphasis }: { title: string; side: Side; emphas
         {side.label}
       </p>
       {side.text ? <p className="text-body-sm text-body">{side.text}</p> : null}
+      {counts.length > 0 ? (
+        <dl className="flex flex-col gap-1 border-t border-hairline pt-3 text-body-sm text-body">
+          {counts.map((count) => (
+            <div key={count.label} className="flex items-baseline justify-between gap-4">
+              <dt>{count.label}</dt>
+              <dd className="font-mono text-mono-sm text-ink tabular">{count.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
     </section>
   );
 }
@@ -66,7 +76,7 @@ function ReviewDetail({ entry, photos }: ReviewDetailProps) {
 
       <div className="grid grid-cols-2 gap-4">
         <SideCard title="AI draft" side={aiSide(entry)} />
-        <SideCard title={`${responderName} chose`} side={responderSide(entry)} emphasis />
+        <SideCard title={`${responderName} chose`} side={responderSide(entry)} counts={responderCounts(entry)} emphasis />
       </div>
 
       <ReviewActions

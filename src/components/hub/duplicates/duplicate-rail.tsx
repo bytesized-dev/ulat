@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Pill } from "@/components/ui/pill";
 import { routes } from "@/lib/contracts/routes";
-import { distanceLabel, type DuplicatePair } from "@/lib/hub/duplicates";
+import { distanceLabel, sideLine, type DuplicatePair } from "@/lib/hub/duplicates";
 import { cn } from "@/lib/utils";
 
 type DuplicateRailProps = {
@@ -37,6 +37,10 @@ function DuplicateRail({ pairs, selected }: DuplicateRailProps) {
                   )}
                 >
                   <span className="text-body-sm font-semibold text-ink">{pair.a.household_head}</span>
+                  <span className="flex flex-col gap-0.5 font-mono text-mono-sm text-muted-text">
+                    <span>{sideLine(pair.a)}</span>
+                    <span>{sideLine(pair.b)}</span>
+                  </span>
                   <Pill dot="warning">{distanceLabel(pair.distance_m)}</Pill>
                 </Link>
               </li>

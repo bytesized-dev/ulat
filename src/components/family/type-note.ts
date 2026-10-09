@@ -47,5 +47,5 @@ export async function readNote(text: string, send: typeof fetch = fetch): Promis
  * family's own words fill it, and any earlier recording no longer applies.
  */
 export function draftFromNote(draft: ReportDraft, text: string, extract: AiVoiceExtract): ReportDraft {
-  return { ...applyExtract(draft, extract), transcript: text.trim(), voice_id: null };
+  return { ...applyExtract(draft, extract), transcript: text.trim(), voice_id: null, spoken: false };
 }

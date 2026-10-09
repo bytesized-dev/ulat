@@ -42,6 +42,24 @@ export function whatHappened(draft: ReportDraft): string {
   return draft.what_happened.trim() || NOT_SET;
 }
 
+/** The longest values the draft accepts, so the edit sheet can stop the input there. */
+export const EDIT_LIMITS = { household_head: 120, purok: 60, what_happened: 200 } as const;
+
+/** A new head of household. Editing it clears its Please check marker. */
+export function setHead(draft: ReportDraft, head: string): ReportDraft {
+  return markChecked({ ...draft, household_head: head.trim().slice(0, EDIT_LIMITS.household_head) }, "household_head");
+}
+
+/** A new barangay and purok. The model never fills these, so there is no marker to clear. */
+export function setPlace(draft: ReportDraft, barangay: string, purok: string): ReportDraft {
+  return { ...draft, barangay, purok: purok.trim().slice(0, EDIT_LIMITS.purok) };
+}
+
+/** A new account of what happened. Editing it clears its Please check marker. */
+export function setWhatHappened(draft: ReportDraft, text: string): ReportDraft {
+  return markChecked({ ...draft, what_happened: text.trim().slice(0, EDIT_LIMITS.what_happened) }, "what_happened");
+}
+
 /** A change to one of the three counters. Editing it clears its Please check marker. */
 export function setCount(draft: ReportDraft, field: CountField, value: number): ReportDraft {
   return markChecked({ ...draft, [field]: value }, field);

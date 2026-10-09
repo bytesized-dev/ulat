@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
+import { TextToggle } from "./text-toggle";
 import { NO_FILTERS, type VisitFilters } from "./to-visit-order";
 
 const KEY = "ulat.responder.visit-filters";
@@ -71,10 +72,26 @@ type VisitFilterChipsProps = {
   /** The responder's team barangay. Without one there is no area chip. */
   team: string | null;
   className?: string;
+  /** Plain text with a check when on, for a row that should not look like buttons. The default is pills. */
+  variant?: "chip" | "text";
 };
 
 /** "Assigned to me" and the team's barangay, each on or off. */
-export function VisitFilterChips({ filters, onChange, team, className }: VisitFilterChipsProps) {
+export function VisitFilterChips({ filters, onChange, team, className, variant = "chip" }: VisitFilterChipsProps) {
+  if (variant === "text") {
+    return (
+      <div role="group" aria-label="Filters" className={cn("flex flex-wrap gap-x-5", className)}>
+        <TextToggle indicator="check" pressed={filters.mine} onPressedChange={(mine) => onChange({ ...filters, mine })}>
+          Assigned to me
+        </TextToggle>
+        {team ? (
+          <TextToggle indicator="check" pressed={filters.area} onPressedChange={(area) => onChange({ ...filters, area })}>
+            {team}
+          </TextToggle>
+        ) : null}
+      </div>
+    );
+  }
   return (
     <div role="group" aria-label="Filters" className={cn("flex gap-2 overflow-x-auto", className)}>
       <Chip pressed={filters.mine} onPressedChange={(mine) => onChange({ ...filters, mine })}>

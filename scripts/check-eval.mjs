@@ -50,7 +50,10 @@ function readCsv(name, required) {
       else if (c === '"') quoted = false;
       else cell += c;
     } else if (c === '"') quoted = true;
-    else if (c === ",") (row.push(cell), (cell = ""));
+    else if (c === ",") {
+      row.push(cell);
+      cell = "";
+    }
     else if (c === "\n" || c === "\r") {
       if (c === "\r" && text[i + 1] === "\n") i++;
       row.push(cell);

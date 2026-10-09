@@ -145,17 +145,6 @@ describe("flushQueue", () => {
     expect(await flushQueue(only, h.send)).toEqual({ reachable: true, sent: [], refused: 1, left: 1 });
     expect(h.calls).toEqual([]);
   });
-
-  it("hands each sent report's files to upload, and does not resend if the upload fails", async () => {
-    const store = memoryStore();
-    await enqueue(store, report, [{ kind: "photo", name: "house.jpg", blob: new Blob(["p"]) }]);
-    const upload = vi.fn(async () => {
-      throw new Error("no upload endpoint");
-    });
-    const result = await flushQueue(store, hub({ status: 200 }, [created("K7M4")]).send, upload);
-    expect(upload).toHaveBeenCalledWith(expect.objectContaining({ attachments: [expect.objectContaining({ name: "house.jpg" })] }), "K7M4");
-    expect(result).toMatchObject({ left: 0 });
-  });
 });
 
 describe("flushQueue with a voice note", () => {
@@ -247,14 +236,128 @@ describe("flushQueue with a voice note", () => {
     expect(h.calls).toEqual(["/api/health", "/api/reports"]);
     expect(h.bodies[0].voice_id).toBeNull();
   });
-
-  it("hands photos to upload but not the audio the queue already sent", async () => {
-    const store = memoryStore();
-    const photo = { kind: "photo" as const, name: "house.jpg", blob: new Blob(["p"]) };
-    await enqueue(store, spoken, [note, photo]);
-    const upload = vi.fn(async () => {});
-    await flushQueue(store, voiceHub([stored], [created("K7M4")]).send, upload);
-    expect(upload).toHaveBeenCalledWith(expect.objectContaining({ attachments: [photo] }), "K7M4");
-  });
 });
 
+describe("flushQueue with a photo", () => {
+  const photoId = "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d";
+  const withPhoto: NewReport = { ...report, photo_id: photoId };
+  const picture = { kind: "photo" as const, name: "photo.jpeg", blob: new Blob(["jpg"], { type: "image/jpeg" }) };
+
+  /** Answers health, the photo route and the report route, and records the order of the calls. */
+  function photoHub(photo: Reply[], reports: Reply[]) {
+    const photos = [...photo];
+    const posts = [...reports];
+    const calls: string[] = [];
+    const bodies: NewReport[] = [];
+    const forms: FormData[] = [];
+    const send = vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push(url);
+      if (url.startsWith("/api/health")) return { ok: true, status: 200, json: async () => ({}) };
+      if (url === "/api/reports/photo") forms.push(init?.body as FormData);
+      const next = url === "/api/reports/photo" ? photos.shift() : posts.shift();
+      if (url === "/api/reports") bodies.push(JSON.parse(init?.body as string));
+      const r = next ?? { status: 500 };
+      if (r === "throw") throw new TypeError("Failed to fetch");
+      return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body ?? {} };
+    });
+    return { send: send as unknown as typeof fetch, calls, bodies, forms };
+  }
+  const stored: Reply = { status: 201, body: { photo_id: photoId } };
+
+  it("keeps the photo as a photo attachment and the photo_id on the report", async () => {
+    const store = memoryStore();
+    await enqueue(store, withPhoto, [picture]);
+    const [item] = readQueue(await store.list());
+    expect(item.report.photo_id).toBe(photoId);
+    expect(item.attachments).toEqual([picture]);
+  });
+
+  it("uploads the photo before the report, under the photo_id the report carries", async () => {
+    const store = memoryStore();
+    await enqueue(store, withPhoto, [picture]);
+    const h = photoHub([stored], [created("K7M4")]);
+    const result = await flushQueue(store, h.send);
+    expect(h.calls).toEqual(["/api/health", "/api/reports/photo", "/api/reports"]);
+    expect(h.forms[0].get("photo_id")).toBe(photoId);
+    expect(h.bodies[0].photo_id).toBe(photoId);
+    expect(result).toMatchObject({ sent: [expect.objectContaining({ code: "K7M4" })], left: 0 });
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("keeps the photo until the report is accepted, and sends it again on each try", async () => {
+    const store = memoryStore();
+    await enqueue(store, withPhoto, [picture]);
+    const h = photoHub([stored, stored], [{ status: 503 }, created("K7M4")]);
+    await flushQueue(store, h.send);
+    const [waiting] = await store.list();
+    expect([waiting.state, waiting.attachments.map((a) => a.kind), waiting.report.photo_id]).toEqual(["waiting", ["photo"], photoId]);
+    const result = await flushQueue(store, h.send);
+    expect(h.calls.filter((c) => c === "/api/reports/photo")).toHaveLength(2);
+    expect(h.bodies.map((b) => b.photo_id)).toEqual([photoId, photoId]);
+    expect(result.sent.map((s) => s.code)).toEqual(["K7M4"]);
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("keeps the photo on a report the hub refuses", async () => {
+    const store = memoryStore();
+    await enqueue(store, withPhoto, [picture]);
+    const h = photoHub([stored], [{ status: 400, body: { error: "bad_report" } }]);
+    expect(await flushQueue(store, h.send)).toMatchObject({ refused: 1, left: 1, sent: [] });
+    const [refused] = await store.list();
+    expect(refused.state).toBe("refused");
+    expect(refused.report.photo_id).toBe(photoId);
+    expect(refused.attachments).toEqual([picture]);
+  });
+
+  it("sends the report without a photo_id when the hub answers but refuses the photo, and keeps nothing else back", async () => {
+    const store = memoryStore();
+    await enqueue(store, withPhoto, [picture]);
+    const h = photoHub([{ status: 400, body: { error: "photo_type_not_allowed" } }], [created("K7M4")]);
+    const result = await flushQueue(store, h.send);
+    expect(h.bodies[0].photo_id).toBeNull();
+    expect(result).toMatchObject({ sent: [expect.objectContaining({ code: "K7M4" })], left: 0 });
+  });
+
+  it("stops and keeps the report and its photo when the hub goes away during the upload", async () => {
+    const store = memoryStore();
+    await enqueue(store, withPhoto, [picture], new Date("2026-10-09T06:00:00Z"));
+    await enqueue(store, report, [], new Date("2026-10-09T06:05:00Z"));
+    const h = photoHub(["throw"], [created("K7M4")]);
+    expect(await flushQueue(store, h.send)).toMatchObject({ reachable: false, sent: [], left: 2 });
+    expect(h.calls).toEqual(["/api/health", "/api/reports/photo"]);
+    const [first] = await store.list();
+    expect(first.attachments).toEqual([picture]);
+  });
+
+  it("sends a report with no photo without calling the photo route", async () => {
+    const store = memoryStore();
+    await enqueue(store, report);
+    const h = photoHub([], [created("K7M4")]);
+    await flushQueue(store, h.send);
+    expect(h.calls).toEqual(["/api/health", "/api/reports"]);
+    expect(h.bodies[0].photo_id).toBeNull();
+  });
+
+  it("sends the audio and the photo before one report", async () => {
+    const store = memoryStore();
+    const voiceId = "7d5c1e2a-3b4f-4a6d-9c8e-0f1a2b3c4d5e";
+    const note = { kind: "audio" as const, name: "note.webm", blob: new Blob(["opus"], { type: "audio/webm" }) };
+    await enqueue(store, { ...withPhoto, voice_id: voiceId }, [note, picture]);
+    const calls: string[] = [];
+    const send = (async (url: string) => {
+      calls.push(url);
+      const body = url === "/api/reports/voice" ? { voice_id: voiceId } : url === "/api/reports/photo" ? { photo_id: photoId } : { code: "K7M4" };
+      return { ok: true, status: 201, json: async () => body };
+    }) as unknown as typeof fetch;
+    await flushQueue(store, send);
+    expect(calls).toEqual(["/api/health", "/api/reports/voice", "/api/reports/photo", "/api/reports"]);
+  });
+
+  it("still reads an item queued before photos existed, whose report has no photo_id", () => {
+    const { photo_id: _omitted, ...old } = report;
+    const item = { id: "old", report: old, attachments: [], saved_at: "2026-10-09T06:00:00.000Z", state: "waiting" };
+    const [read] = readQueue([item]);
+    expect(read.id).toBe("old");
+    expect(read.report.photo_id).toBeNull();
+  });
+});

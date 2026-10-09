@@ -117,6 +117,55 @@ describe("reports API", () => {
     expect((await route.POST(post(report({ people: -1 })))).status).toBe(400);
   });
 
+  it("turns away a body over the cap before reading it", async () => {
+    const reports = () => db.select().from(schema.reports).all().length;
+    const before = reports();
+    const junk = JSON.stringify({ ...report(), junk: "x".repeat(100 * 1024) });
+
+    // The header says it is too big, so none of the body is read.
+    const declared = new Request("http://hub/api/reports", {
+      method: "POST",
+      headers: { "content-type": "application/json", "content-length": String(junk.length) },
+      body: junk,
+    });
+    const res = await route.POST(declared);
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: "too_large" });
+
+    // No content-length, as in a chunked request. The read stops at the cap.
+    let pulled = 0;
+    const chunk = new TextEncoder().encode("x".repeat(8 * 1024));
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        if (pulled <= 1000) controller.enqueue(chunk);
+        else controller.close();
+      },
+    });
+    const chunked = new Request("http://hub/api/reports", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: stream,
+      duplex: "half",
+    } as RequestInit);
+    expect((await route.POST(chunked)).status).toBe(413);
+    expect(pulled).toBeLessThan(20);
+
+    expect(reports()).toBe(before);
+  });
+
+  it("still saves the longest honest report", async () => {
+    const { res } = await create({
+      reporter_name: "n".repeat(120),
+      reporter_where: "w".repeat(120),
+      what_happened: "h".repeat(200),
+      transcript: "é".repeat(2000),
+      english: "e".repeat(2000),
+      needs: ["water", "food", "tarp", "medicine", "hygiene_kit", "baby_needs"],
+    });
+    expect(res.status).toBe(201);
+  });
+
   it("saves a family report, returns a code and writes the audit row", async () => {
     const { res, code: c } = await create();
     expect(res.status).toBe(201);
@@ -232,6 +281,20 @@ describe("reports API", () => {
 
     const only = (await (await route.GET(list("?status=merged"))).json()) as { items: { code: string }[] };
     expect(only.items.map((r) => r.code)).toEqual([merged]);
+  });
+
+  it("searches for % and _ as plain text", async () => {
+    await signIn("staff");
+    const { code: plain } = await create({ household_head: "Plain Name" });
+    const { code: odd } = await create({ household_head: "100%_done" });
+    const ids = async (q: string) =>
+      ((await (await route.GET(list(`?per_page=100&q=${encodeURIComponent(q)}`))).json()) as { items: { code: string }[] }).items.map(
+        (r) => r.code,
+      );
+    expect(await ids("%")).toEqual([odd]);
+    expect(await ids("_")).toEqual([odd]);
+    expect(await ids("0%_d")).toEqual([odd]);
+    expect(await ids("plain")).toEqual([plain]);
   });
 
   it("filters by barangay and search", async () => {

@@ -74,7 +74,7 @@ function Group({ id, title, children }: { id: string; title: string; children: R
 
 function Specimen({ name, note, children, wide = false }: { name: string; note?: string; children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className={wide ? "flex flex-col gap-3 lg:col-span-2" : "flex flex-col gap-3"}>
+    <div className={cn("flex min-w-0 flex-col gap-3", wide && "lg:col-span-2")}>
       <div className="flex items-baseline gap-3">
         <h3 className="text-title-md">{name}</h3>
         {note ? <p className="text-body-sm text-body">{note}</p> : null}
@@ -311,11 +311,6 @@ export default function KitPage() {
               <Button size="hub" variant="tertiary">
                 Open map
               </Button>
-              <DarkHero size="hub" className="flex gap-3 p-4">
-                <Button size="hub" variant="outline-dark">
-                  Post update
-                </Button>
-              </DarkHero>
               <Button size="hub" disabled>
                 Make report
               </Button>
@@ -323,6 +318,15 @@ export default function KitPage() {
                 <PlusIcon aria-hidden="true" />
               </Button>
             </div>
+          </Specimen>
+
+          <Specimen name="Button on dark" note="Outline dark, hub size.">
+            <DarkHero size="hub" className="flex gap-3">
+              <Button size="hub">Make report</Button>
+              <Button size="hub" variant="outline-dark">
+                Post update
+              </Button>
+            </DarkHero>
           </Specimen>
 
           <Specimen name="Input, Select" note="44px.">
@@ -357,14 +361,15 @@ export default function KitPage() {
           </Specimen>
 
           <Specimen name="HubShell" note="Sidebar, top bar and right rail. Props only." wide>
-            <div className="h-160 overflow-hidden rounded-lg border border-hairline">
+            <div className="h-220 overflow-auto rounded-lg border border-hairline">
               <HubShell
-                className="h-full min-h-0 [&>aside]:h-full"
+                className="h-full min-h-0 w-max min-w-full [&>aside]:h-full"
                 title="Overview"
                 nav={hubNav}
                 activeHref={routes.hub.overview}
                 simulation
                 name="MDRRMO staff"
+                initials="MD"
                 status={
                   <dl className="flex flex-col gap-1.5">
                     <div className="flex justify-between">

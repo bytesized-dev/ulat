@@ -10,7 +10,7 @@ import { parseBbox } from "@/components/responder/map-sheet";
 import { TabBar } from "@/components/ui/tab-bar";
 import { map } from "@/config";
 import { db } from "@/db/client";
-import { entries, places, reports } from "@/db/schema";
+import { entries, places, reports, responders } from "@/db/schema";
 import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
 import { readSetting } from "@/lib/auth/settings";
 import { routes } from "@/lib/contracts";
@@ -45,6 +45,7 @@ export default async function MapPage() {
       hurt: reports.hurt,
       missing: reports.missing,
       created_at: reports.created_at,
+      assigned_to: reports.assigned_to,
     })
     .from(reports)
     .where(inArray(reports.status, OPEN_STATUSES))
@@ -65,9 +66,11 @@ export default async function MapPage() {
     .where(and(eq(places.type, "hazard"), eq(places.visible, true)))
     .all();
 
+  const team = db.select({ team: responders.team }).from(responders).where(eq(responders.id, session.responder_id)).get()?.team ?? null;
+
   return (
     <div className="flex h-dvh flex-col">
-      <MapScreen bbox={parseBbox(readSetting("map_bbox"), map.placeholderBbox)} barangays={loadBarangays()} reports={open} entries={confirmed} hazards={hazards} />
+      <MapScreen responderId={session.responder_id} team={team} bbox={parseBbox(readSetting("map_bbox"), map.placeholderBbox)} barangays={loadBarangays()} reports={open} entries={confirmed} hazards={hazards} />
       <TabBar active="map" />
       <LiveRefresh />
     </div>

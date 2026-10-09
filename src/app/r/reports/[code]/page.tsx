@@ -9,6 +9,7 @@ import { FamilyVoiceNote } from "@/components/responder/family-voice-note";
 import { LiveRefresh } from "@/components/responder/live-refresh";
 import { concernText, needLabel } from "@/components/responder/report-detail-labels";
 import { ReportDistance } from "@/components/responder/report-distance";
+import { ReportMap } from "@/components/responder/report-map";
 import { assignmentLabel, assignmentOf } from "@/components/responder/to-visit-order";
 import { buttonVariants } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
@@ -109,6 +110,8 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
             ) : null}
           </ul>
         ) : null}
+
+        {home ? <ReportMap home={home} household={report.household_head} /> : null}
 
         {hasNote ? (
           <div className="mt-6">

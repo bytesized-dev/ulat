@@ -9,14 +9,18 @@ import { StatusDot } from "@/components/ui/status-dot";
 import { routes } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { howFar } from "./map-sheet";
-import type { ToVisitReport } from "./to-visit-order";
+import { filterByAssignment, type ToVisitReport } from "./to-visit-order";
 import { useOwnPosition } from "./use-position";
+import { useVisitFilters, VisitFilterChips } from "./visit-filters";
 
 export type MapEntry = { id: string; household_head: string | null; damage_class: "partial" | "total"; lat: number; lng: number };
 
 export type MapHazard = { id: string; name: string; details: string | null; lat: number; lng: number };
 
 type MapScreenProps = {
+  responderId: string;
+  /** The responder's team barangay, for the area filter. */
+  team: string | null;
   bbox: [number, number, number, number];
   barangays?: BarangayCollection;
   reports: ToVisitReport[];
@@ -35,10 +39,16 @@ const CLASS_LABEL = { total: "Totally damaged", partial: "Partially damaged" } a
 
 // Unvisited reports, confirmed houses, hazards and you. Tapping a pin fills the
 // sheet under the map. Only reports offer "Open report", since confirmed houses are done.
-export function MapScreen({ bbox, barangays, reports, entries, hazards }: MapScreenProps) {
+export function MapScreen({ responderId, team, bbox, barangays, reports, entries, hazards }: MapScreenProps) {
   const position = useOwnPosition();
-  const placed = useMemo(() => reports.filter((r) => r.lat !== null && r.lng !== null), [reports]);
-  const [selectedId, setSelectedId] = useState<string | undefined>(placed[0] ? `report-${placed[0].code}` : undefined);
+  const [filters, setFilters] = useVisitFilters();
+  // The filters narrow the reports only. Confirmed houses and hazards stay, so the responder still sees what is around.
+  const shown = useMemo(() => filterByAssignment(reports, filters, responderId, team), [reports, filters, responderId, team]);
+  const placed = useMemo(() => shown.filter((r) => r.lat !== null && r.lng !== null), [shown]);
+  const [selectedId, setSelectedId] = useState<string | undefined>(() => {
+    const first = reports.find((r) => r.lat !== null && r.lng !== null);
+    return first ? `report-${first.code}` : undefined;
+  });
 
   const pins = useMemo<MapPin[]>(
     () => [
@@ -65,8 +75,9 @@ export function MapScreen({ bbox, barangays, reports, entries, hazards }: MapScr
     <>
       <header className="flex items-center justify-between px-gutter py-3">
         <span className="text-title-bar text-ink">Map</span>
-        <Pill>{reports.length} to visit</Pill>
+        <Pill>{shown.length} to visit</Pill>
       </header>
+      <VisitFilterChips filters={filters} onChange={setFilters} team={team} className="px-gutter pb-3" />
       <MapView
         layout="phone"
         className="flex-1"

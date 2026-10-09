@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignmentLabel, assignmentOf, assignmentTag, distanceMeters, filterToVisit, formatDistance, nextPosition, orderToVisit, withDistance, type ToVisitReport } from "./to-visit-order";
+import { assignmentLabel, assignmentOf, assignmentTag, distanceMeters, filterByAssignment, filterToVisit, formatDistance, nextPosition, orderToVisit, withDistance, type ToVisitReport } from "./to-visit-order";
 
 const here = { lat: 10.0, lng: 124.0 };
 
@@ -163,5 +163,30 @@ describe("assignment", () => {
     expect(urgent).toEqual(["HMNE", "HURT", "NEAR", "THEM", "MINE"]);
     const nearest = orderToVisit(withDistance(reports, here), "nearest", "r1").map((r) => r.code);
     expect(nearest).toEqual(["NEAR", "THEM", "MINE", "HMNE", "HURT"]);
+  });
+});
+
+describe("filter by assignment", () => {
+  const reports = [
+    report("MINE", { assigned_to: "r1" }),
+    report("AWAY", { assigned_to: "r1", barangay: "Dawo (Pob.)" }),
+    report("THEM", { assigned_to: "r2" }),
+    report("OPEN", { barangay: "Potol (Pob.)" }),
+  ];
+  const codes = (filters: { mine: boolean; area: boolean }, team: string | null = "Sinonoc") =>
+    filterByAssignment(reports, filters, "r1", team).map((r) => r.code);
+
+  it("keeps every report with both filters off", () => {
+    expect(codes({ mine: false, area: false })).toEqual(["MINE", "AWAY", "THEM", "OPEN"]);
+  });
+
+  it("keeps the responder's own reports, or their team's barangay, or both", () => {
+    expect(codes({ mine: true, area: false })).toEqual(["MINE", "AWAY"]);
+    expect(codes({ mine: false, area: true })).toEqual(["MINE", "THEM"]);
+    expect(codes({ mine: true, area: true })).toEqual(["MINE"]);
+  });
+
+  it("ignores the area filter for a responder with no team", () => {
+    expect(codes({ mine: false, area: true }, null)).toEqual(["MINE", "AWAY", "THEM", "OPEN"]);
   });
 });

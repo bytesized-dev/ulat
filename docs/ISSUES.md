@@ -46,6 +46,7 @@ Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Milesto
 | BYT-9 | AI: voice and text to fields | CJ | 2 Real AI loop | ai | Urgent | 2 |
 | BYT-25 | AI: photos to damage class | CJ | 2 Real AI loop | ai | Urgent | 2 |
 | BYT-58 | End to end smoke test of the demo loop | CJ | 2 Real AI loop | platform | High | 1 |
+| BYT-64 | AI: turn off Gemma thinking so AI calls answer in seconds | Sean | 2 Real AI loop | ai | High | 1 |
 | BYT-11 | Map, updates and safe list | Artkin | 3 Tier 2 | family | High | 2 |
 | BYT-17 | Simulation mode and clear data | CJ | 3 Tier 2 | platform | High | 0.5 |
 | BYT-19 | Type instead | Artkin | 3 Tier 2 | family | High | 1 |
@@ -684,6 +685,32 @@ Hours per person: Artkin 20, CJ 20, James 17, Sean 24.
 - [ ] Uses the DSWD definitions prompt and returns `AiPhotoDraft`
 - [ ] Invalid output falls back to unclear with the raw output logged
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
+
+---
+
+## BYT-64 AI: turn off Gemma thinking so AI calls answer in seconds
+
+- **Owner:** Sean. `src/lib/ai/ollama.ts` is in CJ's area, so CJ reviews the PR.
+- **Milestone:** 2 Real AI loop
+- **Label:** ai
+- **Priority:** High, tier 2
+- **Estimate:** 1 h
+- **Depends on:** BYT-9
+- **Spec:** 5
+
+On `/report/type`, Continue sits on "Reading your note" for 15 to 60 seconds. `gemma4:e4b` has thinking on by default, and `chat()` in `src/lib/ai/ollama.ts` never sends `think`, so the model writes 600 to 750 tokens of hidden reasoning before its JSON. Voice, text, photo and translate all go through `chat()`. With thinking off, the same text extract took about 3 seconds on the hub. Linear has the measurements.
+
+**Acceptance criteria**
+
+- [ ] Every Ollama request from `chat()` sends `think: false`, unless a call opts back in
+- [ ] `options.num_predict` caps the reply, merged with any `options` a caller passes
+- [ ] A typed note on `/report/type` reaches the check screen in under 5 seconds on the hub with the model loaded, with the dev server log line in the PR
+- [ ] Voice note and photo draft times before and after, in the PR
+- [ ] `pnpm eval` scores before and after, in the PR. No drop in field accuracy, or the call that dropped keeps thinking on.
+- [ ] A unit test in `src/lib/ai/ai.test.ts` checks the request body has `think: false` and the `num_predict` cap
+- [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
+
+Out of scope: going to the check screen before the extract comes back. That becomes a separate family app issue only if typed notes still feel slow on a phone after this fix.
 
 ---
 

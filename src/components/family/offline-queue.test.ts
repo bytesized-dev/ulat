@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { NewReport } from "@/lib/contracts";
 import { emptyDraft, toNewReport } from "./report-draft";
-import { enqueue, flushQueue, hubReachable, memoryStore, readQueue, type QueuedReport } from "./offline-queue";
+import { enqueue, flushQueue, householdLabel, hubReachable, memoryStore, readQueue, type QueuedReport } from "./offline-queue";
 
 const draft = { ...emptyDraft(), household_head: "Dela Cruz", barangay: "Poblacion", people: 4 };
 const parsed = toNewReport(draft);
@@ -35,6 +35,21 @@ describe("queue", () => {
     const [item] = readQueue(await store.list());
     expect(item).toMatchObject({ state: "waiting", saved_at: "2026-10-09T06:14:00.000Z" });
     expect(item.attachments[0].blob).toBe(audio);
+  });
+
+  it("uses the client_id from the tap as the item id, and makes one when there is none", async () => {
+    const store = memoryStore();
+    const id = "3f6c2a1e-9b0d-4c55-8a7e-1d2f3a4b5c6d";
+    const tapped = await enqueue(store, { ...report, client_id: id });
+    expect(tapped.id).toBe(id);
+    expect(tapped.report.client_id).toBe(id);
+    const bare = await enqueue(store, report);
+    expect(bare.report.client_id).toBe(bare.id);
+  });
+
+  it("labels a row like the design, without saying household twice", () => {
+    expect(householdLabel("Dela Cruz")).toBe("Dela Cruz household");
+    expect(householdLabel(" Lim Household ")).toBe("Lim Household");
   });
 
   it("drops stored items that are not valid reports and lists the rest oldest first", () => {
@@ -75,6 +90,24 @@ describe("flushQueue", () => {
     ]);
     expect(result.left).toBe(0);
     expect(await store.list()).toEqual([]);
+  });
+
+  it("resends the same client_id after the hub answered 502, so the hub can recognize it", async () => {
+    const store = memoryStore();
+    const id = "3f6c2a1e-9b0d-4c55-8a7e-1d2f3a4b5c6d";
+    await enqueue(store, { ...report, client_id: id });
+    const bodies: string[] = [];
+    const answers = [{ status: 502 }, { status: 201, body: { code: "K7M4" } }];
+    const send = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/health")) return { ok: true, status: 200, json: async () => ({}) };
+      bodies.push(init?.body as string);
+      const a = answers.shift()!;
+      return { ok: a.status < 300, status: a.status, json: async () => a.body ?? {} };
+    }) as unknown as typeof fetch;
+
+    expect(await flushQueue(store, send)).toMatchObject({ reachable: false, sent: [], left: 1 });
+    expect((await flushQueue(store, send)).sent.map((s) => [s.id, s.code])).toEqual([[id, "K7M4"]]);
+    expect(bodies.map((b) => JSON.parse(b).client_id)).toEqual([id, id]);
   });
 
   it("stops when the hub goes away part way and keeps the rest waiting", async () => {

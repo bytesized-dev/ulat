@@ -46,6 +46,19 @@ describe("sendReport", () => {
     expect(sent).toMatchObject({ consent: true, household_head: "Dela Cruz household", barangay: "San Isidro", people: 5, hurt: 1 });
   });
 
+  it("sends the client_id it was given, and none when it was not given one", async () => {
+    const id = "3f6c2a1e-9b0d-4c55-8a7e-1d2f3a4b5c6d";
+    const withId = reply(201, { code: "K7P4" });
+    await sendReport(draft, withId as unknown as typeof fetch, id);
+    const [, init] = withId.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).client_id).toBe(id);
+
+    const without = reply(201, { code: "K7P4" });
+    await sendReport(draft, without as unknown as typeof fetch);
+    const [, plain] = without.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(plain.body as string)).not.toHaveProperty("client_id");
+  });
+
   it("does not post a draft that is missing what the hub needs", async () => {
     const send = reply(201, { code: "K7P4" });
     const result = await sendReport({ ...draft, household_head: "" }, send as unknown as typeof fetch);

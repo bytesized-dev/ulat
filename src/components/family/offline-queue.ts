@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NewReport } from "@/lib/contracts";
+import { newClientId } from "./client-id";
 import { postReport } from "./send-report";
 
 // Reports a family agreed to send while the hub could not be reached. They wait
@@ -39,6 +40,12 @@ const Stored = z.object({
   state: z.enum(["waiting", "refused"]),
 });
 
+/** The row title, "Dela Cruz household" as the design shows it. A name that already says household is left alone. */
+export function householdLabel(head: string): string {
+  const name = head.trim();
+  return /household$/i.test(name) ? name : `${name} household`;
+}
+
 /** The valid items in what a store returned, oldest first. Anything else is dropped, never sent. */
 export function readQueue(raw: unknown[]): QueuedReport[] {
   return raw
@@ -59,18 +66,19 @@ export function memoryStore(): QueueStore {
   };
 }
 
-function newId(): string {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-/** Saves a report to wait for the hub. Returns the queued item. */
+/**
+ * Saves a report to wait for the hub. Returns the queued item. The item's id is
+ * the report's client_id, made when the family tapped Send, so the hub treats a
+ * resend after a lost reply as the same report.
+ */
 export async function enqueue(
   store: QueueStore,
   report: NewReport,
   attachments: QueuedAttachment[] = [],
   at: Date = new Date(),
 ): Promise<QueuedReport> {
-  const item: QueuedReport = { id: newId(), report, attachments, saved_at: at.toISOString(), state: "waiting" };
+  const id = report.client_id ?? newClientId();
+  const item: QueuedReport = { id, report: { ...report, client_id: id }, attachments, saved_at: at.toISOString(), state: "waiting" };
   await store.put(item);
   return item;
 }

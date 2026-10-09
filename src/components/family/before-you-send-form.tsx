@@ -11,6 +11,7 @@ import { Pill } from "@/components/ui/pill";
 import { ProgressSteps } from "@/components/ui/progress-steps";
 import { Row } from "@/components/ui/row";
 import { TopBar } from "@/components/ui/top-bar";
+import { newClientId } from "./client-id";
 import { enqueue } from "./offline-queue";
 import { queueStore } from "./queue-db";
 import { clearDraft, toNewReport } from "./report-draft";
@@ -43,14 +44,17 @@ function BeforeYouSendForm() {
     if (busy || !canSend(draft)) return;
     setBusy(true);
     setError(null);
-    const result = await sendReport(draft);
+    // One id per tap. The direct post and the queued copy carry it, so the hub
+    // makes one report even when a reply is lost and the phone sends again.
+    const clientId = newClientId();
+    const result = await sendReport(draft, fetch, clientId);
     if (!result.ok && result.unreachable) {
       // The hub is out of reach. Keep the report on the phone, where the saved
       // screen takes over and sends it when the hub is back.
       const body = toNewReport(draft);
       if (body.success) {
         try {
-          await enqueue(queueStore(), body.data);
+          await enqueue(queueStore(), { ...body.data, client_id: clientId });
           clearDraft();
           announceQueueChange();
           setBusy(false);

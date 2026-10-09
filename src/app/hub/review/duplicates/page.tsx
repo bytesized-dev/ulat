@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { DuplicateActions } from "@/components/hub/duplicates/duplicate-actions";
 import { DuplicateCompare } from "@/components/hub/duplicates/duplicate-compare";
 import { DuplicateRail } from "@/components/hub/duplicates/duplicate-rail";
@@ -8,11 +6,11 @@ import { HubPage } from "@/components/hub/hub-page";
 import { ReviewTabs } from "@/components/hub/segment-links";
 import { LiveRefresh } from "@/components/responder/live-refresh";
 import { db } from "@/db/client";
-import { readSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts/routes";
 import { detectDuplicates, listOpenDuplicates } from "@/lib/hub/duplicates";
 import { countReview } from "@/lib/hub/family-reports";
 import { getMapBbox } from "@/lib/hub/map-pins";
+import { requireStaffPage } from "@/lib/hub/staff-page";
 
 export const metadata: Metadata = { title: "Possible duplicates" };
 
@@ -23,10 +21,8 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default async function PossibleDuplicatesPage({ searchParams }: { searchParams: SearchParams }) {
-  // Households and locations are staff only. src/proxy.ts redirects first;
-  // this check does not rely on it.
-  const session = await readSession("staff", (await cookies()).get(SESSION_COOKIE.staff)?.value);
-  if (!session) redirect(routes.hub.lock);
+  // Households and locations are staff only.
+  await requireStaffPage();
 
   // Looks for pairs that came in since the last look. Running it again adds nothing.
   detectDuplicates(db);

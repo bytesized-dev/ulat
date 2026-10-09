@@ -18,6 +18,7 @@ eval/results.json
 
 # agent worktrees and scratch output
 .claude/worktrees/
+.kernel/settings.local.toml
 tmp/
 
 # test output

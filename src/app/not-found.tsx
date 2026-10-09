@@ -6,7 +6,7 @@ export default function NotFound() {
     <main className="mx-auto flex min-h-dvh w-full max-w-auth flex-col justify-center gap-4 px-gutter py-12">
       <h1 className="text-title-md">There is nothing here</h1>
       <p className="text-body-md text-body">The address may be mistyped, or the page moved.</p>
-      <Button asChild variant="outline" className="self-start">
+      <Button asChild variant="secondary" className="self-start">
         <Link href="/">Go to the start</Link>
       </Button>
     </main>

@@ -5,6 +5,7 @@ import * as schema from "@/db/schema";
 import { AiTranslation } from "@/lib/contracts";
 import fixtureFile from "../../../seed/ai-fixtures.json";
 import { translate } from "./index";
+import { resetStructuredOutputProbe } from "./ollama";
 import { TRANSLATE_SYSTEM } from "./prompts";
 
 // Same setup as ai.test.ts: Ollama is a mocked fetch, the database is in memory
@@ -41,6 +42,7 @@ beforeEach(async () => {
   vi.stubEnv("MOCK_AI", "0");
   vi.stubEnv("OLLAMA_URL", "http://localhost:11434/");
   fetchMock.mockReset();
+  resetStructuredOutputProbe();
   vi.stubGlobal("fetch", fetchMock);
   db.delete(schema.events).run();
   session.staff = true;
@@ -60,6 +62,19 @@ describe("translate", () => {
     const [row] = events();
     expect(row).toMatchObject({ entity: "ai", type: "ai.translate", actor: "system", data: { raw: JSON.stringify(draft) } });
     expect(row.entity_id).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("translates through the prompt when Ollama answers format with a 501", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response('{"error":"structured output is unavailable"}', { status: 501 }))
+      .mockResolvedValueOnce(reply("```json\n" + JSON.stringify(draft) + "\n```"));
+    await expect(translate(english)).resolves.toEqual(draft);
+
+    const retry = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(retry).not.toHaveProperty("format");
+    expect(retry.messages[1].content).toContain(`Headline: ${english.headline}\nMessage: ${english.message}`);
+    expect(retry.messages[1].content).toContain('"ceb"');
+    expect(events()[0].type).toBe("ai.translate");
   });
 
   it("accepts the design example, where 5 PM becomes sa hapon", async () => {

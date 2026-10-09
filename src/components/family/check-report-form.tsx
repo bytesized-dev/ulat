@@ -138,7 +138,7 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
 
             <Section title="People">
               <div className={LIST}>
-                {counter("In the house", "people")}
+                {counter("People in the house", "people")}
                 {counter("Hurt", "hurt")}
                 {counter("Missing", "missing")}
               </div>
@@ -224,9 +224,14 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
             </Section>
 
             <Section title="Needs">
-              <div role="group" aria-label="Needs" className="flex flex-wrap gap-2 pt-2">
+              <div role="group" aria-label="Needs" className="grid grid-cols-3 gap-2 pt-2">
                 {NEED_OPTIONS.map((need) => (
-                  <Chip key={need.value} pressed={draft.needs.includes(need.value)} onPressedChange={(on) => change(setNeed(draft, need.value, on))}>
+                  <Chip
+                    key={need.value}
+                    pressed={draft.needs.includes(need.value)}
+                    onPressedChange={(on) => change(setNeed(draft, need.value, on))}
+                    className="w-full px-2"
+                  >
                     {need.label}
                   </Chip>
                 ))}

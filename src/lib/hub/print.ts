@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
 import type { Db } from "../../db/client";
 import { settings } from "../../db/schema";
-import { DEFAULT_WIFI_NAME } from "./setup";
+import { addressHost, DEFAULT_WIFI_NAME } from "./setup";
 import { getHazardLines, getSitrep, isSimulationSitrep, readTown, type Sitrep } from "./sitreps";
 
 // BYTE-43. What the two print pages read. Callers pass the database so tests
@@ -52,10 +52,7 @@ export type PosterData = {
   hubHost: string | null;
 };
 
-/** "https://hub.example.ph/" becomes "hub.example.ph". */
-export function addressHost(address: string): string {
-  return address.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/\/+$/, "");
-}
+export { addressHost };
 
 export function readPoster(db: Db): PosterData {
   const hubAddress = readText(db, "hub_address") ?? null;

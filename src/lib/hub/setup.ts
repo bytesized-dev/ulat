@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../../db/client";
-import { responders } from "../../db/schema";
+import { responders, settings } from "../../db/schema";
 import type { HubStatus } from "../contracts";
 import { formatDate, secondsUntil } from "../time";
 import { formatBattery } from "./status";
@@ -13,6 +13,17 @@ import { formatBattery } from "./status";
 // readHubStatus call behind GET /api/hub/status, and the rest is read from the
 // hub's own files and database. A value the hub cannot read says so, and is
 // never filled in. Server only.
+
+/** "https://hub.example.ph/" becomes "hub.example.ph". */
+export function addressHost(address: string): string {
+  return address.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/\/+$/, "");
+}
+
+/** The address the poster prints. The hub_address setting wins, and HUB_DOMAIN is the fallback. */
+export function readHubDomain(db: Db, env: string | undefined = process.env.HUB_DOMAIN): string | undefined {
+  const saved = db.select({ value: settings.value }).from(settings).where(eq(settings.key, "hub_address")).get()?.value?.trim();
+  return (saved ? addressHost(saved) : undefined) || env?.trim() || undefined;
+}
 
 /** The Wi-Fi name SPEC section 1 gives the router, used when the wifi_name setting is empty. */
 export const DEFAULT_WIFI_NAME = "ULAT-HUB";
@@ -168,7 +179,7 @@ export function readKitSetup(db: Db, status: HubStatus, wifiName?: string, now: 
   return buildKitSetup({
     status,
     certificate: readCertificate(certDir(), now),
-    domain: process.env.HUB_DOMAIN,
+    domain: readHubDomain(db),
     map: readMapPackage(),
     responders: readActiveResponders(db),
     wifiName,

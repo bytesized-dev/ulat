@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { HubStatus } from "../contracts";
 import type { Db } from "../../db/client";
 import { formatCount, formatRate, formatSeconds, modelLabel } from "./kit-format";
-import { buildKitSetup, certDir, readActiveResponders, readCertificate, readMapPackage, type SetupInputs } from "./setup";
+import { addressHost, buildKitSetup, certDir, readActiveResponders, readCertificate, readHubDomain, readMapPackage, type SetupInputs } from "./setup";
 import { freshDb } from "./test-setup";
 
 const dir = mkdtempSync(join(tmpdir(), "ulat-setup-"));
@@ -217,5 +217,31 @@ describe("kit format helpers", () => {
     expect(formatSeconds(null)).toBe("n/a");
     expect(formatCount(800)).toBe("800");
     expect(formatCount(undefined)).toBe("n/a");
+  });
+});
+
+describe("readHubDomain", () => {
+  let db: Db;
+  beforeAll(async () => {
+    const fresh = await freshDb("setup-domain");
+    db = fresh.db;
+  });
+
+  it("falls back to the HUB_DOMAIN value when no address is saved", () => {
+    expect(readHubDomain(db, "hub.env.example")).toBe("hub.env.example");
+    expect(readHubDomain(db, undefined)).toBeUndefined();
+  });
+
+  it("reads the hub_address setting the poster uses, without its scheme", async () => {
+    const { settings } = await import("@/db/schema");
+    db.insert(settings).values({ key: "hub_address", value: "https://hub.example.ph/" }).run();
+    expect(readHubDomain(db, "hub.env.example")).toBe("hub.example.ph");
+    expect(readHubDomain(db, "hub.env.example")).toBe(addressHost("https://hub.example.ph/"));
+  });
+
+  it("ignores a blank setting", async () => {
+    const { settings } = await import("@/db/schema");
+    db.update(settings).set({ value: "  " }).run();
+    expect(readHubDomain(db, "hub.env.example")).toBe("hub.env.example");
   });
 });

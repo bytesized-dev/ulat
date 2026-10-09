@@ -32,12 +32,16 @@ export async function POST(req: Request) {
   const id = randomUUID();
   const now = new Date().toISOString();
   const urgent = isUrgent(body);
-  const code = db.transaction((tx) => {
+  const { code, created } = db.transaction((tx) => {
     const fresh = freshCode(tx);
-    tx.insert(reports)
+    // A phone sends the same client_id again after a lost reply. The unique
+    // index decides, so two parallel requests cannot both insert.
+    const inserted = tx
+      .insert(reports)
       .values({
         id,
         code: fresh,
+        client_id: body.client_id,
         source: body.source,
         household_head: body.household_head,
         reporter_name: body.reporter_name,
@@ -58,13 +62,18 @@ export async function POST(req: Request) {
         created_at: now,
         updated_at: now,
       })
+      .onConflictDoNothing({ target: reports.client_id })
       .run();
+    if (inserted.changes === 0 && body.client_id) {
+      const existing = tx.select({ code: reports.code }).from(reports).where(eq(reports.client_id, body.client_id)).get();
+      if (existing) return { code: existing.code, created: false };
+    }
     // voice_id is kept here until the voice route says where the audio lives.
     audit(tx, id, "report.created", actor, { code: fresh, source: body.source, urgent, voice_id: body.voice_id });
-    return fresh;
+    return { code: fresh, created: true };
   });
 
-  emit({ type: "report.created", code, urgent });
+  if (created) emit({ type: "report.created", code, urgent });
   return Response.json({ code }, { status: 201 });
 }
 

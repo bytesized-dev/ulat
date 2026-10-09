@@ -45,7 +45,9 @@ export type SkipReason =
   | "label_invalid"
   | "labelers_disagree"
   | "language_unknown"
-  | "expected_invalid";
+  | "expected_invalid"
+  /** Ollama could not be reached, so the model did no work on it. */
+  | "unavailable";
 
 export type Skipped = {
   kind: "photo" | "voice";
@@ -85,9 +87,38 @@ const parseLabel = (value: string): PhotoClass | "missing" | "invalid" => {
  * "unclear". Ollama being down is not a verdict on the model, so it is an
  * error and stays out of the scores.
  */
-function failureKind(error: unknown): { kind: string; asUnclear: boolean } {
-  if (error instanceof OllamaError) return { kind: error.kind, asUnclear: error.kind !== "unavailable" };
-  return { kind: error instanceof Error ? error.message : "unknown", asUnclear: false };
+function failureKind(error: unknown): { kind: string; asUnclear: boolean; unavailable: boolean } {
+  if (error instanceof OllamaError) {
+    const unavailable = error.kind === "unavailable";
+    return { kind: error.kind, asUnclear: !unavailable, unavailable };
+  }
+  return { kind: error instanceof Error ? error.message : "unknown", asUnclear: false, unavailable: false };
+}
+
+/** The run stops after this many calls in a row that could not reach Ollama. */
+export const MAX_UNAVAILABLE_IN_A_ROW = 3;
+
+/**
+ * Reads how many photo calls to make from `--repeat N` (or `--repeat=N`), then
+ * from EVAL_REPEAT. Returns undefined when neither is set. Throws on anything
+ * that is not a whole number of at least 1.
+ */
+export function parseRepeat(argv: readonly string[], env: Record<string, string | undefined>): number | undefined {
+  const index = argv.findIndex((arg) => arg === "--repeat" || arg.startsWith("--repeat="));
+  let raw: string | undefined;
+  let source = "EVAL_REPEAT";
+  if (index >= 0) {
+    source = "--repeat";
+    raw = argv[index].includes("=") ? argv[index].slice("--repeat=".length) : argv[index + 1];
+  } else raw = env.EVAL_REPEAT;
+  if (raw === undefined || raw.trim() === "") {
+    if (index >= 0) throw new Error("--repeat needs a number, for example --repeat 100.");
+    return undefined;
+  }
+  if (!/^\d+$/.test(raw.trim()) || Number(raw) < 1) {
+    throw new Error(`${source} must be a whole number of at least 1, got "${raw}".`);
+  }
+  return Number(raw);
 }
 
 async function timed<T>(deps: EvalDeps, call: () => Promise<T>) {
@@ -100,12 +131,31 @@ async function timed<T>(deps: EvalDeps, call: () => Promise<T>) {
   }
 }
 
-export async function runEval(options: { dir: string; model: string; deps: EvalDeps; now?: () => Date }) {
+/**
+ * `repeat` is the number of photo calls to make in all. The photo set runs
+ * once in full first, then loops until that many calls are done, so the battery
+ * has enough houses to drop a whole percent. Only the first pass is scored.
+ */
+export async function runEval(options: { dir: string; model: string; deps: EvalDeps; repeat?: number; now?: () => Date }) {
   const { dir, deps } = options;
   const log = deps.log ?? (() => {});
   const skipped: Skipped[] = [];
   let attempts = 0;
   let unavailable = 0;
+  let unavailableInARow = 0;
+
+  // Ollama being down is not a verdict on the model. The call is listed as
+  // skipped and stays out of timing and out of the houses, and a run that keeps
+  // hitting it stops, so one dead server cannot fill the numbers with 0 s calls.
+  const skipUnavailable = (kind: Skipped["kind"], file: string) => {
+    unavailable++;
+    skipped.push({ kind, file, reason: "unavailable", ran: false });
+    if (++unavailableInARow >= MAX_UNAVAILABLE_IN_A_ROW) {
+      throw new Error(
+        `Ollama could not be reached for ${MAX_UNAVAILABLE_IN_A_ROW} calls in a row, so the run stopped and nothing was written. Start Ollama and run again.`,
+      );
+    }
+  };
 
   /* ---------- Photos ---------- */
 
@@ -125,6 +175,10 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
   const scored: PhotoResult[] = [];
   let photoFilesMissing = 0;
   let photoCallsFailed = 0;
+  // Every photo call the model really made, in every pass. This is the houses
+  // for the battery and the sample for the timing.
+  const photoSeconds: number[] = [];
+  const photoSet: { file: string; data: Buffer; mime: string }[] = [];
 
   const batteryBefore = await deps.readBattery();
   for (const [i, row] of photoRows.entries()) {
@@ -137,26 +191,36 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
     const a = parseLabel(row.label_a);
     const b = parseLabel(row.label_b);
     const mime = PHOTO_MIME[extname(row.file).toLowerCase()] ?? "image/jpeg";
+    photoSet.push({ file: row.file, data, mime });
+
+    // Which labels let this photo into the scores, and why not if it did not.
+    // The labels are about the people, so they count even if the call fails.
+    let expected: PhotoClass | null = null;
+    let labelSkip: SkipReason | null = null;
+    if (a === "missing" && b === "missing") labelSkip = "both_labels_missing";
+    else if (a === "missing") labelSkip = "label_a_missing";
+    else if (b === "missing") labelSkip = "label_b_missing";
+    else if (a === "invalid" || b === "invalid") labelSkip = "label_invalid";
+    else {
+      pairs.push({ a, b });
+      if (a === b) expected = a;
+      else labelSkip = "labelers_disagree";
+    }
 
     log(`Photo ${i + 1} of ${photoRows.length}: ${row.file}`);
     attempts++;
     const result = await timed(deps, () => deps.draftPhoto({ photos: [{ data, mime, label: "" }] }));
     const failure = result.error ? failureKind(result.error) : null;
-    if (failure && !failure.asUnclear) unavailable++;
+    if (failure?.unavailable) {
+      skipUnavailable("photo", row.file);
+      continue;
+    }
+    unavailableInARow = 0;
+    photoSeconds.push(result.seconds);
     if (failure) photoCallsFailed++;
     const got: PhotoResult["got"] | null = result.value ? result.value.damage_class : failure?.asUnclear ? "unclear" : null;
 
-    // Which labels let this photo into the scores, and why not if it did not.
-    let expected: PhotoClass | null = null;
-    if (a === "missing" && b === "missing") skipped.push({ kind: "photo", file: row.file, reason: "both_labels_missing", ran: true });
-    else if (a === "missing") skipped.push({ kind: "photo", file: row.file, reason: "label_a_missing", ran: true });
-    else if (b === "missing") skipped.push({ kind: "photo", file: row.file, reason: "label_b_missing", ran: true });
-    else if (a === "invalid" || b === "invalid") skipped.push({ kind: "photo", file: row.file, reason: "label_invalid", ran: true });
-    else {
-      pairs.push({ a, b });
-      if (a === b) expected = a;
-      else skipped.push({ kind: "photo", file: row.file, reason: "labelers_disagree", ran: true });
-    }
+    if (labelSkip) skipped.push({ kind: "photo", file: row.file, reason: labelSkip, ran: true });
     if (expected && got) scored.push({ expected, got });
 
     photoItems.push({
@@ -170,6 +234,24 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
       error: failure?.kind ?? null,
       seconds: result.seconds,
     });
+  }
+
+  // More passes for the power number only. They add to the timing and the
+  // houses, never to the items, the scores or the confusion matrix.
+  const wanted = options.repeat ?? 0;
+  while (photoSet.length > 0 && photoSeconds.length < wanted) {
+    for (const { file, data, mime } of photoSet) {
+      if (photoSeconds.length >= wanted) break;
+      log(`Photo repeat ${photoSeconds.length + 1} of ${wanted}: ${file}`);
+      attempts++;
+      const result = await timed(deps, () => deps.draftPhoto({ photos: [{ data, mime, label: "" }] }));
+      if (result.error && failureKind(result.error).unavailable) {
+        skipUnavailable("photo", file);
+        continue;
+      }
+      unavailableInARow = 0;
+      photoSeconds.push(result.seconds);
+    }
   }
   const batteryAfter = await deps.readBattery();
 
@@ -189,7 +271,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
     file: string;
     language: VoiceLanguage;
     expected: VoiceFields & { what_happened: string | null };
-    got: (VoiceFields & { what_happened: string | null; language: string }) | null;
+    got: (VoiceFields & { what_happened: string | null; language: string; transcript: string; english: string }) | null;
     fields: ReturnType<typeof scoreVoice>;
     error: string | null;
     seconds: number;
@@ -232,11 +314,15 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
     attempts++;
     const result = await timed(deps, () => deps.readVoice({ audio, mime }));
     const failure = result.error ? failureKind(result.error) : null;
-    if (failure && !failure.asUnclear) unavailable++;
+    if (failure?.unavailable) {
+      skipUnavailable("voice", row.file);
+      continue;
+    }
+    unavailableInARow = 0;
     if (failure) voiceCallsFailed++;
 
-    // A note the model could not read scores as every field wrong. Ollama
-    // being down scores nothing.
+    // A note the model could not read scores as every field wrong. An error
+    // that is not the model's reply scores nothing.
     if (failure && !failure.asUnclear) {
       const unscored = { household_head: null, people: null, hurt: null, missing: null, needs: null };
       voiceItems.push({ file: row.file, language, expected, got: null, fields: unscored, error: failure.kind, seconds: result.seconds });
@@ -258,6 +344,9 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
             needs: got.needs,
             what_happened: got.what_happened,
             language: got.language,
+            // Kept so a person can judge the transcription by hand. Not scored.
+            transcript: got.transcript,
+            english: got.english,
           }
         : null,
       fields,
@@ -271,6 +360,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
   }
 
   const photosRun = photoItems.length;
+  const photoCalls = photoSeconds.length;
   const agreed = agreement(pairs);
   return {
     generated_by: "pnpm eval",
@@ -282,6 +372,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
       photos: {
         listed: photoRows.length,
         run: photosRun,
+        calls: photoCalls,
         file_missing: photoFilesMissing,
         call_failed: photoCallsFailed,
         labeled_by_both: pairs.length,
@@ -302,7 +393,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
       agreement: { ...agreed, kappa: cohenKappa(pairs) },
       accuracy: accuracy(scored),
       confusion_matrix: confusionMatrix(scored),
-      seconds: seconds(photoItems.map((item) => item.seconds)),
+      seconds: seconds(photoSeconds),
       items: photoItems,
     },
     voice: {
@@ -310,7 +401,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
       seconds: seconds(voiceResults.map((result) => result.seconds)),
       items: voiceItems,
     },
-    battery: batteryPer100Houses(batteryBefore, batteryAfter, photosRun),
+    battery: batteryPer100Houses(batteryBefore, batteryAfter, photoCalls),
   };
 }
 

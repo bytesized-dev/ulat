@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readdirSync, rmSync, statSync, utimesSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -107,6 +107,11 @@ const fileCtx = (id: string) => ({ params: Promise.resolve({ id }) });
 const today = () => new Date().toISOString().slice(0, 10);
 const voiceFile = (id: string, ext = "webm") => join(process.env.UPLOAD_DIR!, "voice", today(), `${id}.${ext}`);
 const stored = () => readdirSync(process.env.UPLOAD_DIR!, { recursive: true }).filter((f) => String(f).includes("."));
+/** The bytes of every recording in the voice folder, as they are on disk right now. */
+const voiceBytes = () =>
+  readdirSync(join(process.env.UPLOAD_DIR!, "voice"), { recursive: true })
+    .filter((f) => String(f).endsWith(".webm"))
+    .reduce((sum, f) => sum + statSync(join(process.env.UPLOAD_DIR!, "voice", String(f))).size, 0);
 /** Makes a stored file look this old, for the sweep. */
 const age = (id: string, ms: number) => {
   const then = new Date(Date.now() - ms);
@@ -364,6 +369,60 @@ describe("family voice upload and linking", () => {
       await create({ voice_id: first });
       expect((await put(uuid(), 600)).status).toBe(201);
       expect(stored()).toHaveLength(2);
+    });
+
+    describe("uploads that arrive together", () => {
+      /** Builds every request first, then sends them all at once. */
+      const together = async (count: number, size: number) => {
+        const requests = await Promise.all(Array.from({ length: count }, () => upload({ voice_id: uuid(), audio: audio(size) })));
+        const statuses = (await Promise.all(requests.map((r) => voice.POST(r)))).map((r) => r.status);
+        return { accepted: statuses.filter((s) => s === 201).length, refused: statuses.filter((s) => s === 507).length };
+      };
+
+      it("never put more on disk than the cap, and refuse the rest", async () => {
+        limits.cap = 1000;
+        const result = await together(50, 100);
+        expect(result).toEqual({ accepted: 10, refused: 40 });
+        expect(voiceBytes()).toBe(1000);
+      });
+
+      it("fit only what a sweep freed, when stale recordings make room", async () => {
+        limits.cap = 1000;
+        const stale = Array.from({ length: 10 }, () => uuid());
+        for (const id of stale) await put(id, 100);
+        for (const id of stale) age(id, 2 * HOUR);
+        // Room for ten opens up as the first upload sweeps, and fifty want it.
+        const result = await together(50, 100);
+        expect(result).toEqual({ accepted: 10, refused: 40 });
+        expect(voiceBytes()).toBe(1000);
+        for (const id of stale) expect(existsSync(voiceFile(id))).toBe(false);
+      });
+
+      it("keep the whole folder under its cap too", async () => {
+        limits.folderCap = 1000;
+        const result = await together(50, 100);
+        expect(result).toEqual({ accepted: 10, refused: 40 });
+        expect(voiceBytes()).toBe(1000);
+      });
+
+      it.skipIf(process.getuid?.() === 0)("let the next one through after a write fails, and give its bytes back", async () => {
+        limits.cap = 1000;
+        limits.sweepEvery = 60 * 60 * 1000;
+        expect((await put(uuid(), 50)).status).toBe(201);
+        const folder = join(process.env.UPLOAD_DIR!, "voice", today());
+        chmodSync(folder, 0o500);
+        try {
+          // The day folder cannot be written to, so the write fails and the route throws.
+          await expect(put(uuid(), 600)).rejects.toThrow();
+        } finally {
+          chmodSync(folder, 0o700);
+        }
+        // The lock is free, so this one runs. The failed 600 bytes were given back, so
+        // 50 + 400 fits by the running counts and nothing needs a sweep to find room.
+        listings.n = 0;
+        expect((await put(uuid(), 400)).status).toBe(201);
+        expect(listings.n).toBe(1);
+      });
     });
 
     it("answers 507 once the whole folder is full, even when every recording is linked", async () => {

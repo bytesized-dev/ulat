@@ -72,9 +72,30 @@ export async function findVoice(voiceId: string): Promise<string | null> {
 // both counts, and a report that links a recording takes it off the unlinked
 // one. Only a sweep, which walks the folder, makes them exact. They live on
 // globalThis so the voice route and the reports route share them, whichever
-// bundle each one lands in.
-type Counts = { total: number; unlinked: number; sweptAt: number };
-const shared = globalThis as unknown as { ulatVoiceCounts?: Counts };
+// bundle each one lands in. `linked` is what the last sweep found linked, so a
+// report that links a recording the sweep already counted as linked does not
+// take it off the unlinked count a second time.
+type Counts = { total: number; unlinked: number; sweptAt: number; linked: Set<string> };
+const shared = globalThis as unknown as { ulatVoiceCounts?: Counts; ulatVoiceLock?: Promise<void> };
+
+/**
+ * Runs one storeVoice at a time. The check, the sweep, the reservation and the
+ * write of one upload all finish before the next upload starts, so a sweep never
+ * misses a file still being written and never overwrites another upload's
+ * reservation. The queue lives on globalThis, so a dev hot reload keeps it. A
+ * failed upload releases in the finally, so it cannot wedge the ones behind it.
+ */
+async function exclusive<T>(work: () => Promise<T>): Promise<T> {
+  const before = shared.ulatVoiceLock ?? Promise.resolve();
+  let release!: () => void;
+  shared.ulatVoiceLock = new Promise<void>((resolve) => (release = resolve));
+  await before;
+  try {
+    return await work();
+  } finally {
+    release();
+  }
+}
 
 /**
  * Walks the voice folder: deletes unlinked recordings over an hour old, then
@@ -82,9 +103,9 @@ const shared = globalThis as unknown as { ulatVoiceCounts?: Counts };
  */
 async function sweep(now: number): Promise<Counts> {
   const linked = new Set(
-    db.select({ path: reports.voice_path }).from(reports).where(like(reports.voice_path, `${VOICE}/%`)).all().map((r) => r.path),
+    db.select({ path: reports.voice_path }).from(reports).where(like(reports.voice_path, `${VOICE}/%`)).all().flatMap((r) => (r.path ? [r.path] : [])),
   );
-  const counts: Counts = { total: 0, unlinked: 0, sweptAt: now };
+  const counts: Counts = { total: 0, unlinked: 0, sweptAt: now, linked };
   for (const recording of await listRecordings()) {
     const isLinked = linked.has(recording.path);
     if (!isLinked && now - recording.modified > UNLINKED_VOICE_MAX_AGE_MS) {
@@ -101,7 +122,9 @@ async function sweep(now: number): Promise<Counts> {
 export async function voiceLinked(path: string): Promise<void> {
   const counts = shared.ulatVoiceCounts;
   const info = await stat(join(uploadDir, path)).catch(() => null);
-  if (counts && info) counts.unlinked = Math.max(0, counts.unlinked - info.size);
+  if (!counts || !info || counts.linked.has(path)) return;
+  counts.linked.add(path);
+  counts.unlinked = Math.max(0, counts.unlinked - info.size);
 }
 
 export type StoreVoiceResult = { ok: true } | { ok: false; error: "audio_type_not_allowed" | "storage_full" };
@@ -112,14 +135,19 @@ export type StoreVoiceResult = { ok: true } | { ok: false; error: "audio_type_no
  * folder may hold MAX_VOICE_FOLDER_BYTES. An upload under both caps by the
  * running counts is written with no walk of the folder. One that looks over a
  * cap, or the first after a minute, sweeps first and is judged on the exact
- * counts, so a 507 is never a stale guess. The phone keeps its copy until the
- * hub accepts the report, so a recording swept before its report arrives is
- * sent again.
+ * counts, so a 507 is never a stale guess. Uploads run one at a time, see
+ * exclusive. The phone keeps its copy until the hub accepts the report, so a
+ * recording swept before its report arrives is sent again.
  */
-export async function storeVoice(file: File, voiceId: string, now = Date.now()): Promise<StoreVoiceResult> {
+export async function storeVoice(file: File, voiceId: string, at?: number): Promise<StoreVoiceResult> {
   const ext = EXT[file.type.split(";")[0].trim().toLowerCase()];
   if (!ext) return { ok: false, error: "audio_type_not_allowed" };
+  // Read before waiting for the lock, so a slow upload does not hold up the others.
+  const data = Buffer.from(await file.arrayBuffer());
+  return exclusive(() => storeExclusively(data, ext, voiceId, at ?? Date.now()));
+}
 
+async function storeExclusively(data: Buffer, ext: string, voiceId: string, now: number): Promise<StoreVoiceResult> {
   // A repeat of the same voice_id changes nothing, except that it makes the
   // file fresh again so the sweep leaves it for the report that is on its way.
   const existing = await findVoice(voiceId);
@@ -128,23 +156,24 @@ export async function storeVoice(file: File, voiceId: string, now = Date.now()):
     return { ok: true };
   }
 
-  const over = (c: Counts) => c.unlinked + file.size > MAX_UNLINKED_VOICE_BYTES || c.total + file.size > MAX_VOICE_FOLDER_BYTES;
+  const size = data.length;
+  const over = (c: Counts) => c.unlinked + size > MAX_UNLINKED_VOICE_BYTES || c.total + size > MAX_VOICE_FOLDER_BYTES;
   let counts = shared.ulatVoiceCounts;
   if (!counts || now - counts.sweptAt >= VOICE_SWEEP_EVERY_MS || over(counts)) counts = await sweep(now);
   if (over(counts)) return { ok: false, error: "storage_full" };
-  // Reserved before the write, with no await in between, so uploads that arrive together cannot all fit.
-  counts.total += file.size;
-  counts.unlinked += file.size;
+  // Counted before the write and taken back if the write fails.
+  counts.total += size;
+  counts.unlinked += size;
 
   const day = new Date(now).toISOString().slice(0, 10);
   const target = join(voiceDir(), day, `${voiceId}.${ext}`);
   try {
     await mkdir(join(voiceDir(), day), { recursive: true });
     // wx: two sends of one voice_id at once cannot overwrite each other.
-    await writeFile(target, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+    await writeFile(target, data, { flag: "wx" });
   } catch (error) {
-    counts.total -= file.size;
-    counts.unlinked -= file.size;
+    counts.total -= size;
+    counts.unlinked -= size;
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
   }
   return { ok: true };

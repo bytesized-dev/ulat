@@ -176,6 +176,16 @@ describe("client id", () => {
     expect(stored).toBe(posted);
   });
 
+  it("uses the row id of an old entry, so two tabs without a Web Lock send it under one id", async () => {
+    const rowId = "4b8f1c2e-77a0-4d3b-9c51-0e6a2f9d8b13";
+    const posted: string[] = [];
+    const ok = (async (_url: string, init?: RequestInit) => (posted.push(clientIdOf(init)), new Response("{}", { status: 201 }))) as unknown as typeof fetch;
+    const tabs = [memoryStore(), memoryStore()];
+    for (const store of tabs) store.items.push({ id: rowId, saved_at: "2026-10-01T00:00:00.000Z", meta, photos: [blob()], note: null });
+    await Promise.all(tabs.map((store) => flushQueue(store, ok)));
+    expect(posted).toEqual([rowId, rowId]);
+  });
+
   it("keeps the id it gave an old entry when the first send is lost", async () => {
     const store = memoryStore();
     store.items.push({ id: "old", saved_at: "2026-10-01T00:00:00.000Z", meta, photos: [blob()], note: null });
@@ -278,6 +288,17 @@ describe("send timeout", () => {
     order.length = 0;
     await flushQueue(store, stall, stalled);
     expect(order).toEqual(["small", "large"]);
+  });
+
+  it("forgets stalled ids for entries that left the queue", async () => {
+    const store = memoryStore();
+    const gone = await enqueue(meta, [big(1)], null, store);
+    const stalled = new Set<string>([gone.id]);
+    await store.remove(gone.id);
+    const kept = await enqueue(meta, [big(1)], null, store);
+    stalled.add(kept.id);
+    await flushQueue(store, (async () => Promise.reject(timeout())) as unknown as typeof fetch, stalled);
+    expect([...stalled]).toEqual([kept.id]);
   });
 
   it("keeps the same client id when a timed out entry is sent again", async () => {

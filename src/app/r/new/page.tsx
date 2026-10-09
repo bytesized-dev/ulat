@@ -10,5 +10,5 @@ export const dynamic = "force-dynamic";
 // the family folder for now. CJ can move it into src/lib later.
 export default function NewHousePage() {
   const barangays = parseBarangays(readSetting("barangays"));
-  return <AssessForm newHouse barangays={barangays} house={{ report_code: null, barangay: barangays[0] ?? "", purok: null, household_head: null }} />;
+  return <AssessForm newHouse barangays={barangays} house={{ report_code: null, barangay: "", purok: null, household_head: null }} />;
 }

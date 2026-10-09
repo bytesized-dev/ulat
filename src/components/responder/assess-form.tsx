@@ -8,7 +8,7 @@ import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS } from "./capture";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
@@ -32,6 +32,9 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
   const sending = useRef(false);
   // Made on the first Send and kept for the life of this form, so a tap after a lost reply is a resend.
   const clientIds = useRef<ClientIds | null>(null);
+  const barangayField = useRef<HTMLButtonElement>(null);
+  // A new object on each failed send, so focus moves again if the field is still empty.
+  const [barangayError, setBarangayError] = useState<{ message: string } | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [note, setNote] = useState<Blob | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -49,6 +52,11 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     );
     return () => navigator.geolocation.clearWatch(id);
   }, []);
+
+  // Focus follows the message, once it is on screen.
+  useEffect(() => {
+    if (barangayError) barangayField.current?.focus();
+  }, [barangayError]);
 
   // Photos still on screen when the responder leaves give their object URLs back.
   const shown = useRef<string[]>([]);
@@ -76,6 +84,8 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     // The ref answers at once. State would still read false for a second tap in
     // the same frame, and each POST makes its own entry.
     if (sending.current || photos.length === 0) return;
+    // A house opened from a report brings its barangay. A new house starts empty and needs one.
+    if (newHouse && !barangays.includes(fields.barangay)) return setBarangayError({ message: "Choose a barangay" });
     sending.current = true;
     setBusy(true);
     setError(null);
@@ -124,18 +134,25 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
               <Label htmlFor="nb" className={fieldLabel}>
                 Barangay
               </Label>
-              <Select value={fields.barangay} onValueChange={(barangay) => setFields((f) => ({ ...f, barangay }))}>
-                <SelectTrigger id="nb">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {barangays.map((b) => (
-                    <SelectItem key={b} value={b}>
-                      {b}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchSelect
+                id="nb"
+                ref={barangayField}
+                title="Barangay"
+                placeholder="Choose barangay"
+                options={barangays}
+                value={fields.barangay}
+                onValueChange={(barangay) => {
+                  setFields((f) => ({ ...f, barangay }));
+                  setBarangayError(null);
+                }}
+                aria-invalid={barangayError ? true : undefined}
+                aria-describedby={barangayError ? "nb-error" : undefined}
+              />
+              {barangayError ? (
+                <p id="nb-error" className="text-body-sm text-danger">
+                  {barangayError.message}
+                </p>
+              ) : null}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="np" className={fieldLabel}>
@@ -231,7 +248,7 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
         </p>
       </main>
       <footer className="px-gutter pb-7">
-        <Button type="button" className="w-full" disabled={busy || photos.length === 0 || !house.barangay} aria-busy={busy} onClick={() => void send()}>
+        <Button type="button" className="w-full" disabled={busy || photos.length === 0 || (!newHouse && !house.barangay)} aria-busy={busy} onClick={() => void send()}>
           {busy ? "Sending" : "Send to hub"}
         </Button>
       </footer>

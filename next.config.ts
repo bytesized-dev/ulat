@@ -16,6 +16,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // pnpm dev behind Caddy is served as the hub name, see infra/README.md. Without
+  // this the dev server blocks its own assets for that origin.
+  allowedDevOrigins: ["hub.cjjutba.dev"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

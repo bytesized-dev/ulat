@@ -24,7 +24,7 @@ export default async function HubMapPage() {
 
   const summary = getHubSummary(db);
   return (
-    <HubMapProvider bbox={getMapBbox(db)} points={getMapPoints(db)} rows={summary.barangays} confirmed={summary.houses_checked}>
+    <HubMapProvider bbox={getMapBbox(db)} points={getMapPoints(db)} rows={summary.barangays} confirmed={summary.houses_checked} notYetVisited={summary.not_yet_visited}>
       <HubPage title="Map" active={routes.hub.map} rail={<HubMapRail />}>
         <HubMapMain />
       </HubPage>

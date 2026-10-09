@@ -55,10 +55,12 @@ type HubMapProviderProps = {
   rows: BarangayRow[];
   /** Confirmed entries of every damage class, from the summary. Counts the Confirmed layer. */
   confirmed: number;
+  /** Family reports nobody has visited, from the summary. Counts the Not visited layer, so a report with no location still counts. */
+  notYetVisited: number;
   children: React.ReactNode;
 };
 
-export function HubMapProvider({ bbox, points, rows, confirmed, children }: HubMapProviderProps) {
+export function HubMapProvider({ bbox, points, rows, confirmed, notYetVisited, children }: HubMapProviderProps) {
   const router = useRouter();
   const [layers, setLayers] = React.useState<LayerVisibility>(ALL_LAYERS_ON);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -71,7 +73,7 @@ export function HubMapProvider({ bbox, points, rows, confirmed, children }: HubM
       bbox,
       pins: visiblePins(points, layers),
       shading: layers.shading ? shading : {},
-      counts: layerCounts(points, shading, confirmed),
+      counts: layerCounts(points, shading, { confirmed, notYetVisited }),
       layers,
       toggle: (layer) => {
         setLayers((current) => toggleLayer(current, layer));
@@ -81,7 +83,7 @@ export function HubMapProvider({ bbox, points, rows, confirmed, children }: HubM
       selected: selectedPoint(points, layers, selectedId),
       select: (pin) => setSelectedId((current) => nextSelection(current, pin.id)),
     };
-  }, [bbox, points, rows, confirmed, layers, selectedId]);
+  }, [bbox, points, rows, confirmed, notYetVisited, layers, selectedId]);
 
   return <HubMapContext.Provider value={value}>{children}</HubMapContext.Provider>;
 }

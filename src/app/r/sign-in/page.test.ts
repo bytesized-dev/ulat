@@ -19,8 +19,11 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("next/navigation", () => ({ redirect }));
 vi.mock("@/lib/auth/session", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth/session")>()), readActiveResponder }));
+// The page no longer opens the database. A call to it would fail this test.
 vi.mock("@/db/client", () => ({
-  db: { select: () => ({ from: () => ({ where: () => ({ all: () => [{ name: "Mae Santos" }, { name: "Jun Reyes" }] }) }) }) },
+  get db() {
+    throw new Error("the sign in page must not read the database");
+  },
 }));
 
 import { SignInForm } from "@/components/responder/sign-in-form";
@@ -37,12 +40,13 @@ describe("responder sign in page", () => {
     jar.set(SESSION_COOKIE.responder, "stale-token");
     readActiveResponder.mockResolvedValue(null);
 
-    const page = (await ResponderSignInPage()) as { type: unknown; props: { names: string[] } };
+    const page = (await ResponderSignInPage()) as { type: unknown; props: object };
 
     expect(readActiveResponder).toHaveBeenCalledWith("stale-token");
     expect(redirect).not.toHaveBeenCalled();
     expect(page.type).toBe(SignInForm);
-    expect(page.props.names).toEqual(["Mae Santos", "Jun Reyes"]);
+    // No names to pick from, the form asks for an email.
+    expect(page.props).toEqual({});
   });
 
   it("renders the form when there is no cookie", async () => {

@@ -188,9 +188,9 @@ function WhoseHouseholdForm({ barangays, whereToFind, requestedSource = null }: 
           </section>
 
           {neighbor ? (
-            <section aria-labelledby="you" className="flex flex-col gap-4.5">
-              <h2 id="you" className="text-title-md text-ink">
-                You
+            <section aria-labelledby="about-you" className="flex flex-col gap-4.5">
+              <h2 id="about-you" className="text-title-md text-ink">
+                About you
               </h2>
               <Field id="reporter-name" label="Your name" error={errorFor("reporter_name")}>
                 <Input
@@ -214,9 +214,14 @@ function WhoseHouseholdForm({ barangays, whereToFind, requestedSource = null }: 
                   onChange={(event) => change(null, { reporter_where: event.target.value })}
                 />
                 {whereToFind.length > 0 ? (
-                  <div role="group" aria-label="Common places" className="flex flex-wrap gap-2">
+                  <div role="group" aria-label="Common places" className="grid grid-cols-2 gap-2">
                     {whereToFind.map((place) => (
-                      <Chip key={place} pressed={draft.reporter_where === place} onPressedChange={(on) => change(null, { reporter_where: on ? place : "" })}>
+                      <Chip
+                        key={place}
+                        pressed={draft.reporter_where === place}
+                        onPressedChange={(on) => change(null, { reporter_where: on ? place : "" })}
+                        className="h-auto min-h-11 w-full whitespace-normal px-4 py-2 text-center leading-snug"
+                      >
                         {place}
                       </Chip>
                     ))}

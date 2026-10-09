@@ -134,6 +134,7 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 | `POST /api/reports/[code]/assign` | Staff | Assign to a responder |
 | `POST /api/reports/[code]/cant-assess` | Responder | Reason and note |
 | `POST /api/entries` | Responder | Creates a draft from photos, note, GPS and an optional report code, then runs the photo pipeline |
+| `POST /api/entries/[id]/photos` | Responder | Adds a photo to a draft and runs the photo draft again |
 | `GET /api/entries/[id]` | Responder, staff | Entry with photos, AI draft and history |
 | `PATCH /api/entries/[id]` | Responder, staff | `EntryConfirm` to confirm, or field edits. Records changes in `events` |
 | `GET /api/entries` | Staff | Paginated and filtered list |

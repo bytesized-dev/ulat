@@ -12,7 +12,7 @@ import { NewReport, VoiceStored } from "@/lib/contracts";
 import { draftFromReport } from "@/components/family/report-draft";
 import { enqueue, flushQueue, memoryStore } from "@/components/family/offline-queue";
 import { sendReport } from "@/components/family/send-report";
-import { newClientId } from "@/components/family/client-id";
+import { newClientId } from "@/lib/client-id";
 
 const dir = mkdtempSync(join(tmpdir(), "ulat-voice-"));
 process.env.DATABASE_PATH = join(dir, "test.db");

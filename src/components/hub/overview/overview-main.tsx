@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import type { HubSummary } from "@/lib/contracts";
+import { DamageMap } from "@/components/hub/map/damage-map";
 import type { MapPin } from "@/components/map";
 import { routes } from "@/lib/contracts/routes";
 import type { LatestItem } from "@/lib/hub/latest";
+import { shadingFromRows } from "@/lib/hub/map-layers";
 import type { Bbox } from "@/lib/hub/map-projection";
 import { BarangayTable } from "./barangay-table";
 import { OverviewHero } from "./overview-hero";
-import { OverviewMap } from "./overview-map";
 import { OverviewRail } from "./overview-rail";
 import { useHubSummary } from "./use-hub-summary";
 
@@ -21,6 +23,7 @@ type OverviewMainProps = {
 /** The hero, the damage map and the table by barangay. Live through useHubSummary. */
 export function OverviewMain({ summary: initial, map }: OverviewMainProps) {
   const summary = useHubSummary(initial);
+  const shading = useMemo(() => shadingFromRows(summary.barangays), [summary.barangays]);
   return (
     <div className="flex flex-col gap-9">
       <OverviewHero summary={summary} />
@@ -35,7 +38,7 @@ export function OverviewMain({ summary: initial, map }: OverviewMainProps) {
           </Link>
         </div>
         <div className="mt-4">
-          <OverviewMap bbox={map.bbox} pins={map.pins} rows={summary.barangays} />
+          <DamageMap bbox={map.bbox} pins={map.pins} shading={shading} className="h-144" />
         </div>
       </section>
 

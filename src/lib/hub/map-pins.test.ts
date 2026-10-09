@@ -6,7 +6,7 @@ import { map as mapConfig } from "../../config";
 import type { Db } from "../../db/client";
 import * as schema from "../../db/schema";
 import { entries, places, reports, responders, settings } from "../../db/schema";
-import { getMapBbox, getMapPins } from "./map-pins";
+import { getMapBbox, getMapPins, getMapPoints } from "./map-pins";
 
 let schemaSql: string[];
 let db: Db;
@@ -99,5 +99,27 @@ describe("map bbox", () => {
     expect(getMapBbox(db)).toEqual([west, south, east, north]);
     db.insert(settings).values({ key: "map_bbox", value: "not json" }).run();
     expect(getMapBbox(db)).toEqual([west, south, east, north]);
+  });
+});
+
+describe("map points", () => {
+  it("carry the title, detail and id the rail needs", () => {
+    entry({ status: "confirmed", damage_class: "total", household_head: "Dela Cruz household", purok: "Purok 3" });
+    report("waiting", { code: "ABCD", household_head: "Cruz household" });
+    db.insert(places).values({ type: "shelter", name: "Sinonoc gym", details: "Dry, 80 beds", created_at: at, ...here }).run();
+
+    const points = getMapPoints(db);
+    const byKind = (kind: string) => points.find((p) => p.pin.kind === kind);
+    const house = byKind("total");
+    expect(house).toMatchObject({ source: "entry", title: "Dela Cruz household", detail: "Sinonoc, Purok 3" });
+    expect(house?.pin.id).toBe(`entry-${house?.ref}`);
+    expect(byKind("unvisited")).toMatchObject({ source: "report", ref: "ABCD", title: "Cruz household", detail: "Sinonoc" });
+    expect(byKind("shelter")).toMatchObject({ source: "place", title: "Sinonoc gym", detail: "Dry, 80 beds" });
+  });
+
+  it("give the same pins as getMapPins", () => {
+    entry({ status: "confirmed", damage_class: "partial" });
+    place("relief");
+    expect(getMapPoints(db).map((p) => p.pin)).toEqual(getMapPins(db));
   });
 });

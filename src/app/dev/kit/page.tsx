@@ -42,7 +42,7 @@ const hubNav: HubNavSection[] = [
   {
     items: [
       { label: "Overview", href: routes.hub.overview, icon: <LayoutGridIcon /> },
-      { label: "Review", href: routes.hub.review, icon: <InboxIcon />, count: 5 },
+      { label: "Review", href: routes.hub.review, icon: <InboxIcon />, count: 5, countLabel: "waiting" },
       { label: "Map", href: routes.hub.map, icon: <MapIcon /> },
       { label: "Entries", href: routes.hub.entries, icon: <TableIcon /> },
       { label: "Reports", href: routes.hub.reports, icon: <FileTextIcon /> },

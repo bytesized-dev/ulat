@@ -24,7 +24,8 @@ async function render(n: string) {
   return page({ params: Promise.resolve({ n }) });
 }
 
-describe("/hub/reports/[n]/print", () => {
+// The first import of the page loads the whole hub page tree, which takes 5 to 8 seconds under load.
+describe("/hub/reports/[n]/print", { timeout: 30_000 }, () => {
   it("is a 404 when there is no report with that number", async () => {
     getPrintReport.mockReturnValue(null);
     await expect(render("42")).rejects.toThrow("NEXT_NOT_FOUND");

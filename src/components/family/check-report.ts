@@ -34,7 +34,8 @@ export function needsCheck(draft: ReportDraft, field: Field): boolean {
   return draft.uncertain_fields.includes(field);
 }
 
-const NOT_SET = "Not set";
+/** What a row says for something the family has not given yet. */
+export const NOT_SET = "Not set";
 
 /** The three household rows, in the words the design uses. */
 export function householdRows(draft: ReportDraft) {

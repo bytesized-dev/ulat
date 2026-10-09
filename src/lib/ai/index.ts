@@ -47,8 +47,8 @@ export async function readVoice(input: { audio: Buffer; mime: string }): Promise
   return extract("voice", AiVoiceExtract, { system: VOICE_SYSTEM, user: "Read this voice note.", media: [input.audio] });
 }
 
-// The model never writes a transcript for a typed note. With thinking off it
-// copies the note into the field, which doubles the output and the wait.
+// A typed note has no transcript. With thinking off the model copied the note
+// into the field anyway, which doubled the output and the wait.
 const TextExtract = AiVoiceExtract.omit({ transcript: true });
 
 /** A typed note. The transcript comes back empty. */

@@ -52,8 +52,9 @@ export type ChatJsonInput<S extends z.ZodType> = {
   options?: Record<string, unknown>;
   /**
    * Gemma's hidden reasoning pass. Off unless a call needs it, since it adds
-   * 600 to 750 tokens and 10 to 60 seconds before the JSON. Thinking tokens
-   * count toward the num_predict cap.
+   * 600 to 750 tokens and 10 to 60 seconds before the JSON. Those tokens count
+   * toward the num_predict cap, so a call that turns thinking on must raise
+   * `options.num_predict` with it.
    */
   think?: boolean;
   /** Extra line for the schema instructions, used only when the schema goes in the prompt. */
@@ -97,6 +98,7 @@ async function chat<S extends z.ZodType>(input: ChatJsonInput<S>, withFormat: bo
   const user = withFormat ? input.user : `${input.user}\n\n${schemaInstructions(input.schema, input.schemaHint)}`;
   const userMessage: Record<string, unknown> = { role: "user", content: user };
   if (input.media?.length) userMessage.images = input.media.map((buffer) => buffer.toString("base64"));
+  const options = { num_predict: MAX_OUTPUT_TOKENS, ...input.options };
 
   try {
     const response = await fetch(`${ollamaUrl()}/api/chat`, {
@@ -108,7 +110,7 @@ async function chat<S extends z.ZodType>(input: ChatJsonInput<S>, withFormat: bo
         ...(withFormat ? { format: z.toJSONSchema(input.schema) } : {}),
         keep_alive: KEEP_ALIVE,
         think: input.think ?? false,
-        options: { num_predict: MAX_OUTPUT_TOKENS, ...input.options },
+        options,
         messages: [{ role: "system", content: input.system }, userMessage],
       }),
       signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
@@ -127,7 +129,7 @@ async function chat<S extends z.ZodType>(input: ChatJsonInput<S>, withFormat: bo
     const content = typeof body.message?.content === "string" ? body.message.content : "";
     // A reply cut off at the cap is partial JSON. Say why instead of "not JSON".
     if (body.done_reason === "length") {
-      throw new OllamaError("invalid_output", `The reply hit the ${MAX_OUTPUT_TOKENS} token cap`, content);
+      throw new OllamaError("invalid_output", `The reply hit the ${options.num_predict} token cap`, content);
     }
     return content;
   } catch (error) {

@@ -1,34 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { HubStatus } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
-import { fetchHubStatus, formatBattery } from "@/lib/hub/status";
+import { isLowBattery } from "@/lib/hub/battery";
+import { formatBattery } from "@/lib/hub/status";
+import { useHubStatus } from "./hub-status-provider";
 
-const refreshMs = 10_000;
-
-/** Internet, phones and battery from GET /api/hub/status, refreshed every 10 seconds. */
+/** Internet, phones and battery from the shared hub status. */
 export function HubStatusBlock() {
-  const [status, setStatus] = useState<HubStatus | null>(null);
+  const status = useHubStatus();
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const load = async () => {
-      const next = await fetchHubStatus(fetch, controller.signal);
-      if (!controller.signal.aborted) setStatus(next);
-    };
-    void load();
-    const timer = setInterval(load, refreshMs);
-    return () => {
-      controller.abort();
-      clearInterval(timer);
-    };
-  }, []);
-
-  const rows: { label: string; value: string; mono?: boolean }[] = [
+  const rows: { label: string; value: string; mono?: boolean; alert?: boolean }[] = [
     { label: "Internet", value: status ? (status.internet ? "Online" : "Offline") : "Unknown" },
     { label: "Phones", value: status ? String(status.phones) : "Unknown", mono: true },
-    { label: "Battery", value: formatBattery(status?.battery_percent), mono: true },
+    { label: "Battery", value: formatBattery(status?.battery_percent), mono: true, alert: isLowBattery(status) },
   ];
 
   return (
@@ -36,7 +20,7 @@ export function HubStatusBlock() {
       {rows.map((row) => (
         <div key={row.label} className="flex items-center justify-between">
           <dt className="text-body">{row.label}</dt>
-          <dd className={cn("font-semibold text-ink", row.mono && "font-mono")}>{row.value}</dd>
+          <dd className={cn("font-semibold", row.alert ? "text-danger" : "text-ink", row.mono && "font-mono")}>{row.value}</dd>
         </div>
       ))}
     </dl>

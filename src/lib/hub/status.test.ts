@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchHubStatus, formatBattery } from "./status";
+import { fetchHubStatus, formatBattery, readHubStatus } from "./status";
 
 const valid = {
   internet: false,
@@ -44,5 +44,23 @@ describe("formatBattery", () => {
   it("shows Unknown without a reading", () => {
     expect(formatBattery(null)).toBe("Unknown");
     expect(formatBattery(undefined)).toBe("Unknown");
+  });
+});
+
+describe("readHubStatus", () => {
+  it("says the session is gone on a 401", async () => {
+    expect(await readHubStatus(reply(401, { error: "unauthorized" }))).toEqual({ status: null, unauthorized: true });
+  });
+
+  it("does not call a server error or a lost connection unauthorized", async () => {
+    expect(await readHubStatus(reply(500, {}))).toEqual({ status: null, unauthorized: false });
+    const down = (async () => {
+      throw new TypeError("network");
+    }) as typeof fetch;
+    expect(await readHubStatus(down)).toEqual({ status: null, unauthorized: false });
+  });
+
+  it("returns a valid reply", async () => {
+    expect(await readHubStatus(reply(200, valid))).toEqual({ status: valid, unauthorized: false });
   });
 });

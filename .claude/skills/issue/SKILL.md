@@ -94,8 +94,6 @@ Keep the `AGENTS.md` rules in mind the whole time. The ones that matter most her
 - Zod contracts at every boundary
 - stay inside your area
 
-If the starter kit has `plan`, `feature` or `verify` skills, follow their checklists as well.
-
 Stop and ask instead of pushing through when:
 
 - the work needs a change to `src/lib/contracts`, `src/db`, `package.json`, `src/app/globals.css` or `src/components/ui` and the issue is not a platform issue

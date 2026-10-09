@@ -273,6 +273,63 @@ describe("entries API", () => {
     expect(res.reasons).toEqual(["unclear_no_new_photo"]);
   });
 
+  describe("an entry started from a family report", () => {
+    const addReport = (id: string, code: string, counts: { people: number; hurt: number; missing: number; needs: ("water" | "food")[] }) => {
+      const now = new Date().toISOString();
+      db.insert(schema.reports)
+        .values({ id, code, source: "family", household_head: "Santos", barangay: "Poblacion", ...counts, status: "assigned", created_at: now, updated_at: now })
+        .run();
+    };
+    const row = (id: string) => db.select().from(schema.entries).where(eq(schema.entries.id, id)).get();
+
+    it("starts from the report's people, hurt, missing and needs, and the AI draft keeps them", async () => {
+      addReport("rep-prefill", "PQRS", { people: 5, hurt: 1, missing: 2, needs: ["water", "food"] });
+      const { body } = await create(2, { report_code: "PQRS" });
+      // The mock draft has run by now and set the class, so this is the entry after drafting.
+      expect(row(body.id)).toMatchObject({ ai_class: "total", people: 5, hurt: 1, missing: 2, needs: ["water", "food"], families: 1 });
+    });
+
+    it("keeps the report's counts when the draft fails and falls back to unclear", async () => {
+      addReport("rep-unclear", "WXYZ", { people: 3, hurt: 1, missing: 0, needs: [] });
+      const { body } = await create(1, { report_code: "WXYZ" });
+      expect(body.entry.ai_class).toBe("unclear");
+      expect(row(body.id)).toMatchObject({ people: 3, hurt: 1, missing: 0 });
+    });
+
+    it("confirms without edits: counted, not sent to review, and no count change logged", async () => {
+      addReport("rep-confirm", "KLMN", { people: 5, hurt: 1, missing: 0, needs: ["water"] });
+      const { body } = await create(2, { report_code: "KLMN" });
+      const res = await (await one.PATCH(patch(body.id, confirmBody({ people: 5, hurt: 1, missing: 0, needs: ["water"] })), ctx(body.id))).json();
+      expect(res.status).toBe("confirmed");
+      const detail = await (await one.GET(new TestRequest("http://hub", { headers: staff }), ctx(body.id))).json();
+      const changed = detail.history.filter((h: { type: string }) => h.type === "entry.field_changed").map((h: { data: { field: string } }) => h.data.field);
+      expect(changed).not.toEqual(expect.arrayContaining(["people"]));
+      expect(changed).not.toEqual(expect.arrayContaining(["hurt"]));
+      const listed = await (await entries.GET(new TestRequest("http://hub/api/entries?q=" + body.number, { headers: staff }))).json();
+      expect(listed.total).toBe(1);
+    });
+
+    it("still sends a changed hurt count to review", async () => {
+      addReport("rep-hurt", "HJKM", { people: 5, hurt: 1, missing: 0, needs: [] });
+      const { body } = await create(2, { report_code: "HJKM" });
+      const res = await (await one.PATCH(patch(body.id, confirmBody({ people: 5, hurt: 0, needs: [] })), ctx(body.id))).json();
+      expect(res.reasons).toEqual(["hurt_differs"]);
+    });
+
+    it("changes no report row, since only a confirmed entry may count", async () => {
+      addReport("rep-same", "RTVW", { people: 5, hurt: 1, missing: 0, needs: ["food"] });
+      const before = db.select().from(schema.reports).all().find((r) => r.id === "rep-same");
+      await create(2, { report_code: "RTVW" });
+      expect(db.select().from(schema.reports).all().find((r) => r.id === "rep-same")).toEqual(before);
+    });
+  });
+
+  it("starts a house with no report from zero, as before", async () => {
+    const { body } = await create(2);
+    const saved = db.select().from(schema.entries).where(eq(schema.entries.id, body.id)).get();
+    expect(saved).toMatchObject({ report_id: null, people: 0, hurt: 0, missing: 0, needs: [], families: 1 });
+  });
+
   it("marks the linked report visited when confirmed", async () => {
     const now = new Date().toISOString();
     db.insert(schema.reports)
@@ -326,38 +383,6 @@ describe("entries API", () => {
       const res = await entries.POST(withNote(new File([PNG], "note.webm", { type: "audio/webm" })));
       expect(res.status).toBe(201);
       expect(stored()).toBe(before + 3);
-    });
-  });
-
-  describe("report counts", () => {
-    const now = new Date().toISOString();
-    const reportRow = {
-      id: "rep-k9f5", code: "K9F5", source: "family" as const, household_head: "Santos", barangay: "Poblacion",
-      people: 6, hurt: 1, missing: 0, needs: ["water", "food", "medicine"] as ("water" | "food" | "medicine")[],
-      status: "assigned" as const, created_at: now, updated_at: now,
-    };
-    const row = (id: string) => db.select().from(schema.entries).where(eq(schema.entries.id, id)).get()!;
-
-    beforeAll(() => {
-      db.insert(schema.reports).values(reportRow).run();
-    });
-
-    it("prefills a new entry with the counts and needs of its linked report", async () => {
-      const { body } = await create(2, { report_code: "K9F5" });
-      expect(row(body.id)).toMatchObject({ people: 6, hurt: 1, missing: 0, needs: ["water", "food", "medicine"], families: 1 });
-    });
-
-    it("confirms without edits when the responder keeps the report counts", async () => {
-      const { body } = await create(2, { report_code: "K9F5" });
-      const keep = confirmBody({ people: 6, hurt: 1, needs: ["water", "food", "medicine"] });
-      const res = await (await one.PATCH(patch(body.id, keep), ctx(body.id))).json();
-      expect(res.status).toBe("confirmed");
-      expect(res.reasons).toEqual([]);
-    });
-
-    it("leaves the counts at zero for an entry with no report", async () => {
-      const { body } = await create(2);
-      expect(row(body.id)).toMatchObject({ people: 0, hurt: 0, missing: 0, needs: [] });
     });
   });
 

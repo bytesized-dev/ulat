@@ -89,12 +89,14 @@ export async function POST(req: Request) {
           barangay: meta.data.barangay,
           purok: meta.data.purok,
           household_head: meta.data.household_head,
-          // Prefilled from the linked report so the responder confirms or corrects
-          // the family's counts. They only count once confirmed.
-          ...(report ? { people: report.people, hurt: report.hurt, missing: report.missing, needs: report.needs } : {}),
           lat: meta.data.lat,
           lng: meta.data.lng,
           gps_accuracy_m: meta.data.gps_accuracy_m,
+          // A house with a family report starts from what the family said, so the
+          // responder only changes what they find different. Reports carry no
+          // family count, so families keeps its default of 1. Without a report
+          // these stay at their column defaults.
+          ...(report ? { people: report.people, hurt: report.hurt, missing: report.missing, needs: report.needs } : {}),
           note_path: notePath,
           status: "draft",
           created_at: now,

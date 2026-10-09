@@ -78,7 +78,17 @@ const Time = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "not
 
 const Seed = z.object({
   settings: z.record(z.string(), z.unknown()),
-  responders: z.array(z.object({ id: z.string(), name: z.string(), team: z.string() })),
+  responders: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      team: z.string(),
+      // Stored lower case, and the sign in matches it that way.
+      email: z.email().transform((value) => value.toLowerCase()),
+      // Plain here like staff_pin, hashed before it reaches the database.
+      password: z.string().min(1),
+    }),
+  ),
   entries: z.array(
     z.object({
       number: z.number().int(),
@@ -263,16 +273,29 @@ function entryEvents(e: (typeof seed.entries)[number], confirmedAt: string | nul
 async function buildSettingRows() {
   return Promise.all(
     Object.entries({ ...seed.settings, map_bbox: bbox }).map(async ([key, value]) => {
-      if (key === "team_pin") return { key: "team_pin_hash", value: await hashPin(String(value)) };
       if (key === "staff_pin") return { key: "staff_pin_hash", value: await hashPin(String(value)) };
       return { key, value: settingText(value) };
     }),
   );
 }
 
+async function buildResponderRows() {
+  return Promise.all(
+    seed.responders.map(async (r) => ({
+      id: responderId(r.id),
+      name: r.name,
+      team: r.team,
+      active: true,
+      email: r.email,
+      password_hash: await hashPin(r.password),
+    })),
+  );
+}
+
 export async function loadSeed() {
   // Hash first. The transaction below is synchronous and must not wait.
   const settingRows = await buildSettingRows();
+  const responderRows = await buildResponderRows();
 
   db.transaction((tx) => {
     // Children first, so foreign keys hold.
@@ -284,9 +307,7 @@ export async function loadSeed() {
       tx.insert(settings).values(row).onConflictDoUpdate({ target: settings.key, set: { value: row.value } }).run();
     }
 
-    tx.insert(responders)
-      .values(seed.responders.map((r) => ({ id: responderId(r.id), name: r.name, team: r.team, active: true })))
-      .run();
+    tx.insert(responders).values(responderRows).run();
 
     tx.insert(reports)
       .values(

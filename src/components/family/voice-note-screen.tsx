@@ -10,7 +10,7 @@ import { ProgressSteps } from "@/components/ui/progress-steps";
 import { TopBar } from "@/components/ui/top-bar";
 import { cn } from "@/lib/utils";
 import { routes } from "@/lib/contracts";
-import { newClientId } from "./client-id";
+import { newClientId } from "@/lib/client-id";
 import { applyExtract, loadDraft } from "./report-draft";
 import { updateDraft } from "./use-report-draft";
 import { useReducedMotion } from "./use-reduced-motion";

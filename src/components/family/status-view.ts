@@ -42,23 +42,26 @@ function timeOf(view: ReportStatusView, step: ReportStatusView["steps"][number][
 }
 
 /**
- * The four rows a family reads. A row with a time is done, the first one
- * without is the current step and the rest are upcoming. Before the visit the
- * second row says "Waiting for a visit", and once the responder is on the way
- * it says "On the way". The last row says "Result" until it is confirmed.
+ * The four rows a family reads. A step is done once it, or any step after it,
+ * has happened, because a responder can visit without marking "on the way".
+ * The first step not done is the current one and the rest are upcoming. Only a
+ * step with its own time shows a time. Before the visit the second row says
+ * "Waiting for a visit", and from "on the way" on it says "On the way". The
+ * last row says "Result" until it is confirmed.
  */
 export function timelineItems(view: ReportStatusView): TimelineItem[] {
-  const rows = [
-    { label: "Received", at: timeOf(view, "received") },
-    timeOf(view, "on_the_way") ? { label: "On the way", at: timeOf(view, "on_the_way") } : { label: "Waiting for a visit", at: null },
-    { label: "Visited", at: timeOf(view, "visited") },
-    { label: timeOf(view, "confirmed") ? "Confirmed" : "Result", at: timeOf(view, "confirmed") },
-  ];
-  const current = rows.findIndex((row) => row.at === null);
-  return rows.map((row, index) => ({
-    label: row.label,
-    time: row.at ? formatTime(row.at) : undefined,
-    state: row.at ? "done" : index === current ? "current" : "upcoming",
+  const received = timeOf(view, "received");
+  const onTheWay = timeOf(view, "on_the_way");
+  const visited = timeOf(view, "visited");
+  const confirmed = timeOf(view, "confirmed");
+  const times = [received, onTheWay, visited, confirmed];
+  const lastDone = times.findLastIndex((at) => at !== null);
+
+  const labels = ["Received", onTheWay || lastDone >= 2 ? "On the way" : "Waiting for a visit", "Visited", confirmed ? "Confirmed" : "Result"];
+  return labels.map((label, index) => ({
+    label,
+    time: times[index] ? formatTime(times[index]) : undefined,
+    state: index <= lastDone ? "done" : index === lastDone + 1 ? "current" : "upcoming",
   }));
 }
 

@@ -78,32 +78,40 @@ const patch = (id: string, body: unknown, headers: Record<string, string> = resp
     headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
+function photoForm(label = "roof", headers: Record<string, string> = resp) {
+  const form = new FormData();
+  form.set("photo", new File([PNG], "extra.png", { type: "image/png" }));
+  form.set("label", label);
+  return new TestRequest("http://hub/api/entries/x/photos", { method: "POST", body: form, headers });
+}
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 
 describe("review rules", () => {
-  const base = { damage_class: "partial", hurt: 0, new_photo_since_unclear: false } as const;
+  const base = { damage_class: "partial", hurt: 0 } as const;
+  const none = { hasNewPhoto: false };
   it("passes when everything agrees", () => {
-    expect(reviewReasons({ aiClass: "partial", confirm: base, reportHurt: 0 })).toEqual([]);
+    expect(reviewReasons({ aiClass: "partial", confirm: base, ...none, reportHurt: 0 })).toEqual([]);
   });
   it("flags a different class", () => {
-    expect(reviewReasons({ aiClass: "total", confirm: base, reportHurt: null })).toEqual(["class_differs"]);
+    expect(reviewReasons({ aiClass: "total", confirm: base, ...none, reportHurt: null })).toEqual(["class_differs"]);
   });
   it("flags unclear without a new photo, and accepts one with a new photo", () => {
-    expect(reviewReasons({ aiClass: "unclear", confirm: base, reportHurt: null })).toEqual(["unclear_no_new_photo"]);
-    expect(reviewReasons({ aiClass: "unclear", confirm: { ...base, new_photo_since_unclear: true }, reportHurt: null })).toEqual([]);
+    expect(reviewReasons({ aiClass: "unclear", confirm: base, ...none, reportHurt: null })).toEqual(["unclear_no_new_photo"]);
+    expect(reviewReasons({ aiClass: "unclear", confirm: base, hasNewPhoto: true, reportHurt: null })).toEqual([]);
   });
   it("treats a draft the AI has not finished like unclear", () => {
-    expect(reviewReasons({ aiClass: null, confirm: base, reportHurt: null })).toEqual(["unclear_no_new_photo"]);
-    expect(reviewReasons({ aiClass: null, confirm: { ...base, new_photo_since_unclear: true }, reportHurt: null })).toEqual([]);
+    expect(reviewReasons({ aiClass: null, confirm: base, ...none, reportHurt: null })).toEqual(["unclear_no_new_photo"]);
+    expect(reviewReasons({ aiClass: null, confirm: base, hasNewPhoto: true, reportHurt: null })).toEqual([]);
   });
   it("flags a hurt count that differs from the report", () => {
-    expect(reviewReasons({ aiClass: "partial", confirm: { ...base, hurt: 2 }, reportHurt: 1 })).toEqual(["hurt_differs"]);
+    expect(reviewReasons({ aiClass: "partial", confirm: { ...base, hurt: 2 }, ...none, reportHurt: 1 })).toEqual(["hurt_differs"]);
   });
 });
 
 describe("entries API", () => {
   let entries: typeof import("./route");
   let one: typeof import("./[id]/route");
+  let photosRoute: typeof import("./[id]/photos/route");
   let files: typeof import("../files/[id]/route");
   let db: typeof import("@/db/client").db;
   let schema: typeof import("@/db/schema");
@@ -117,6 +125,7 @@ describe("entries API", () => {
     ({ db } = await import("@/db/client"));
     entries = await import("./route");
     one = await import("./[id]/route");
+    photosRoute = await import("./[id]/photos/route");
     files = await import("../files/[id]/route");
     db.insert(schema.responders).values({ id: "r1", name: "Ana", team: "A", active: true }).run();
   });
@@ -194,8 +203,66 @@ describe("entries API", () => {
     expect(body.entry.ai_class).toBe("unclear");
     const res = await (await one.PATCH(patch(body.id, confirmBody()), ctx(body.id))).json();
     expect(res.reasons).toEqual(["unclear_no_new_photo"]);
-    const ok = await (await one.PATCH(patch(body.id, confirmBody({ new_photo_since_unclear: true })), ctx(body.id))).json();
+  });
+
+  it("ignores new_photo_since_unclear from the phone", async () => {
+    const { body } = await create(1);
+    const claimed = await (await one.PATCH(patch(body.id, confirmBody({ new_photo_since_unclear: true })), ctx(body.id))).json();
+    expect(claimed.reasons).toEqual(["unclear_no_new_photo"]);
+  });
+
+  it("counts an unclear draft as met once a photo was added through the route", async () => {
+    const { body } = await create(1);
+    expect(body.entry.ai_class).toBe("unclear");
+    expect((await photosRoute.POST(photoForm(), ctx(body.id))).status).toBe(201);
+    const ok = await (await one.PATCH(patch(body.id, confirmBody({ new_photo_since_unclear: false })), ctx(body.id))).json();
     expect(ok.status).toBe("confirmed");
+  });
+
+  describe("POST /api/entries/[id]/photos", () => {
+    it("adds a photo, writes entry.photo_added with the actor, and drafts again", async () => {
+      const { body } = await create(1);
+      const res = await photosRoute.POST(photoForm("roof"), ctx(body.id));
+      expect(res.status).toBe(201);
+      const out = await res.json();
+      expect(out.photos).toBe(2);
+      // The mock AI says total for two photos.
+      expect(out.entry.ai_class).toBe("total");
+      const detail = await (await one.GET(new TestRequest("http://hub", { headers: staff }), ctx(body.id))).json();
+      expect(detail.photos).toHaveLength(2);
+      expect(detail.photos[1].label).toBe("roof");
+      const added = detail.history.find((h: { type: string }) => h.type === "entry.photo_added");
+      expect(added.actor).toBe("r1");
+      expect(detail.history.filter((h: { type: string }) => h.type === "ai.photo")).toHaveLength(2);
+    });
+
+    it("refuses a fourth photo", async () => {
+      const { body } = await create(3);
+      const res = await photosRoute.POST(photoForm(), ctx(body.id));
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("photo_count");
+    });
+
+    it("refuses an entry that is not a draft, and one that does not exist", async () => {
+      const { body } = await create(2);
+      await one.PATCH(patch(body.id, confirmBody()), ctx(body.id));
+      expect((await photosRoute.POST(photoForm(), ctx(body.id))).status).toBe(409);
+      expect((await photosRoute.POST(photoForm(), ctx("nope"))).status).toBe(404);
+    });
+
+    it("is for responders only and validates the upload", async () => {
+      const { body } = await create(1);
+      expect((await photosRoute.POST(photoForm("roof", staff), ctx(body.id))).status).toBe(401);
+      expect((await photosRoute.POST(photoForm("roof", {}), ctx(body.id))).status).toBe(401);
+      const noFile = new FormData();
+      noFile.set("label", "roof");
+      const missing = new TestRequest("http://hub/x", { method: "POST", body: noFile, headers: resp });
+      expect((await photosRoute.POST(missing, ctx(body.id))).status).toBe(400);
+      const bad = new FormData();
+      bad.set("photo", new File(["x"], "x.exe", { type: "application/x-msdownload" }));
+      const wrongType = new TestRequest("http://hub/x", { method: "POST", body: bad, headers: resp });
+      expect((await photosRoute.POST(wrongType, ctx(body.id))).status).toBe(400);
+    });
   });
 
   it("sends a confirm that beats the AI draft to needs_review", async () => {

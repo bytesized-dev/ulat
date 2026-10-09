@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mapAssets } from "./map-assets";
-import { type Bbox, fitBbox, fromPercent, inRing, inside, toPercent, zoomBbox } from "./map-projection";
+import { type Bbox, bboxCenter, fitBbox, fromPercent, inRing, inside, moveBbox, toPercent, zoomBbox } from "./map-projection";
 
 // A stand-in town bbox, about 4 by 3 km, until the real town is picked.
 const bbox: Bbox = [124.0, 10.0, 124.04, 10.03];
@@ -45,6 +45,22 @@ describe("zoomBbox", () => {
 
   it("is the same bbox at factor 1", () => {
     zoomBbox(bbox, 1).forEach((v, i) => expect(v).toBeCloseTo(bbox[i]));
+  });
+});
+
+describe("bboxCenter and moveBbox", () => {
+  it("finds the middle of the bbox", () => {
+    const mid = bboxCenter(bbox);
+    expect(mid.lng).toBeCloseTo(124.02);
+    expect(mid.lat).toBeCloseTo(10.015, 3);
+  });
+
+  it("slides the bbox to a new center without changing its size", () => {
+    const moved = moveBbox(bbox, { lng: 124.1, lat: 10.1 });
+    const mid = bboxCenter(moved);
+    expect(mid.lng).toBeCloseTo(124.1);
+    expect(mid.lat).toBeCloseTo(10.1);
+    expect(moved[2] - moved[0]).toBeCloseTo(bbox[2] - bbox[0]);
   });
 });
 

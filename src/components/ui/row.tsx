@@ -37,7 +37,7 @@ function Row(props: RowProps) {
       {icon ? <IconPlate>{icon}</IconPlate> : null}
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-body-sm text-body">{label}</span>
-        {value ? <span className="text-body-md font-medium text-ink">{value}</span> : null}
+        {value != null ? <span className="text-body-md font-medium text-ink">{value}</span> : null}
       </span>
       {trailing ? <span className="flex shrink-0 flex-col items-end gap-0.5">{trailing}</span> : null}
       {showChevron ? <ChevronRightIcon aria-hidden="true" className="size-5 shrink-0 text-muted-soft" /> : null}

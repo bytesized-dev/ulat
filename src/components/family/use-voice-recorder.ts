@@ -49,11 +49,22 @@ function useVoiceRecorder({ onFinish }: Options) {
     if (session.current || asking.current) return "recording";
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return "blocked";
 
+    // Made here, inside the tap, because a browser keeps an audio context
+    // that starts later asleep, and the waveform would stay flat. The
+    // waveform is a nicety, so a browser without Web Audio still records.
+    let context: AudioContext | null = null;
+    try {
+      context = new AudioContext();
+    } catch {
+      context = null;
+    }
+
     let stream: MediaStream;
     asking.current = true;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (error) {
+      void context?.close().catch(() => {});
       return micFailure(error);
     } finally {
       asking.current = false;
@@ -63,16 +74,15 @@ function useVoiceRecorder({ onFinish }: Options) {
       const mimeType = pickMimeType((mime) => MediaRecorder.isTypeSupported(mime));
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
 
-      // The waveform is a nicety. A browser without Web Audio still records.
-      let context: AudioContext | null = null;
       let analyser: AnalyserNode | null = null;
       try {
-        context = new AudioContext();
-        analyser = context.createAnalyser();
-        analyser.fftSize = 256;
-        context.createMediaStreamSource(stream).connect(analyser);
+        if (context) {
+          analyser = context.createAnalyser();
+          analyser.fftSize = 256;
+          context.createMediaStreamSource(stream).connect(analyser);
+          void context.resume().catch(() => {});
+        }
       } catch {
-        context = null;
         analyser = null;
       }
       const samples = new Uint8Array(analyser?.fftSize ?? 0);
@@ -108,6 +118,7 @@ function useVoiceRecorder({ onFinish }: Options) {
       return "recording";
     } catch {
       stream.getTracks().forEach((track) => track.stop());
+      void context?.close().catch(() => {});
       return "failed";
     }
   }, [release]);

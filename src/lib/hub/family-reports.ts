@@ -27,9 +27,6 @@ const FILTER_STATUSES: Record<Exclude<FamilyFilter, "all">, Status[]> = {
   problems: ["cant_assess"],
 };
 
-/** Reports a responder can still be sent to. Visited and merged reports are done. */
-export const ASSIGNABLE: readonly Status[] = ["waiting", "assigned", "on_the_way", "cant_assess"];
-
 export type FamilyReportRow = {
   code: string;
   household_head: string;

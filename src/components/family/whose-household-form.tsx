@@ -6,7 +6,6 @@ import { HomeIcon, UsersIcon } from "lucide-react";
 import { routes } from "@/lib/contracts";
 import { useMounted } from "@/lib/use-mounted";
 import { Button } from "@/components/ui/button";
-import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProgressSteps } from "@/components/ui/progress-steps";
@@ -20,8 +19,6 @@ import { firstMissing, type StartError, type StartField } from "./whose-househol
 type WhoseHouseholdFormProps = {
   /** The barangays from the hub's settings. */
   barangays: string[];
-  /** The places a neighbor can pick for where to find them, shown under the field. */
-  whereToFind: string[];
   /** The household the link asked for, as in /report?for=neighbor. */
   requestedSource?: ReportDraft["source"] | null;
 };
@@ -58,7 +55,7 @@ const CLEAR_OF_FOOTER = "scroll-mb-36";
 // and coming back keeps the answers. Nothing is picked for the family: the
 // barangay stays empty until they choose one. Continue checks the required
 // fields, shows the first one that is empty and moves focus to it.
-function WhoseHouseholdForm({ barangays, whereToFind, requestedSource = null }: WhoseHouseholdFormProps) {
+function WhoseHouseholdForm({ barangays, requestedSource = null }: WhoseHouseholdFormProps) {
   const router = useRouter();
   const draft = useReportDraft();
   const mounted = useMounted();
@@ -213,20 +210,6 @@ function WhoseHouseholdForm({ barangays, whereToFind, requestedSource = null }: 
                   autoComplete="off"
                   onChange={(event) => change(null, { reporter_where: event.target.value })}
                 />
-                {whereToFind.length > 0 ? (
-                  <div role="group" aria-label="Common places" className="grid grid-cols-2 gap-2">
-                    {whereToFind.map((place) => (
-                      <Chip
-                        key={place}
-                        pressed={draft.reporter_where === place}
-                        onPressedChange={(on) => change(null, { reporter_where: on ? place : "" })}
-                        className="h-auto min-h-11 w-full whitespace-normal px-4 py-2 text-center leading-snug"
-                      >
-                        {place}
-                      </Chip>
-                    ))}
-                  </div>
-                ) : null}
               </Field>
             </section>
           ) : null}

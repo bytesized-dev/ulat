@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { HubPage } from "@/components/hub/hub-page";
 import { OverviewMain, OverviewRailLive } from "@/components/hub/overview/overview-main";
 import { OverviewLive } from "@/components/hub/overview/use-hub-summary";
 import { db } from "@/db/client";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HubOverviewPage() {
   // Latest names households, so the page is staff only, like GET /api/hub/summary.
+  // src/proxy.ts redirects first; this check does not rely on it.
   const session = await readSession("staff", (await cookies()).get(SESSION_COOKIE.staff)?.value);
   if (!session) redirect(routes.hub.lock);
 
@@ -24,18 +26,14 @@ export default async function HubOverviewPage() {
   const latest = getLatest(db);
   const wifiName = readSetting("wifi_name") ?? "ULAT-HUB";
 
-  // Interim frame with the same main and rail widths as HubShell. BYT-24 swaps
-  // it for HubPage with rail={<OverviewRailLive … />}.
   return (
-    <div className="flex min-h-dvh bg-canvas text-ink">
+    <HubPage
+      title="Overview"
+      active={routes.hub.overview}
+      rail={<OverviewRailLive summary={summary} latest={latest} wifiName={wifiName} />}
+    >
       <OverviewLive />
-      <main className="min-w-0 flex-1 p-8">
-        <h1 className="sr-only">Overview</h1>
-        <OverviewMain summary={summary} />
-      </main>
-      <aside aria-label="Details" className="w-80 shrink-0 border-l border-hairline p-6">
-        <OverviewRailLive summary={summary} latest={latest} wifiName={wifiName} />
-      </aside>
-    </div>
+      <OverviewMain summary={summary} />
+    </HubPage>
   );
 }

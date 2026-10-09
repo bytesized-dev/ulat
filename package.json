@@ -16,7 +16,8 @@
     "e2e": "playwright test",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed.ts",
-    "demo:reset": "tsx scripts/demo-reset.ts"
+    "demo:reset": "tsx scripts/demo-reset.ts",
+    "eval": "tsx scripts/eval.ts"
   },
   "dependencies": {
     "@date-fns/tz": "1.5.0",

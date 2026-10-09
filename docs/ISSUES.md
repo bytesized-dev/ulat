@@ -226,8 +226,10 @@ Hours per person: Artkin 20, CJ 20, James 15.5, Sean 24.
 
 - [ ] `gemma4:e4b` runs on the hub
 - [ ] Photo prompt returns a valid `AiPhotoDraft` on 10 eval photos, accuracy noted
-- [ ] Audio input tested with one Bisaya and one Tagalog note, decision recorded: native audio or whisper.cpp
+- [ ] Audio input tested with one Bisaya and one Tagalog note, decision recorded: native audio or whisper.cpp. Deferred, see below.
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
+
+**Deferred: the voice recording test.** CJ will record the Bisaya and Tagalog notes in `eval/voice-scripts.md` and run this test once the whole app is wired and the system works end to end, not as part of this risk check. Until then the audio decision is native audio, provisional. So far only an English text-to-speech clip has gone through Gemma 4 E4B. If the recordings fail in the end to end test, the fallback is whisper.cpp.
 
 ---
 

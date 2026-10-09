@@ -1,6 +1,8 @@
 # Voice note scripts
 
-Two scripts for the first audio check on BYT-5. Read each one in your own natural voice, about 20 seconds, on a phone. Say the name and the numbers clearly as written. You can change any other word to sound natural, but keep the facts the same, because `voice.csv` holds the expected fields.
+**The recording test is deferred.** It is no longer part of the BYT-5 risk check. CJ will record these two notes and test them once the whole app is wired and the system works end to end. Until then the audio decision stays native audio, provisional, with whisper.cpp as the fallback if the recordings fail.
+
+Two scripts for the first audio check. Read each one in your own natural voice, about 20 seconds, on a phone. Say the name and the numbers clearly as written. You can change any other word to sound natural, but keep the facts the same, because `voice.csv` holds the expected fields.
 
 Record in a noisy room, as `README.md` asks. A quiet take is a useful extra if you have time.
 

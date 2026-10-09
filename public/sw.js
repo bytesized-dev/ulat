@@ -2,13 +2,19 @@
 // cannot be reached. Reports waiting to send live in IndexedDB, not here.
 //
 // - Family pages: network first, then the last copy. Pages with a person's
-//   report (/status) and the responder and hub apps are never stored.
+//   report (/status) and the hub app are never stored.
+// - Responder: only the Queue screen (/r/queue) is stored, so a responder out of
+//   range can still see what waits on the phone. Its HTML holds no hub data, the
+//   entries are drawn from IndexedDB. Every other /r page reads reports and
+//   entries from the hub and is never stored.
 // - /_next/static: cache first. Its file names change with every build.
 // - Everything else, including /api, goes straight to the network.
 
 const VERSION = "ulat-shell-v1";
 const SHELL = ["/", "/report"];
 const NAVIGATION_TIMEOUT_MS = 4000;
+
+const QUEUE_PAGE = "/r/queue";
 
 const FAMILY_PAGE = /^\/(report(\/.*)?|safe(\/.*)?|updates|map)?$/;
 
@@ -31,7 +37,7 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-async function networkFirst(request) {
+async function networkFirst(request, fallback = "/") {
   const cache = await caches.open(VERSION);
   try {
     const response = await Promise.race([
@@ -41,7 +47,7 @@ async function networkFirst(request) {
     if (response.ok) cache.put(request, response.clone());
     return response;
   } catch (error) {
-    const saved = (await cache.match(request, { ignoreSearch: true })) || (await cache.match("/"));
+    const saved = (await cache.match(request, { ignoreSearch: true, ignoreVary: true })) || (fallback && (await cache.match(fallback)));
     if (saved) return saved;
     throw error;
   }
@@ -56,6 +62,23 @@ async function cacheFirst(request) {
   return response;
 }
 
+// The responder pages ask for this once they are open, while the hub still answers.
+// A page that sends the browser to the sign in screen is not stored.
+async function keepQueueShell() {
+  const cache = await caches.open(VERSION);
+  const response = await fetch(QUEUE_PAGE, { redirect: "manual" });
+  if (!response.ok) return;
+  const html = await response.clone().text();
+  await cache.put(QUEUE_PAGE, response);
+  // The page's scripts and styles, so it starts without the hub too.
+  const assets = new Set(html.match(/\/_next\/static\/[^"'\s\\)<>]+/g) ?? []);
+  await Promise.all([...assets].map((asset) => cacheFirst(new Request(asset)).catch(() => undefined)));
+}
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "keep-queue-shell") event.waitUntil(keepQueueShell().catch(() => undefined));
+});
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -64,6 +87,8 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate" && FAMILY_PAGE.test(url.pathname)) {
     event.respondWith(networkFirst(request));
+  } else if (request.mode === "navigate" && url.pathname === QUEUE_PAGE) {
+    event.respondWith(networkFirst(request, null));
   } else if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(cacheFirst(request));
   }

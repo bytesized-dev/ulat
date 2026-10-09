@@ -1,9 +1,8 @@
-import { count, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { entries } from "@/db/schema";
+import { countReviewQueues } from "./family-reports";
 
-/** Entries a responder sent that still wait for staff review. Server only. */
+/** Entries that wait for a second look plus open duplicates. This is the number on the Review tabs. Server only. */
 export function getReviewCount(): number {
-  const [row] = db.select({ n: count() }).from(entries).where(eq(entries.status, "needs_review")).all();
-  return row?.n ?? 0;
+  const review = countReviewQueues(db);
+  return review.second_look + review.duplicates;
 }

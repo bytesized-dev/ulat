@@ -79,6 +79,7 @@ Fonts load through `next/font/google`, which self-hosts them at build time. Neve
 | `mono-lg` | 44 / 1.1 | 500 | 0.16em | Report codes |
 | `mono-md` | 26 to 36 | 500 | 0 | Stats |
 | `mono-sm` | 12 to 14 | 500 | 0 | Times, distances, table numbers |
+| `mono-xs` | 12 / 1.5 | 500 | 0 | Hub times |
 
 ### Radius
 

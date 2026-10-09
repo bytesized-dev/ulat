@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
 import { NO_FILTERS, type VisitFilters } from "./to-visit-order";
@@ -15,9 +15,31 @@ function storage(): Storage | null {
   }
 }
 
-function read(): VisitFilters {
+// A write tells this tab's subscribers, so the chips and the list update together.
+const CHANGED = "ulat:visit-filters";
+
+function subscribe(onChange: () => void): () => void {
+  window.addEventListener(CHANGED, onChange);
+  return () => window.removeEventListener(CHANGED, onChange);
+}
+
+// The choice in memory, read from storage once. Blocked storage still filters for this visit.
+let current: string | null | undefined;
+
+function snapshot(): string | null {
+  if (current === undefined) {
+    try {
+      current = storage()?.getItem(KEY) ?? null;
+    } catch {
+      current = null;
+    }
+  }
+  return current;
+}
+
+function parse(raw: string | null): VisitFilters {
   try {
-    const saved = JSON.parse(storage()?.getItem(KEY) ?? "null") as Partial<VisitFilters> | null;
+    const saved = JSON.parse(raw ?? "null") as Partial<VisitFilters> | null;
     return { mine: saved?.mine === true, area: saved?.area === true };
   } catch {
     return NO_FILTERS;
@@ -26,22 +48,21 @@ function read(): VisitFilters {
 
 /**
  * The responder's filters, kept on this phone so the list and the map show
- * the same houses. They start off on the server and load after the first paint.
+ * the same houses. The server renders them off, and the saved choice loads on hydration.
  */
 export function useVisitFilters(): [VisitFilters, (next: VisitFilters) => void] {
-  const [filters, setFilters] = useState<VisitFilters>(NO_FILTERS);
-  useEffect(() => setFilters(read()), []);
-  return [
-    filters,
-    (next) => {
-      setFilters(next);
-      try {
-        storage()?.setItem(KEY, JSON.stringify(next));
-      } catch {
-        // A full or blocked storage only means the choice is not remembered.
-      }
-    },
-  ];
+  const raw = useSyncExternalStore(subscribe, snapshot, () => null);
+  const filters = useMemo(() => parse(raw), [raw]);
+  const setFilters = useCallback((next: VisitFilters) => {
+    current = JSON.stringify(next);
+    try {
+      storage()?.setItem(KEY, current);
+    } catch {
+      // A full or blocked storage only means the choice is not remembered.
+    }
+    window.dispatchEvent(new Event(CHANGED));
+  }, []);
+  return [filters, setFilters];
 }
 
 type VisitFilterChipsProps = {

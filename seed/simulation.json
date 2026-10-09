@@ -1095,7 +1095,7 @@
    "report_code": null
   },
   {
-   "number": 238,
+   "number": 247,
    "household_head": "Bernal household",
    "barangay": "Poblacion",
    "purok": "Purok 1",
@@ -1123,7 +1123,7 @@
    "report_code": null
   },
   {
-   "number": 239,
+   "number": 248,
    "household_head": "Cabrera household",
    "barangay": "Poblacion",
    "purok": "Purok 5",
@@ -1171,7 +1171,7 @@
    "report_code": null
   },
   {
-   "number": 241,
+   "number": 249,
    "household_head": "Espiritu household",
    "barangay": "Poblacion",
    "purok": "Purok 2",
@@ -1544,7 +1544,7 @@
    ]
   },
   {
-   "code": "P6K1",
+   "code": "P6K7",
    "source": "family",
    "household_head": "Navarro household",
    "barangay": "Poblacion",

@@ -90,10 +90,26 @@ const axes = new Set([
   "translate-y",
 ]);
 
-// src/components/ui is the shadcn set. The CLI regenerates those files, so
-// their internals are not ours to hold to this rule. Everything that renders
-// product surface is.
-const vendored = "src/components/ui/";
+// The shadcn files in src/components/ui that we keep as generated. The CLI
+// regenerates those, so their internals are not ours to hold to this rule.
+// Every other file in src/components/ui, restyled or new, is held to it. A
+// file leaves this list when it is restyled, never the other way round.
+const vendored = new Set(
+  [
+    "badge",
+    "checkbox",
+    "dialog",
+    "dropdown-menu",
+    "label",
+    "popover",
+    "separator",
+    "skeleton",
+    "switch",
+    "table",
+    "tabs",
+    "tooltip",
+  ].map((name) => `src/components/ui/${name}.tsx`),
+);
 
 // The exceptions, each with its reason.
 const allowed = new Map([
@@ -125,7 +141,7 @@ describe("no raw design values in components", () => {
   it("uses tokens, not arbitrary Tailwind values, for size, spacing and type", () => {
     const offenders = walk("src")
       .filter((file) => /\.tsx?$/.test(file))
-      .filter((file) => !file.includes(vendored))
+      .filter((file) => !vendored.has(file))
       .filter((file) => !allowed.has(file))
       .flatMap(offendersIn);
 
@@ -133,7 +149,7 @@ describe("no raw design values in components", () => {
   });
 
   it("keeps the allowlist honest, so an exception cannot outlive its file", () => {
-    const missing = [...allowed.keys()].filter((file) => !walk("src").includes(file));
+    const missing = [...allowed.keys(), ...vendored].filter((file) => !walk("src").includes(file));
     expect(missing).toEqual([]);
   });
 });

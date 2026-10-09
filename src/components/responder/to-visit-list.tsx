@@ -22,7 +22,7 @@ import {
 } from "./to-visit-order";
 import { TextToggle } from "./text-toggle";
 import { useOwnPosition } from "./use-position";
-import { useVisitFilters, VisitFilterChips } from "./visit-filters";
+import { useVisitFilters, VisitFilterMenu } from "./visit-filters";
 
 type ToVisitListProps = { responderId: string; responderName: string; team: string | null; reports: ToVisitReport[] };
 
@@ -87,16 +87,18 @@ function ToVisitList({ responderId, responderName, team, reports }: ToVisitListP
           <h1 className="text-title-page text-ink">To visit</h1>
           <span className="font-mono text-mono-sm text-muted-text">{shown.length}</span>
         </div>
-        {/* Plain text, not buttons. Sort has an underline under the chosen one, the filters show a check when on. */}
-        <div role="group" aria-label="Sort" className="mt-2 flex gap-x-5 border-b border-hairline-soft">
-          <TextToggle indicator="underline" pressed={sort === "urgent"} onPressedChange={() => setSort("urgent")}>
-            Urgent first
-          </TextToggle>
-          <TextToggle indicator="underline" pressed={sort === "nearest"} onPressedChange={() => setSort("nearest")}>
-            Nearest
-          </TextToggle>
+        {/* One line of plain text. Sort on the left with an underline under the chosen one, the filters in a dropdown on the right. */}
+        <div className="mt-2 flex items-center justify-between gap-5 border-b border-hairline-soft">
+          <div role="group" aria-label="Sort" className="flex gap-x-5">
+            <TextToggle pressed={sort === "urgent"} onPressedChange={() => setSort("urgent")}>
+              Urgent first
+            </TextToggle>
+            <TextToggle pressed={sort === "nearest"} onPressedChange={() => setSort("nearest")}>
+              Nearest
+            </TextToggle>
+          </div>
+          <VisitFilterMenu filters={filters} onChange={setFilters} team={team} />
         </div>
-        <VisitFilterChips variant="text" filters={filters} onChange={setFilters} team={team} />
         <div className="mt-4 flex flex-col">
           {items.map((item) => (
             <ToVisitRow key={item.code} item={item} responderId={responderId} />

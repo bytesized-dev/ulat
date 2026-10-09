@@ -14,6 +14,8 @@ type HubNavItem = {
   icon?: React.ReactNode;
   /** A number shown in a blue badge, such as the Review count. */
   count?: number;
+  /** Read after the count by screen readers, such as "waiting". */
+  countLabel?: string;
 };
 
 type HubNavSection = {
@@ -64,7 +66,7 @@ function HubShell({ title, nav, activeHref, status, simulation = false, searchLa
                     {item.count !== undefined ? (
                       <span className="ml-auto rounded-pill bg-primary px-2 text-caption-strong text-primary-foreground">
                         {item.count}
-                        <span className="sr-only"> waiting</span>
+                        {item.countLabel ? <span className="sr-only">{` ${item.countLabel}`}</span> : null}
                       </span>
                     ) : null}
                   </Link>

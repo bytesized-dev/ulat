@@ -10,6 +10,14 @@ describe("parseCsv", () => {
     ]);
   });
 
+  it("treats a quote inside an unquoted field as plain text", () => {
+    const text = 'file,notes,label_b\nphoto01.jpg,roof 5" gap,total\nphoto02.jpg,"said ""ok"", then left",partial\n';
+    expect(parseCsv(text)).toEqual([
+      { file: "photo01.jpg", notes: 'roof 5" gap', label_b: "total" },
+      { file: "photo02.jpg", notes: 'said "ok", then left', label_b: "partial" },
+    ]);
+  });
+
   it("skips blank lines, a byte order mark and a missing last newline", () => {
     expect(parseCsv("﻿a,b\n\n1,2\n\n3,4")).toEqual([
       { a: "1", b: "2" },

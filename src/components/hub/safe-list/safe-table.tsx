@@ -2,8 +2,8 @@ import { formatTime } from "@/lib/time";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { SafeRow } from "./fetch-safe";
 
-const head = "h-10 px-0 text-caption text-muted-text";
-const cell = "h-12.5 px-0 text-body-sm text-ink";
+const head = "h-10 px-0 pr-4 text-caption text-muted-text";
+const cell = "h-12.5 px-0 pr-4 text-body-sm text-ink";
 
 /** Name, barangay, where they are staying and when they checked in. Never the message. */
 export function SafeTable({ rows, empty }: { rows: SafeRow[]; empty: string }) {

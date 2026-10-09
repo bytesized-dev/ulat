@@ -26,7 +26,7 @@ export function BarangayTable({ rows }: { rows: BarangayRow[] }) {
           <TableRow className={row}>
             <TableHead className={head}>Barangay</TableHead>
             {NUMBERS.map(({ key, label }) => (
-              <TableHead key={key} className={`${head} text-right`}>
+              <TableHead key={key} className={`${head} pl-4 text-right`}>
                 {label}
               </TableHead>
             ))}
@@ -38,7 +38,7 @@ export function BarangayTable({ rows }: { rows: BarangayRow[] }) {
             <TableRow key={r.barangay} className={`${row} h-14`}>
               <TableCell className="px-0 font-semibold text-ink">{r.barangay}</TableCell>
               {NUMBERS.map(({ key }) => (
-                <TableCell key={key} className="px-0 text-right font-mono text-mono-sm text-ink">
+                <TableCell key={key} className="px-0 pl-4 text-right font-mono text-mono-sm text-ink">
                   {r[key]}
                 </TableCell>
               ))}

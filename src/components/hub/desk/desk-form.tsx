@@ -60,7 +60,7 @@ function HouseholdFields({ barangays }: { barangays: string[] }) {
   const { household: form, householdErrors: errors, editHousehold, toggleNeed } = useDesk();
   return (
     <>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field id="desk-name" label="Name" error={errors.name}>
           <Input id="desk-name" size="hub" maxLength={120} autoComplete="off" value={form.name} onChange={(e) => editHousehold({ name: e.target.value })} {...invalid(errors.name, "desk-name")} />
         </Field>
@@ -107,7 +107,7 @@ function SafeFields({ barangays, staying }: { barangays: string[]; staying: stri
   const { safe: form, safeErrors: errors, editSafe } = useDesk();
   return (
     <>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field id="desk-name" label="Name" error={errors.name}>
           <Input id="desk-name" size="hub" maxLength={120} autoComplete="off" value={form.name} onChange={(e) => editSafe({ name: e.target.value })} {...invalid(errors.name, "desk-name")} />
         </Field>

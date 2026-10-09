@@ -33,9 +33,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   return (
     <HubPage title="Entries" active={routes.hub.entries} search={{ value: query.q, keep: keptFilters }}>
       <div className="flex flex-col gap-9">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-display-lg text-ink">{page.total === 1 ? "1 entry" : `${page.total} entries`}</h2>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             <Button asChild variant="secondary" size="hub">
               <a href="/api/export/entries.csv" download>
                 <DownloadIcon aria-hidden="true" />

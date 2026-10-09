@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AiVoiceExtract, Language, Need, NewReport, VoiceField } from "@/lib/contracts";
+import { clearReportPhoto } from "./report-photo-store";
 
 // The report a family is filling in, kept in sessionStorage between the four
 // steps: household, details, check, send. Every step reads and writes this one
@@ -102,6 +103,8 @@ export function clearDraft(storage: DraftStorage | null = browserStorage()): voi
   } catch {
     // Nothing to clear.
   }
+  // The photo is part of the draft, kept apart because it is too big for sessionStorage.
+  void clearReportPhoto();
 }
 
 /**

@@ -107,9 +107,17 @@ export async function readStorageFreeGb(): Promise<number | null> {
 
 /* ---------- Internet ---------- */
 
-// The one lookup that leaves the hub. It sends a single DNS query to the
-// resolver the OS already uses and no HTTP. The result is cached for 30 s on
-// globalThis, so every status read and the ticker share one query.
+// One DNS query to the resolver the OS already uses, and no HTTP. The result
+// is cached for 30 s on globalThis, so every status read and the ticker share
+// one query.
+//
+// In the field this reads false, always. The router hands out the hub as the
+// DNS server, and infra/dnsmasq.conf has no-resolv and no server= line, so
+// dnsmasq answers REFUSED even after the uplink is back, and the query never
+// leaves the laptop. Do not use this flag to tell staff that internet is back.
+// It reads true only in dev or on a hub that does not run its own dnsmasq. On
+// a hub that uses the router's DNS it can lag, because the router answers from
+// its cache for a while after the uplink drops.
 const INTERNET_NAME = "example.com";
 const INTERNET_CACHE_MS = 30_000;
 

@@ -26,7 +26,7 @@ export function canSee(viewer: Viewer, event: HubEvent): boolean {
 
 export type ViewerResult = { ok: true; viewer: Viewer } | { ok: false };
 
-function cookieValue(request: Request, name: string): string | undefined {
+export function cookieValue(request: Request, name: string): string | undefined {
   for (const part of request.headers.get("cookie")?.split(";") ?? []) {
     const [key, ...value] = part.trim().split("=");
     if (key === name) return value.join("=");

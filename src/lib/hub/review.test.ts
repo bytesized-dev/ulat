@@ -197,12 +197,14 @@ describe("confirmEntry", () => {
     expect(await confirmEntry("abc", body, fetcher)).toBe("ok");
     expect(seen!.url).toBe("/api/entries/abc");
     expect(seen!.init.method).toBe("PATCH");
+    expect(new Headers(seen!.init.headers).get("x-ulat-expect-status")).toBe("needs_review");
     expect(JSON.parse(seen!.init.body as string)).toEqual(body);
   });
 
   it("names the failures the page can say something about", async () => {
     expect(await confirmEntry("abc", body, answer(401))).toBe("unauthorized");
     expect(await confirmEntry("abc", body, answer(404))).toBe("not_found");
+    expect(await confirmEntry("abc", body, answer(409))).toBe("settled");
     expect(await confirmEntry("abc", body, answer(500))).toBe("failed");
     expect(await confirmEntry("abc", body, (async () => Promise.reject(new Error("offline"))) as unknown as typeof fetch)).toBe("failed");
   });
@@ -234,6 +236,26 @@ describe("ask for photos", () => {
     expect(entry.photos_asked_at).toBe("2026-09-04T06:55:00.000Z");
     expect(askForPhotos(db, entry.id)).toEqual({ ok: true, already: true });
     expect(events().filter((e) => e.entity_id === entry.id)).toHaveLength(1);
+  });
+
+  it("lets staff ask again once a photo has been added after the request", () => {
+    const entry = byNumber(241);
+    expect(entry.photos_asked_at).not.toBeNull();
+    const after = new Date("2026-10-10T07:10:00.000Z").toISOString();
+    db.insert(schema.events).values({ entity: "entry", entity_id: entry.id, type: "entry.photo_added", actor: "r1", data: {}, at: after }).run();
+    expect(byNumber(241).photos_asked_at).toBeNull();
+    expect(askForPhotos(db, entry.id, new Date("2026-10-10T07:11:00.000Z"))).toEqual({ ok: true, already: false });
+    expect(byNumber(241).photos_asked_at).toBe("2026-10-10T07:11:00.000Z");
+    expect(events().filter((e) => e.entity_id === entry.id)).toHaveLength(2);
+  });
+
+  it("lets staff ask again when the entry comes back to needs_review", () => {
+    const entry = byNumber(238);
+    askForPhotos(db, entry.id, new Date("2026-10-10T08:00:00.000Z"));
+    expect(askForPhotos(db, entry.id, new Date("2026-10-10T08:01:00.000Z"))).toEqual({ ok: true, already: true });
+    db.insert(schema.events).values({ entity: "entry", entity_id: entry.id, type: "entry.needs_review", actor: "r1", data: {}, at: "2026-10-10T08:30:00.000Z" }).run();
+    expect(byNumber(238).photos_asked_at).toBeNull();
+    expect(askForPhotos(db, entry.id, new Date("2026-10-10T08:31:00.000Z"))).toEqual({ ok: true, already: false });
   });
 
   it("refuses an entry that is not waiting for a second look", () => {

@@ -74,6 +74,7 @@ function ReviewDetail({ entry, photos }: ReviewDetailProps) {
         entryId={entry.id}
         approve={approve}
         useAi={useAi}
+        responderName={responderName}
         askedAt={entry.photos_asked_at ? formatTime(entry.photos_asked_at) : null}
       />
     </div>

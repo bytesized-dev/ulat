@@ -28,19 +28,24 @@ export function savePlace(place: NewPlaceInput, fetcher: typeof fetch = fetch): 
   return send("/api/places", place, fetcher);
 }
 
-export type ConfirmEntryResult = "ok" | "unauthorized" | "not_found" | "failed";
+export type ConfirmEntryResult = "ok" | "unauthorized" | "not_found" | "settled" | "failed";
 
-/** Settles an entry as staff. The route confirms it and audits every field that changed. */
+/**
+ * Settles an entry as staff. The route confirms it and audits every field that
+ * changed. The save only goes through while the entry still waits for review, so
+ * a tab that rendered before another tab settled it gets "settled" and changes nothing.
+ */
 export async function confirmEntry(entryId: string, body: EntryConfirm, fetcher: typeof fetch = fetch): Promise<ConfirmEntryResult> {
   try {
     const res = await fetcher(`/api/entries/${entryId}`, {
       method: "PATCH",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-ulat-expect-status": "needs_review" },
       body: JSON.stringify(body),
     });
     if (res.ok) return "ok";
     if (res.status === 401) return "unauthorized";
     if (res.status === 404) return "not_found";
+    if (res.status === 409) return "settled";
     return "failed";
   } catch {
     return "failed";

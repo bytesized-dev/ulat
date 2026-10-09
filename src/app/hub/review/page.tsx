@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { routes } from "@/lib/contracts/routes";
 import { countReview } from "@/lib/hub/family-reports";
 import { listReviewEntries, listReviewPhotos } from "@/lib/hub/review";
+import { SETTLED_PARAM } from "@/lib/hub/review-refresh";
 import { requireStaffPage } from "@/lib/hub/staff-page";
 
 export const metadata: Metadata = { title: "Review" };
@@ -34,6 +35,11 @@ export default async function ReviewPage({ searchParams }: { searchParams: Searc
     <HubPage title="Review" active={routes.hub.review} rail={<ReviewRail entries={entries} selected={selected?.id ?? null} />}>
       <div className="flex flex-col gap-9">
         <ReviewTabs active="second_look" counts={counts} className="self-stretch" />
+        {params[SETTLED_PARAM] === "1" ? (
+          <p role="status" className="rounded-lg bg-surface-soft p-4 text-body-sm font-semibold text-ink">
+            Already settled in another tab.
+          </p>
+        ) : null}
         {selected ? (
           <ReviewDetail key={selected.id} entry={selected} photos={listReviewPhotos(db, selected.id)} />
         ) : (

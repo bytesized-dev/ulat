@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { REVIEW_REASONS } from "@/app/api/entries/_lib/review";
 import type { Db } from "../../db/client";
 import { entries, events, photos, reports, responders } from "../../db/schema";
@@ -32,7 +32,7 @@ export type ReviewEntry = {
   report_hurt: number | null;
   /** The stored reason, in the long form the entries route writes or the short form of the seed. */
   review_reason: string | null;
-  /** When staff last asked the responder for photos. */
+  /** When staff noted an ask for photos that is still open. */
   photos_asked_at: string | null;
   /** Everything PATCH /api/entries/[id] needs except the class. */
   confirm: Omit<EntryConfirm, "damage_class">;
@@ -41,13 +41,24 @@ export type ReviewEntry = {
 /** An event type for the audit trail. Not a HubEvent: nothing listens for it yet. */
 export const PHOTOS_REQUESTED = "entry.photos_requested";
 
-const askedAt = sql<string | null>`(select max(${events.at}) from ${events} where ${events.entity} = 'entry' and ${events.entity_id} = ${entries.id} and ${events.type} = ${PHOTOS_REQUESTED})`;
+/**
+ * When staff last asked for photos and the ask still stands. A photo added or
+ * a new needs_review after the request answers it, so staff can ask again.
+ */
+const pendingAsk = (entryId: unknown) => sql<string | null>`(
+  select max(r.at) from ${events} r
+  where r.entity = 'entry' and r.entity_id = ${entryId} and r.type = ${PHOTOS_REQUESTED}
+    and not exists (
+      select 1 from ${events} e
+      where e.entity = 'entry' and e.entity_id = r.entity_id and e.type in ('entry.photo_added', 'entry.needs_review') and e.at > r.at
+    )
+)`;
 
 const columns = {
   entry: entries,
   responder_name: responders.name,
   report_hurt: reports.hurt,
-  photos_asked_at: askedAt,
+  photos_asked_at: pendingAsk(entries.id),
 };
 
 function toReviewEntry(row: { entry: EntryRow; responder_name: string; report_hurt: number | null; photos_asked_at: string | null }): ReviewEntry {
@@ -200,7 +211,7 @@ export type AskForPhotosResult = { ok: true; already: boolean } | { ok: false; e
 /**
  * Keeps the entry in needs_review and writes the request to the audit trail.
  * Asking again while the first request stands writes nothing, so a double tap
- * leaves one row.
+ * leaves one row. Nothing reads the row yet: staff still tell the responder.
  */
 export function askForPhotos(db: Db, entryId: string, now: Date = new Date()): AskForPhotosResult {
   const entry = db.select({ id: entries.id, status: entries.status, ai_need_more: entries.ai_need_more }).from(entries).where(eq(entries.id, entryId)).get();
@@ -208,13 +219,7 @@ export function askForPhotos(db: Db, entryId: string, now: Date = new Date()): A
   if (entry.status !== "needs_review") return { ok: false, error: "not_in_review" };
 
   return db.transaction((tx) => {
-    const asked = tx
-      .select({ id: events.id })
-      .from(events)
-      .where(and(eq(events.entity, "entry"), eq(events.entity_id, entryId), eq(events.type, PHOTOS_REQUESTED)))
-      .limit(1)
-      .get();
-    if (asked) return { ok: true, already: true } as const;
+    if (tx.select({ at: pendingAsk(entryId) }).from(sql`(select 1)`).get()?.at) return { ok: true, already: true } as const;
     tx.insert(events)
       .values({ entity: "entry", entity_id: entryId, type: PHOTOS_REQUESTED, actor: "staff", data: { need_more: entry.ai_need_more }, at: now.toISOString() })
       .run();

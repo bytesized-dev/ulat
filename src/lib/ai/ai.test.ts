@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as postText } from "@/app/api/ai/text/route";
 import { POST as postVoice } from "@/app/api/ai/voice/route";
 import * as schema from "@/db/schema";
-import { AiVoiceExtract } from "@/lib/contracts";
-import { readText, readVoice } from "./index";
-import { chatJson, OllamaError } from "./ollama";
+import { AiPhotoDraft, AiVoiceExtract } from "@/lib/contracts";
+import { draftPhoto, readText, readVoice } from "./index";
+import { chatJson, OllamaError, resetStructuredOutputProbe } from "./ollama";
 import { z } from "zod";
 
 // Ollama is replaced by a mocked fetch and the database by an in-memory file,
@@ -46,6 +46,7 @@ beforeEach(async () => {
   vi.stubEnv("MOCK_AI", "0");
   vi.stubEnv("OLLAMA_URL", "http://localhost:11434/");
   fetchMock.mockReset();
+  resetStructuredOutputProbe();
   vi.stubGlobal("fetch", fetchMock);
   db.delete(schema.events).run();
 });
@@ -114,6 +115,152 @@ describe("chatJson", () => {
     await expect(call()).rejects.toMatchObject({ kind: "unavailable" });
     fetchMock.mockResolvedValueOnce(new Response("busy", { status: 429 }));
     await expect(call()).rejects.toMatchObject({ kind: "unavailable" });
+  });
+});
+
+describe("chatJson without structured output", () => {
+  const schemaUnderTest = z.object({ n: z.number(), note: z.string().nullable() });
+  const call = () => chatJson({ schema: schemaUnderTest, system: "sys", user: "usr", media: [Buffer.from("abc")] });
+  const noFormat = () => new Response(JSON.stringify({ error: "structured output is unavailable" }), { status: 501 });
+  const bodyOf = (n: number) => JSON.parse(fetchMock.mock.calls[n][1].body);
+  const good = '{"n":3,"note":null}';
+
+  it("retries a 501 once without format and puts the schema in the user message", async () => {
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(good));
+    await expect(call()).resolves.toEqual({ value: { n: 3, note: null }, raw: good });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(bodyOf(0).format).toEqual(z.toJSONSchema(schemaUnderTest));
+    const retry = bodyOf(1);
+    expect(retry).not.toHaveProperty("format");
+    expect(retry).toMatchObject({ model: "gemma4:e4b", stream: false, keep_alive: expect.any(String) });
+    expect(retry.messages[0]).toEqual({ role: "system", content: "sys" });
+    expect(retry.messages[1].images).toEqual([Buffer.from("abc").toString("base64")]);
+    expect(retry.messages[1].content).toContain("usr");
+    expect(retry.messages[1].content).toContain(JSON.stringify(z.toJSONSchema(schemaUnderTest)));
+    expect(retry.messages[1].content).toContain("one JSON object only, no code fence");
+    expect(retry.messages[1].content).toContain("Every key must be present");
+  });
+
+  it("also falls back on any status when the body says structured output is unavailable", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response("structured output is unavailable", { status: 500 }))
+      .mockResolvedValueOnce(reply(good));
+    await expect(call()).resolves.toMatchObject({ value: { n: 3 } });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("remembers the fallback and skips format on later calls", async () => {
+    fetchMock.mockResolvedValueOnce(noFormat()).mockImplementation(async () => reply(good));
+    await call();
+    await call();
+    await call();
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(bodyOf(2)).not.toHaveProperty("format");
+    expect(bodyOf(3)).not.toHaveProperty("format");
+    expect(bodyOf(3).messages[1].content).toContain("JSON schema");
+  });
+
+  it("adds the schema hint to the prompt only in prompt mode", async () => {
+    const withHint = () => chatJson({ schema: schemaUnderTest, system: "sys", user: "usr", schemaHint: "Use null for note." });
+    fetchMock.mockResolvedValueOnce(noFormat()).mockImplementation(async () => reply(good));
+    await withHint();
+    expect(bodyOf(0).messages[1].content).toBe("usr");
+    expect(bodyOf(1).messages[1].content).toContain("Use null for note.");
+  });
+
+  it("does not fall back on other errors", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("boom", { status: 500 }));
+    await expect(call()).rejects.toMatchObject({ kind: "unavailable", status: 500 });
+    fetchMock.mockResolvedValueOnce(new Response("bad audio", { status: 400 }));
+    await expect(call()).rejects.toMatchObject({ kind: "rejected", status: 400 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("parses a reply wrapped in a code fence", async () => {
+    for (const fenced of ["```json\n" + good + "\n```", "```\n" + good + "\n```", "  ```json\n" + good + "  ", good + "\n```"]) {
+      fetchMock.mockResolvedValueOnce(reply(fenced));
+      await expect(call()).resolves.toEqual({ value: { n: 3, note: null }, raw: fenced });
+    }
+  });
+
+  it("throws invalid_output with the raw reply when the fallback reply is invalid", async () => {
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply('```json\n{"n":"three"}\n```'));
+    await expect(call()).rejects.toMatchObject({ kind: "invalid_output", raw: '```json\n{"n":"three"}\n```' });
+    fetchMock.mockResolvedValueOnce(reply('{"n":3}'));
+    await expect(call()).rejects.toMatchObject({ kind: "invalid_output", raw: '{"n":3}' });
+    fetchMock.mockResolvedValueOnce(reply("I cannot do that"));
+    await expect(call()).rejects.toMatchObject({ kind: "invalid_output", raw: "I cannot do that" });
+  });
+
+  it("reads a network error as unreachable, with no status, and does not fall back", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+    const error = await call().catch((e) => e);
+    expect(error).toMatchObject({ kind: "unavailable", status: null, raw: null });
+    expect(error.message).toBe("Request to Ollama failed: fetch failed");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads an error from a reachable Ollama as an HTTP error, not as unreachable", async () => {
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(new Response("model crashed", { status: 500 }));
+    const error = await call().catch((e) => e);
+    expect(error).toMatchObject({ kind: "unavailable", status: 500, raw: "model crashed", message: "Ollama answered 500" });
+  });
+});
+
+describe("voice, text and photo when Ollama answers format with a 501", () => {
+  const noFormat = () => new Response('{"error":"structured output is unavailable"}', { status: 501 });
+  const photo: AiPhotoDraft = {
+    damage_class: "partial",
+    confidence: "high",
+    material: "light",
+    hazards: [],
+    reason: "Some roof sheets are missing but the walls stand.",
+    need_more: null,
+  };
+  const bodyOf = (n: number) => JSON.parse(fetchMock.mock.calls[n][1].body);
+
+  it("reads a voice note through the prompt and audits the raw reply", async () => {
+    const fenced = "```json\n" + JSON.stringify(extract) + "\n```";
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(fenced));
+    await expect(readVoice({ audio: Buffer.from("x"), mime: "audio/webm" })).resolves.toEqual(extract);
+
+    expect(bodyOf(1)).not.toHaveProperty("format");
+    expect(bodyOf(1).messages[1].images).toHaveLength(1);
+    expect(bodyOf(1).messages[1].content).toContain('"transcript"');
+    expect(events()[0]).toMatchObject({ type: "ai.voice", data: { raw: fenced } });
+  });
+
+  it("reads a typed note through the prompt", async () => {
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(JSON.stringify(extract)));
+    await expect(readText({ text: "Wala na ang atop" })).resolves.toEqual({ ...extract, transcript: "" });
+    expect(bodyOf(1).messages[1].content).toMatch(/^Wala na ang atop\n\n/);
+  });
+
+  it("drafts a photo through the prompt, with the need_more hint and temperature 0", async () => {
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(JSON.stringify(photo)));
+    await expect(draftPhoto({ photos: [{ data: Buffer.from("img"), mime: "image/jpeg", label: "Front" }] })).resolves.toEqual(photo);
+
+    expect(bodyOf(1)).not.toHaveProperty("format");
+    expect(bodyOf(1).options).toEqual({ temperature: 0 });
+    expect(bodyOf(1).messages[1].content).toContain("Use null for need_more when damage_class is not unclear.");
+    expect(bodyOf(1).messages[1].content).toContain('"need_more"');
+  });
+
+  it("audits an invalid fallback reply as ai.voice.failed with the raw output", async () => {
+    const bad = JSON.stringify({ ...extract, people: -1 });
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(bad));
+    await expect(readVoice({ audio: Buffer.from("x"), mime: "audio/webm" })).rejects.toMatchObject({ kind: "invalid_output", raw: bad });
+    expect(events()[0]).toMatchObject({ type: "ai.voice.failed", data: { raw: bad, error: { kind: "invalid_output" } } });
+  });
+
+  it("logs a reachable Ollama's error with its status, not as a lost connection", async () => {
+    fetchMock.mockResolvedValue(new Response("boom", { status: 500 }));
+    await expect(readText({ text: "hello" })).rejects.toMatchObject({ kind: "unavailable", status: 500 });
+    expect(events()[0]).toMatchObject({
+      type: "ai.text.failed",
+      data: { raw: "boom", error: { kind: "unavailable", message: "Ollama answered 500" } },
+    });
   });
 });
 
@@ -186,6 +333,14 @@ describe("POST /api/ai/text", () => {
     const response = await post({ text: "hello" });
     expect(response.status).toBe(status);
     expect(await response.json()).toEqual({ error, retry: true });
+  });
+
+  it("works when Ollama answers format with a 501", async () => {
+    fetchMock.mockResolvedValueOnce(new Response('{"error":"structured output is unavailable"}', { status: 501 })).mockResolvedValue(reply(JSON.stringify(extract)));
+    const response = await post({ text: "Wala na ang atop" });
+    expect(response.status).toBe(200);
+    expect(AiVoiceExtract.parse(await response.json())).toMatchObject({ transcript: "", english: extract.english });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).not.toHaveProperty("format");
   });
 
   it("returns 502 with retry when the model's output fails the schema", async () => {

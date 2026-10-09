@@ -67,6 +67,37 @@ export function zoomBbox(bbox: Bbox, factor: number): Bbox {
   return [a.lng, b.lat, b.lng, a.lat];
 }
 
+/**
+ * Grows the bbox around its center so it has the frame's shape, width over
+ * height, keeping all of it in view. Like fitBounds in MapLibre.
+ */
+export function fitBbox(bbox: Bbox, aspect: number): Bbox {
+  const [west, south, east, north] = bbox;
+  const nw = toWorld({ lng: west, lat: north });
+  const se = toWorld({ lng: east, lat: south });
+  let w = se.x - nw.x;
+  let h = se.y - nw.y;
+  if (!(aspect > 0) || !(w > 0) || !(h > 0)) return bbox;
+  if (w / h < aspect) w = h * aspect;
+  else h = w / aspect;
+  const cx = (nw.x + se.x) / 2;
+  const cy = (nw.y + se.y) / 2;
+  const a = fromWorld({ x: cx - w / 2, y: cy - h / 2 });
+  const b = fromWorld({ x: cx + w / 2, y: cy + h / 2 });
+  return [a.lng, b.lat, b.lng, a.lat];
+}
+
+/** Whether a point falls inside a GeoJSON ring of [lng, lat] pairs. */
+export function inRing({ lng, lat }: LngLat, ring: readonly (readonly number[])[]): boolean {
+  let hit = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) hit = !hit;
+  }
+  return hit;
+}
+
 export function inside({ x, y }: Percent): boolean {
   return x >= 0 && x <= 100 && y >= 0 && y <= 100;
 }

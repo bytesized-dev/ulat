@@ -1,52 +1,27 @@
+import "server-only";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { BarangayCollection, LegendItem, MapPin } from "@/components/map";
-import { type Bbox, type Percent, fromPercent } from "@/lib/hub/map-projection";
+import { barangayNameProperty, mapAssets } from "@/lib/hub/map-assets";
+import { type Bbox, type LngLat, fromPercent, inRing } from "@/lib/hub/map-projection";
 import seed from "../../../../seed/simulation.json";
 
 /*
-  Stand-in data for the map check page, until the town is picked and
-  scripts/map/fetch-map.sh has written public/map. The bbox is a placeholder,
-  and the barangays are rough boxes laid out like the canvas. Pins are the seed
-  positions, converted with the same math the seed will use.
+  Data for the map check page: the real Dapitan City barangays from
+  public/map, and the seed's pins placed over the poblacion. Seed positions
+  are percentages of the map area, so they need a bbox to land somewhere. This
+  one stands in for the map_bbox setting until the seed sets it (BYT-8).
 */
 
-export const standInBbox: Bbox = [124.0, 10.0, 124.04, 10.03];
+/** Around the Dapitan City poblacion, about 4 km across. */
+export const demoBbox: Bbox = [123.405, 8.635, 123.445, 8.675];
 
-const boxes: Record<string, [x0: number, y0: number, x1: number, y1: number]> = {
-  Mabini: [15, 4, 45, 31],
-  "San Isidro": [45, 4, 74, 60],
-  "Santa Cruz": [74, 6, 98, 60],
-  Poblacion: [15, 31, 45, 62],
-  "Bagong Silang": [15, 62, 50, 96],
-  Rizal: [50, 60, 98, 96],
-};
-
-function lngLat(p: Percent): [number, number] {
-  const { lng, lat } = fromPercent(p, standInBbox);
-  return [lng, lat];
+export function loadBarangays(): BarangayCollection {
+  return JSON.parse(readFileSync(join(process.cwd(), "public", mapAssets.barangays), "utf8"));
 }
 
-export const standInBarangays: BarangayCollection = {
-  type: "FeatureCollection",
-  features: Object.entries(boxes).map(([name, [x0, y0, x1, y1]]) => ({
-    type: "Feature",
-    properties: { name },
-    geometry: {
-      type: "Polygon",
-      coordinates: [
-        [
-          lngLat({ x: x0, y: y0 }),
-          lngLat({ x: x1, y: y0 }),
-          lngLat({ x: x1, y: y1 }),
-          lngLat({ x: x0, y: y1 }),
-          lngLat({ x: x0, y: y0 }),
-        ],
-      ],
-    },
-  })),
-};
-
-function at(pos: number[]) {
-  return fromPercent({ x: pos[0], y: pos[1] }, standInBbox);
+function at(pos: number[]): LngLat {
+  return fromPercent({ x: pos[0], y: pos[1] }, demoBbox);
 }
 
 const confirmed = seed.entries.filter((e) => e.status === "confirmed");
@@ -73,13 +48,23 @@ export const placePins: MapPin[] = seed.places.map((p, i) => ({
 
 export const youPin: MapPin = { id: "you", kind: "you", label: "You", ...at([40, 62]) };
 
-/** Totally damaged confirmed entries per barangay, for the shading. */
-export const totalsByBarangay: Record<string, number> = Object.fromEntries(
-  Object.keys(boxes).map((name) => [
-    name,
-    confirmed.filter((e) => e.barangay === name && e.damage_class === "total").length,
-  ]),
-);
+/**
+ * Totally damaged pins per real barangay, found by where each pin falls. The
+ * product counts by each entry's barangay field in SQL instead; the seed's
+ * placeholder barangay names do not match Dapitan's yet.
+ */
+export function totalsByBarangay(barangays: BarangayCollection): Record<string, number> {
+  const totals: Record<string, number> = {};
+  for (const feature of barangays.features) {
+    const name = String(feature.properties[barangayNameProperty]);
+    const rings =
+      feature.geometry.type === "Polygon"
+        ? [feature.geometry.coordinates[0]]
+        : feature.geometry.coordinates.map((polygon) => polygon[0]);
+    totals[name] = damagePins.filter((p) => p.kind === "total" && rings.some((ring) => inRing(p, ring))).length;
+  }
+  return totals;
+}
 
 export const legends: Record<"hub" | "family" | "responder", LegendItem[]> = {
   hub: [

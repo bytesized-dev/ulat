@@ -1,8 +1,8 @@
 "use client";
 
-import { type Ref, useImperativeHandle, useState } from "react";
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { barangayNameProperty } from "@/lib/hub/map-assets";
-import { type Bbox, type Percent, inside, toPercent, zoomBbox } from "@/lib/hub/map-projection";
+import { type Bbox, type Percent, fitBbox, inside, toPercent, zoomBbox } from "@/lib/hub/map-projection";
 import { cn } from "@/lib/utils";
 import { PinMark } from "./pin-mark";
 import { barangayName } from "./shading";
@@ -49,7 +49,8 @@ function ringPoints(ring: number[][], view: Bbox): string {
   return ring
     .map(([lng, lat]) => {
       const p = toPercent({ lng, lat }, view);
-      return `${p.x},${p.y}`;
+      // Rounded so the server and browser math agree, and the markup stays small.
+      return `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
     })
     .join(" ");
 }
@@ -77,7 +78,21 @@ export function SchematicMap({
     zoomOut: () => setZoom((z) => Math.max(z / 2, 1)),
   }));
 
-  const view = zoomBbox(bbox, zoom);
+  // Fit the town to the frame's shape so nothing is stretched, then zoom about the center.
+  const frame = useRef<HTMLDivElement>(null);
+  const [aspect, setAspect] = useState(0);
+  useEffect(() => {
+    const el = frame.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setAspect(height > 0 ? width / height : 0);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const view = zoomBbox(fitBbox(bbox, aspect), zoom);
   const features = barangays?.features ?? [];
   const ordered = [...pins].sort(
     (a, b) =>
@@ -85,7 +100,7 @@ export function SchematicMap({
   );
 
   return (
-    <div role="group" aria-label={label} className="absolute inset-0 overflow-hidden bg-map-land">
+    <div ref={frame} role="group" aria-label={label} className="absolute inset-0 overflow-hidden bg-map-land">
       <svg aria-hidden className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         {features.map((feature, i) => {
           const name = barangayName(feature.properties, barangayNameProperty);

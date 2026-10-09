@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as postTranslate } from "@/app/api/updates/translate/route";
 import * as schema from "@/db/schema";
 import { AiTranslation } from "@/lib/contracts";
+import fixtureFile from "../../../seed/ai-fixtures.json";
 import { translate } from "./index";
 import { TRANSLATE_SYSTEM } from "./prompts";
 
@@ -59,6 +60,14 @@ describe("translate", () => {
     const [row] = events();
     expect(row).toMatchObject({ entity: "ai", type: "ai.translate", actor: "system", data: { raw: JSON.stringify(draft) } });
     expect(row.entity_id).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("accepts the design example, where 5 PM becomes sa hapon", async () => {
+    const water = { headline: "Water at the town plaza", message: "3 to 5 PM. Bring a container." };
+    const fixture = AiTranslation.parse(fixtureFile.translation);
+    fetchMock.mockResolvedValue(reply(JSON.stringify(fixture)));
+    await expect(translate(water)).resolves.toEqual(fixture);
+    expect(events()[0].type).toBe("ai.translate");
   });
 
   it("rejects a draft that changed a time, and logs it as ai.translate.failed with the raw output", async () => {

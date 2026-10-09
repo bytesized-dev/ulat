@@ -79,7 +79,7 @@ function ReportSent() {
 
         <section aria-label="Your report code" className="flex flex-col items-center gap-3.5 rounded-lg bg-surface-soft p-6 text-center">
           <p className="text-body-sm text-body">Your report code</p>
-          <p className="pl-[0.16em] font-mono text-mono-lg text-ink tabular" aria-label={sent.code.split("").join(" ")}>
+          <p className="pl-2 font-mono text-mono-lg text-ink tabular" aria-label={sent.code.split("").join(" ")}>
             {sent.code}
           </p>
           <Button
@@ -92,8 +92,9 @@ function ReportSent() {
             {copy === "copied" ? <CheckIcon aria-hidden="true" /> : <CopyIcon aria-hidden="true" />}
             {copy === "copied" ? "Copied" : "Copy code"}
           </Button>
-          <p role="status" className="min-h-5 text-body-sm text-body">
-            {copy === "failed" ? "Could not copy. Write the code down." : null}
+          {/* Read out when the code is copied, and shown only when copying fails. */}
+          <p role="status" className={copy === "failed" ? "text-body-sm text-body" : "sr-only"}>
+            {copy === "copied" ? "Code copied" : copy === "failed" ? "Could not copy. Write the code down." : null}
           </p>
         </section>
 

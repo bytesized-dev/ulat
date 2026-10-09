@@ -16,10 +16,7 @@ export default async function AiCheckPage() {
   await requireStaffPage();
   const reading = await readEvalResults();
   return (
-    <HubPage title="AI check" active={routes.hub.aiCheck} rail={<AiCheckRail reading={reading} />}>
-      <div className="mb-6 flex justify-end">
-        <RunTestDialog />
-      </div>
+    <HubPage title="AI check" active={routes.hub.aiCheck} rail={<AiCheckRail reading={reading} />} actions={<RunTestDialog />}>
       {reading.status === "ok" ? (
         <div className="flex flex-col gap-9">
           <AiCheckHero results={reading.results} />

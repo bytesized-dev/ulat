@@ -80,13 +80,14 @@ export function PickOnMap({ bbox, barangays }: PickOnMapProps) {
           />
         </DialogContent>
       </Dialog>
+      {/* The live region holds text only and is always in the page, so the change is announced. */}
+      <span role="status" className="text-body-sm text-body">
+        {spot ? "Location set" : null}
+      </span>
       {spot ? (
-        <p role="status" className="flex items-center gap-2 text-body-sm text-body">
-          Location set
-          <Button type="button" variant="tertiary" size="hub" onClick={() => setSpot(null)}>
-            Clear
-          </Button>
-        </p>
+        <Button type="button" variant="tertiary" size="hub" onClick={() => setSpot(null)}>
+          Clear
+        </Button>
       ) : null}
     </>
   );

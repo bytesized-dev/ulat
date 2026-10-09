@@ -25,9 +25,13 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
 
   const query = parseEntryQuery(await searchParams);
   const page = listEntries(db, query);
+  // The top bar search keeps the damage and barangay filters and starts again at page 1.
+  const keptFilters: Record<string, string> = {};
+  if (query.damage_class) keptFilters.damage_class = query.damage_class;
+  if (query.barangay) keptFilters.barangay = query.barangay;
 
   return (
-    <HubPage title="Entries" active={routes.hub.entries}>
+    <HubPage title="Entries" active={routes.hub.entries} search={{ value: query.q, keep: keptFilters }}>
       <div className="flex flex-col gap-9">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-display-lg text-ink">{page.total === 1 ? "1 entry" : `${page.total} entries`}</h2>

@@ -28,6 +28,9 @@ import type { BarangayFeature, MapEngineHandle, MapEngineProps, PinKind } from "
 
 const maxZoom = 8;
 
+// How far a pointer travels, in px, before a press is a drag and not a tap.
+const dragSlop = 4;
+
 const shadeFill = {
   1: "fill-map-shade-1",
   2: "fill-map-shade-2",
@@ -133,17 +136,29 @@ export function SchematicMap({
   }, [aspect, center.lng, center.lat]);
 
   // Dragging slides the view the way a thumb would, so the point under the pointer stays put.
-  const drag = useRef<{ x: number; y: number } | null>(null);
+  // The frame takes the pointer once it has moved, so a release outside the frame still
+  // ends the drag. Not at pointerdown: a tap on a pin would then click the frame, not the pin.
+  const drag = useRef<{ id: number; x: number; y: number; captured: boolean } | null>(null);
   function pan(event: React.PointerEvent<HTMLDivElement>) {
     const start = drag.current;
     const el = frame.current;
-    if (!start || !el) return;
+    if (!start || !el || event.pointerId !== start.id) return;
+    if (!start.captured) {
+      if (Math.hypot(event.clientX - start.x, event.clientY - start.y) < dragSlop) return;
+      el.setPointerCapture(event.pointerId);
+      start.captured = true;
+    }
     const { width, height } = el.getBoundingClientRect();
     if (!(width > 0) || !(height > 0)) return;
     const dx = ((event.clientX - start.x) / width) * 100;
     const dy = ((event.clientY - start.y) / height) * 100;
-    drag.current = { x: event.clientX, y: event.clientY };
+    drag.current = { ...start, x: event.clientX, y: event.clientY };
     setMiddle(fromPercent({ x: 50 - dx, y: 50 - dy }, view));
+  }
+  function endDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (drag.current?.id !== event.pointerId) return;
+    drag.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   }
 
   const features = barangays?.features ?? [];
@@ -159,15 +174,11 @@ export function SchematicMap({
       aria-label={label}
       className="absolute inset-0 touch-none overflow-hidden bg-map-land"
       onPointerDown={(event) => {
-        drag.current = { x: event.clientX, y: event.clientY };
+        drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, captured: false };
       }}
       onPointerMove={pan}
-      onPointerUp={() => {
-        drag.current = null;
-      }}
-      onPointerCancel={() => {
-        drag.current = null;
-      }}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
     >
       <svg aria-hidden className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         {features.map((feature, i) => {

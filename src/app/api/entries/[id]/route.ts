@@ -3,7 +3,7 @@ import { db } from "@/db/client";
 import { entries, events, photos, reports } from "@/db/schema";
 import { EntryConfirm } from "@/lib/contracts";
 import { audit, emit } from "../_lib/audit";
-import { deny, getActor } from "../_lib/auth";
+import { authorize } from "../_lib/auth";
 import { REVIEW_REASONS, reviewReasons } from "../_lib/review";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -11,8 +11,8 @@ type Ctx = { params: Promise<{ id: string }> };
 const FIELDS = ["damage_class", "material", "hazards", "families", "people", "hurt", "missing", "needs"] as const;
 
 export async function GET(req: Request, { params }: Ctx) {
-  const blocked = deny(getActor(req), ["responder", "staff"]);
-  if (blocked) return blocked;
+  const actor = await authorize("either");
+  if (actor instanceof Response) return actor;
   const { id } = await params;
 
   const entry = db.select().from(entries).where(eq(entries.id, id)).get();
@@ -32,9 +32,8 @@ export async function GET(req: Request, { params }: Ctx) {
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const actor = getActor(req);
-  const blocked = deny(actor, ["responder", "staff"]);
-  if (blocked || !actor) return blocked ?? Response.json({ error: "not_signed_in" }, { status: 401 });
+  const actor = await authorize("either");
+  if (actor instanceof Response) return actor;
   const { id } = await params;
 
   const body = EntryConfirm.safeParse(await req.json().catch(() => null));

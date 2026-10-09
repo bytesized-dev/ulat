@@ -5,7 +5,7 @@ import { db } from "@/db/client";
 import { entries, photos, reports } from "@/db/schema";
 import { ConfirmedDamageClass, NewEntryMeta } from "@/lib/contracts";
 import { audit } from "./_lib/audit";
-import { deny, getActor } from "./_lib/auth";
+import { authorize } from "./_lib/auth";
 import { draftEntry } from "./_lib/draft";
 import { MAX_PHOTOS, storeUpload, type Stored } from "./_lib/uploads";
 
@@ -13,10 +13,9 @@ import { MAX_PHOTOS, storeUpload, type Stored } from "./_lib/uploads";
 // report code, then runs the photo pipeline. GET lists confirmed entries.
 
 export async function POST(req: Request) {
-  const actor = getActor(req);
-  const blocked = deny(actor, ["responder"]);
-  if (blocked) return blocked;
-  if (actor?.role !== "responder") return Response.json({ error: "not_allowed" }, { status: 403 });
+  const actor = await authorize("responder");
+  if (actor instanceof Response) return actor;
+  if (actor.role !== "responder") return Response.json({ error: "unauthorized" }, { status: 401 });
 
   let form: FormData;
   try {
@@ -103,8 +102,8 @@ const Query = z.object({
 });
 
 export async function GET(req: Request) {
-  const blocked = deny(getActor(req), ["staff"]);
-  if (blocked) return blocked;
+  const actor = await authorize("staff");
+  if (actor instanceof Response) return actor;
 
   const parsed = Query.safeParse(Object.fromEntries(new URL(req.url).searchParams));
   if (!parsed.success) return Response.json({ error: "bad_query", issues: parsed.error.issues }, { status: 400 });

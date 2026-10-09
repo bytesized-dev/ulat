@@ -1,6 +1,7 @@
 import type { Db } from "@/db/client";
 import { events } from "@/db/schema";
 import type { HubEvent } from "@/lib/contracts";
+import { publish } from "@/lib/live/bus";
 
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
@@ -9,10 +10,7 @@ export function audit(tx: Tx | Db, entryId: string, type: string, actor: string,
   tx.insert(events).values({ entity: "entry", entity_id: entryId, type, actor, data, at: new Date().toISOString() }).run();
 }
 
-/**
- * Live updates go through CJ's /api/events stream, which is not built yet.
- * Handlers call this after their transaction commits, so the swap is one line.
- */
+/** Tells the open live streams. Call it after the transaction commits. */
 export function emit(event: HubEvent) {
-  void event;
+  publish(event);
 }

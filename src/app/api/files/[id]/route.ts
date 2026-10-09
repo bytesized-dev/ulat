@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { entries, photos } from "@/db/schema";
-import { deny, getActor } from "../../entries/_lib/auth";
+import { authorize } from "../../entries/_lib/auth";
 import { readUpload } from "../../entries/_lib/uploads";
 
 // Serves a stored photo by its photo id, or an entry's voice note by the entry
 // id. Responders and staff only: houses, injuries and homes are private.
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const blocked = deny(getActor(req), ["responder", "staff"]);
-  if (blocked) return blocked;
+  const actor = await authorize("either");
+  if (actor instanceof Response) return actor;
   const { id } = await params;
 
   const path =

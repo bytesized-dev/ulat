@@ -5,7 +5,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { pushSQLiteSchema } from "drizzle-kit/api";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { reviewReasons } from "./_lib/review";
 
 const dir = mkdtempSync(join(tmpdir(), "ulat-entries-"));
@@ -13,8 +13,29 @@ process.env.DATABASE_PATH = join(dir, "test.db");
 process.env.UPLOAD_DIR = join(dir, "uploads");
 process.env.MOCK_AI = "1";
 
-const staff = { "x-ulat-dev-role": "staff" };
-const resp = { "x-ulat-dev-role": "responder", "x-ulat-dev-responder": "r1" };
+// The real session reads a cookie through next/headers. Here the "cookie" is
+// the x-test-role header of the request being built: the Request class below
+// records it as the current session just before each call.
+const session = vi.hoisted(() => ({ role: null as "responder" | "staff" | null }));
+const denied = () => Response.json({ error: "unauthorized" }, { status: 401 });
+const asResponder = () => ({ role: "responder", responder_id: "r1", name: "Ana", exp: Date.now() + 1000 });
+const asStaff = () => ({ role: "staff", exp: Date.now() + 1000 });
+vi.mock("@/lib/auth/session", () => ({
+  requireResponder: async () => (session.role === "responder" ? asResponder() : denied()),
+  requireStaff: async () => (session.role === "staff" ? asStaff() : denied()),
+  requireResponderOrStaff: async () =>
+    session.role === "responder" ? asResponder() : session.role === "staff" ? asStaff() : denied(),
+}));
+
+class TestRequest extends Request {
+  constructor(input: string, init?: RequestInit) {
+    super(input, init);
+    session.role = (new Headers(init?.headers).get("x-test-role") as "responder" | "staff" | null) ?? null;
+  }
+}
+
+const staff = { "x-test-role": "staff" };
+const resp = { "x-test-role": "responder" };
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
 const meta = (extra: object = {}) =>
@@ -34,7 +55,7 @@ function postForm(photos = 2, extra: object = {}, headers: Record<string, string
   const form = new FormData();
   form.set("meta", meta(extra));
   for (let i = 0; i < photos; i++) form.append("photos", new File([PNG], `p${i}.png`, { type: "image/png" }));
-  return new Request("http://hub/api/entries", { method: "POST", body: form, headers });
+  return new TestRequest("http://hub/api/entries", { method: "POST", body: form, headers });
 }
 
 // The mock AI says total for two photos and unclear for one.
@@ -51,7 +72,7 @@ const confirmBody = (extra: object = {}) => ({
   ...extra,
 });
 const patch = (id: string, body: unknown, headers: Record<string, string> = resp) =>
-  new Request(`http://hub/api/entries/${id}`, {
+  new TestRequest(`http://hub/api/entries/${id}`, {
     method: "PATCH",
     headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
@@ -103,8 +124,8 @@ describe("entries API", () => {
 
   it("refuses without a session and for families", async () => {
     expect((await entries.POST(postForm(1, {}, {}))).status).toBe(401);
-    expect((await entries.POST(postForm(1, {}, staff))).status).toBe(403);
-    expect((await entries.GET(new Request("http://hub/api/entries", { headers: resp }))).status).toBe(403);
+    expect((await entries.POST(postForm(1, {}, staff))).status).toBe(401);
+    expect((await entries.GET(new TestRequest("http://hub/api/entries", { headers: resp }))).status).toBe(401);
   });
 
   it("validates the form", async () => {
@@ -114,7 +135,7 @@ describe("entries API", () => {
     const bad = new FormData();
     bad.set("meta", meta());
     bad.append("photos", new File(["x"], "x.exe", { type: "application/x-msdownload" }));
-    const res = await entries.POST(new Request("http://hub/api/entries", { method: "POST", body: bad, headers: resp }));
+    const res = await entries.POST(new TestRequest("http://hub/api/entries", { method: "POST", body: bad, headers: resp }));
     expect(res.status).toBe(400);
   });
 
@@ -122,33 +143,33 @@ describe("entries API", () => {
     const { res, body } = await create(2);
     expect(res.status).toBe(201);
     expect(body.number).toBeGreaterThan(0);
-    const detail = await (await one.GET(new Request("http://hub", { headers: staff }), ctx(body.id))).json();
+    const detail = await (await one.GET(new TestRequest("http://hub", { headers: staff }), ctx(body.id))).json();
     expect(detail.entry.status).toBe("draft");
     expect(detail.photos).toHaveLength(2);
     expect(detail.entry.ai_class).toBe("total");
     expect(detail.history.map((h: { type: string }) => h.type)).toEqual(["entry.created", "entry.ai_drafted"]);
 
-    const file = await files.GET(new Request("http://hub", { headers: resp }), ctx(detail.photos[0].id));
+    const file = await files.GET(new TestRequest("http://hub", { headers: resp }), ctx(detail.photos[0].id));
     expect(file.status).toBe(200);
     expect(file.headers.get("content-type")).toBe("image/png");
-    expect((await files.GET(new Request("http://hub"), ctx(detail.photos[0].id))).status).toBe(401);
-    expect((await files.GET(new Request("http://hub", { headers: resp }), ctx("nope"))).status).toBe(404);
+    expect((await files.GET(new TestRequest("http://hub"), ctx(detail.photos[0].id))).status).toBe(401);
+    expect((await files.GET(new TestRequest("http://hub", { headers: resp }), ctx("nope"))).status).toBe(404);
   });
 
   it("confirms, records changed fields, and lists it for the hub", async () => {
     const { body } = await create(2);
     const res = await one.PATCH(patch(body.id, confirmBody()), ctx(body.id));
     expect((await res.json()).status).toBe("confirmed");
-    const detail = await (await one.GET(new Request("http://hub", { headers: staff }), ctx(body.id))).json();
+    const detail = await (await one.GET(new TestRequest("http://hub", { headers: staff }), ctx(body.id))).json();
     const changed = detail.history.filter((h: { type: string }) => h.type === "entry.field_changed").map((h: { data: { field: string } }) => h.data.field);
     expect(changed).toEqual(expect.arrayContaining(["damage_class", "people", "needs"]));
     expect(detail.history.at(-1).type).toBe("entry.confirmed");
 
-    const list = await (await entries.GET(new Request("http://hub/api/entries?q=Dela&per_page=1", { headers: staff }))).json();
+    const list = await (await entries.GET(new TestRequest("http://hub/api/entries?q=Dela&per_page=1", { headers: staff }))).json();
     expect(list.total).toBeGreaterThan(0);
     expect(list.items).toHaveLength(1);
     expect(list.items[0].status).toBe("confirmed");
-    const none = await (await entries.GET(new Request("http://hub/api/entries?damage_class=none", { headers: staff }))).json();
+    const none = await (await entries.GET(new TestRequest("http://hub/api/entries?damage_class=none", { headers: staff }))).json();
     expect(none.total).toBe(0);
   });
 
@@ -157,7 +178,7 @@ describe("entries API", () => {
     const res = await (await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" })), ctx(body.id))).json();
     expect(res.status).toBe("needs_review");
     expect(res.reasons).toEqual(["class_differs"]);
-    const listed = await (await entries.GET(new Request("http://hub/api/entries?q=" + body.number, { headers: staff }))).json();
+    const listed = await (await entries.GET(new TestRequest("http://hub/api/entries?q=" + body.number, { headers: staff }))).json();
     expect(listed.total).toBe(0);
     const settled = await (await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" }), staff), ctx(body.id))).json();
     expect(settled.status).toBe("confirmed");

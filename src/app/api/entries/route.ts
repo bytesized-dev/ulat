@@ -3,10 +3,10 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { entries, photos, reports } from "@/db/schema";
+import { draftEntry } from "@/lib/ai/draft-entry";
 import { ConfirmedDamageClass, NewEntryMeta } from "@/lib/contracts";
 import { audit } from "./_lib/audit";
 import { authorize } from "./_lib/auth";
-import { draftEntry } from "./_lib/draft";
 import { MAX_PHOTOS, storeUpload, type Stored } from "./_lib/uploads";
 
 // POST creates a draft from photos, an optional voice note, GPS and an optional
@@ -87,8 +87,12 @@ export async function POST(req: Request) {
     return next;
   });
 
-  // The draft is saved. The AI call can be slow or fail without losing it.
-  await draftEntry(id);
+  // The draft is saved. The real model can take up to 60 seconds, so the
+  // response does not wait for it: the /drafting screen waits for the
+  // entry.drafted event instead. Fixtures under MOCK_AI are instant, so those
+  // are awaited and the response carries the AI fields.
+  const drafting = draftEntry(id).catch((error) => console.error("Drafting entry failed", id, error));
+  if (process.env.MOCK_AI === "1") await drafting;
   const saved = db.select().from(entries).where(eq(entries.id, id)).get();
   return Response.json({ id, number, status: "draft", entry: saved }, { status: 201 });
 }

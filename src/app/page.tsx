@@ -30,7 +30,7 @@ export default function HomePage() {
           <h2 className="mb-1 text-title-md">More</h2>
           <nav aria-label="More">
             {more.map((item) => (
-              <Row key={item.href} href={item.href} icon={item.icon} label={<span className="text-body-md font-medium text-ink">{item.label}</span>} />
+              <Row key={item.href} href={item.href} icon={item.icon} label={<span className="text-body-md font-medium text-ink">{item.label}</span>} className="last:border-b-0" />
             ))}
           </nav>
         </section>

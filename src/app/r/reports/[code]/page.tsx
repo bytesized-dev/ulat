@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -5,7 +6,6 @@ import { notFound, redirect } from "next/navigation";
 import { FamilyVoiceNote } from "@/components/responder/family-voice-note";
 import { concernText, needLabel } from "@/components/responder/report-detail-labels";
 import { ReportDistance } from "@/components/responder/report-distance";
-import { StartAssessment } from "@/components/responder/start-assessment";
 import { buttonVariants } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -18,9 +18,13 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-// A house that was visited, could not be assessed or was merged is not
-// assessed again from its report. The same rule is a 409 in POST /api/entries.
-const OPEN_STATUSES = ["waiting", "assigned", "on_the_way"];
+// A house that was visited, could not be assessed or was merged is not assessed
+// again from its report, so a second entry cannot count it twice.
+const CLOSED_NOTE: Partial<Record<typeof reports.$inferSelect.status, string>> = {
+  visited: "Already visited",
+  cant_assess: "Marked can't assess",
+  merged: "Merged into another report",
+};
 
 function Count({ value, label, danger }: { value: number; label: string; danger?: boolean }) {
   return (
@@ -45,7 +49,7 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
   const concern = concernText(report.hurt, report.missing);
   const place = report.purok ? `${report.barangay}, ${report.purok}` : report.barangay;
   const home = report.lat !== null && report.lng !== null ? { lat: report.lat, lng: report.lng } : null;
-  const isOpen = OPEN_STATUSES.includes(report.status);
+  const closedNote = CLOSED_NOTE[report.status];
   const hasNote = report.voice_path !== null || report.transcript !== null || report.transcript_en !== null;
 
   return (
@@ -89,14 +93,14 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
         ) : null}
       </main>
       <footer className="sticky bottom-0 bg-canvas px-gutter pb-4 pt-2">
-        {isOpen ? <StartAssessment code={report.code} /> : null}
-        {/* The sheet is BYT-53. Until it is built this link opens the report with the sheet asked for. */}
-        <Link
-          href={`${routes.responder.report(report.code)}?sheet=cant-assess`}
-          className={cn(buttonVariants({ variant: "tertiary" }), "mt-2 w-full")}
-        >
-          Can&apos;t assess
-        </Link>
+        {closedNote ? (
+          <p className="py-4 text-center text-body-md text-muted-text">{closedNote}</p>
+        ) : (
+          // The capture screen creates the entry when the responder sends it.
+          <Link href={`${routes.responder.assess(randomUUID())}?code=${report.code}`} prefetch={false} className={cn(buttonVariants(), "w-full")}>
+            Start assessment
+          </Link>
+        )}
       </footer>
     </div>
   );

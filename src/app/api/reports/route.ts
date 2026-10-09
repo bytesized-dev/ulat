@@ -9,7 +9,7 @@ import { audit, emit } from "./_lib/audit";
 import { readJsonCapped } from "./_lib/body";
 import { deny, getActor } from "./_lib/auth";
 import { freshCode } from "./_lib/code";
-import { findVoice, voiceLinked } from "./_lib/voice-store";
+import { voiceFiles } from "./_lib/family-file-store";
 import { isUrgent, urgentSql } from "./_lib/view";
 
 // POST takes a NewReport from a family phone or the help desk and returns the
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     actor = "staff";
   }
 
-  const stored = body.voice_id ? await findVoice(body.voice_id) : null;
+  const stored = body.voice_id ? await voiceFiles.find(body.voice_id) : null;
   const id = randomUUID();
   const now = new Date().toISOString();
   const urgent = isUrgent(body);
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
   if (created) emit({ type: "report.created", code, urgent });
   // The recording no longer counts as unlinked, so it stops using the unlinked cap.
-  if (attached && stored) await voiceLinked(stored);
+  if (attached && stored) await voiceFiles.linked(stored);
   return Response.json({ code }, { status: 201 });
 }
 

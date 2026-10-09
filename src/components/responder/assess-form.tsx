@@ -77,7 +77,7 @@ function AssessForm({ house }: AssessFormProps) {
         leading={{ kind: "back", onClick: () => router.back() }}
         className="[&_p]:font-mono"
       />
-      <main className="flex flex-1 flex-col gap-7 px-gutter pb-6">
+      <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-6">
         <h1 className="text-title-page text-ink">Assess the house</h1>
         <section className="flex flex-col gap-3" aria-labelledby="photos-h">
           <div className="flex items-baseline justify-between">

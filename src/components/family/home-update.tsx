@@ -35,7 +35,12 @@ export function HomeUpdate() {
   return (
     <Row
       href={routes.family.updates}
-      icon={<MegaphoneIcon className="text-primary" />}
+      icon={
+        <span className="flex size-10 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <MegaphoneIcon />
+        </span>
+      }
+      className="border-b-0"
       label={`Update, ${formatTime(load.update.posted_at)}`}
       value={load.update.headline}
     />

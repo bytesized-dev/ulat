@@ -1,6 +1,6 @@
 import { buildForm } from "./capture";
-import { newClientId } from "@/components/family/client-id";
-import type { NewEntryMeta } from "@/lib/contracts";
+import { newClientId } from "@/lib/client-id";
+import { NewEntryMeta } from "@/lib/contracts";
 import { parseRetryAfter } from "./retry-backoff";
 
 // Entries saved on the phone while the hub is out of reach. docs/SPEC.md
@@ -135,7 +135,11 @@ function worthRetrying(status: number): boolean {
  * A 200 means the hub already had the entry, and counts as sent like a 201.
  */
 export async function flushQueue(store: QueueStore = browserStore, send: typeof fetch = fetch, stalled: Set<string> = new Set()): Promise<FlushResult> {
-  const items = [...(await store.all())].sort((a, b) => Number(stalled.has(a.id)) - Number(stalled.has(b.id)));
+  const all = await store.all();
+  // Dismissed and sent entries leave the set, so it holds only what is still in the queue.
+  const present = new Set(all.map((e) => e.id));
+  for (const id of stalled) if (!present.has(id)) stalled.delete(id);
+  const items = [...all].sort((a, b) => Number(stalled.has(a.id)) - Number(stalled.has(b.id)));
   let sent = 0;
   let signedOut = false;
   let retry = false;
@@ -144,7 +148,9 @@ export async function flushQueue(store: QueueStore = browserStore, send: typeof 
     if (item.failure) continue;
     if (!item.meta.client_id) {
       // Saved before the phone sent ids. The id is stored before the first send, so a lost reply is resent under the same one.
-      item = { ...item, meta: { ...item.meta, client_id: newClientId() } };
+      // The row id was made by randomUUID, so it serves as the client id. Two tabs without a Web Lock
+      // (plain HTTP) then agree on it, and the hub sees one id however many of them send.
+      item = { ...item, meta: { ...item.meta, client_id: NewEntryMeta.shape.client_id.safeParse(item.id).success ? item.id : newClientId() } };
       try {
         await store.put(item);
       } catch {

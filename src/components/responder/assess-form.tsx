@@ -3,16 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CameraIcon, MapPinIcon, XIcon } from "lucide-react";
-import { newClientId } from "@/components/family/client-id";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
+import { type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS } from "./capture";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
+import { type ClientIds, createClientIds, sendEntry, UNCLEAR_ANSWER } from "./send-entry";
 import { announceQueueChange } from "./use-queue-sync";
 
 const fieldLabel = "text-body-sm font-semibold text-ink";
@@ -30,6 +30,8 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const sending = useRef(false);
+  // Made on the first Send and kept for the life of this form, so a tap after a lost reply is a resend.
+  const clientIds = useRef<ClientIds | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [note, setNote] = useState<Blob | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -74,26 +76,23 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     // The ref answers at once. State would still read false for a second tap in
     // the same frame, and each POST makes its own entry.
     if (sending.current || photos.length === 0) return;
-    // One id per tap. The online try and the queued copy both carry it, so the hub
-    // can tell a resend after a lost reply from a new entry.
-    const meta = buildMeta(house, photos.map((p) => p.label), gps, newClientId());
-    if (!meta.success) return setError("This house is missing its barangay. Go back and open it again.");
     sending.current = true;
     setBusy(true);
     setError(null);
-    try {
-      const res = await fetch("/api/entries", { method: "POST", body: buildForm(meta.data, photos.map((p) => p.file), note) });
-      const body = (await res.json().catch(() => null)) as { id?: string; error?: string } | null;
-      if (res.ok && body?.id) {
-        // Stay locked while the next screen loads, so a late tap cannot post again.
-        router.push(routes.responder.drafting(body.id));
-        return;
-      }
-      setError(sendError(res.status, body?.error));
-    } catch {
-      // The hub is out of reach: keep the entry on the phone. It sends from the Queue tab.
+    clientIds.current ??= createClientIds();
+    const outcome = await sendEntry({ house, labels: photos.map((p) => p.label), gps, photos: photos.map((p) => p.file), note, ids: clientIds.current });
+    if (outcome.kind === "saved") {
+      // Stay locked while the next screen loads, so a late tap cannot post again.
+      router.push(routes.responder.drafting(outcome.id));
+      return;
+    }
+    if (outcome.kind === "invalid") setError("This house is missing its barangay. Go back and open it again.");
+    else if (outcome.kind === "unclear") setError(UNCLEAR_ANSWER);
+    else if (outcome.kind === "refused") setError(outcome.message);
+    else {
+      // The hub is out of reach: keep the entry on the phone. It sends from the Queue tab, under the same id.
       try {
-        await enqueue(meta.data, photos.map((p) => p.file), note);
+        await enqueue(outcome.meta, photos.map((p) => p.file), note);
         // The layout tries to send at once, in case only this request failed.
         announceQueueChange();
         // Stay locked while the Queue tab loads, as after a send.

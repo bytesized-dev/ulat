@@ -1,11 +1,14 @@
 import { AiPhotoDraft, AiTranslation, AiVoiceExtract } from "../contracts";
 import fixtureFile from "../../../seed/ai-fixtures.json";
+import { logAiCall } from "./audit";
+import { chatJson, OllamaError, type ChatJsonInput } from "./ollama";
+import { TEXT_SYSTEM, VOICE_SYSTEM } from "./prompts";
 
 // Every AI call goes through these four functions. With MOCK_AI=1 they return
-// the fixtures in seed/ai-fixtures.json. The Ollama calls land in BYT-9 (voice
-// and text), BYT-25 (photos) and BYT-57 (translation), and keep these
-// signatures. The real calls parse the model's output with the same schemas
-// before they return.
+// the fixtures in seed/ai-fixtures.json. Voice and text call Ollama through
+// ./ollama. The photo (BYT-25) and translation (BYT-57) calls land later and
+// keep these signatures. The real calls parse the model's output with the same
+// schemas before they return.
 
 // Parsed when the module loads, so a broken fixture fails loudly.
 const fixtures = {
@@ -22,18 +25,33 @@ function notWired(call: string, issue: string): never {
   throw new Error(`${call} needs Ollama. Set MOCK_AI=1 to use fixtures. The Ollama call lands in ${issue}.`);
 }
 
-/** A voice note, up to 30 seconds. */
+/** Call the model, write the raw reply to the audit trail, and pass failures on. */
+async function extract(call: "voice" | "text", request: Omit<ChatJsonInput<typeof AiVoiceExtract>, "schema">) {
+  try {
+    const { value, raw } = await chatJson({ ...request, schema: AiVoiceExtract });
+    await logAiCall(call, { raw });
+    return value;
+  } catch (error) {
+    if (error instanceof OllamaError) await logAiCall(call, { raw: error.raw, error });
+    throw error;
+  }
+}
+
+/**
+ * A voice note, up to 30 seconds. The audio goes to Gemma natively, which is
+ * the provisional BYT-5 decision. If that fails the risk check, whisper.cpp
+ * transcribes first and this sends the transcript as text instead.
+ */
 export async function readVoice(input: { audio: Buffer; mime: string }): Promise<AiVoiceExtract> {
-  void input;
   if (isMock()) return structuredClone(fixtures.voice);
-  return notWired("readVoice", "BYT-9");
+  return extract("voice", { system: VOICE_SYSTEM, user: "Read this voice note.", media: [input.audio] });
 }
 
 /** A typed note. The transcript comes back empty. */
 export async function readText(input: { text: string }): Promise<AiVoiceExtract> {
-  void input;
   if (isMock()) return structuredClone(fixtures.text);
-  return notWired("readText", "BYT-9");
+  const value = await extract("text", { system: TEXT_SYSTEM, user: input.text });
+  return { ...value, transcript: "" };
 }
 
 /** One to three photos of one house, with the responder's note if there is one. */

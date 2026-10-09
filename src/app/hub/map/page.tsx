@@ -22,8 +22,9 @@ export default async function HubMapPage() {
   const session = await readSession("staff", (await cookies()).get(SESSION_COOKIE.staff)?.value);
   if (!session) redirect(routes.hub.lock);
 
+  const summary = getHubSummary(db);
   return (
-    <HubMapProvider bbox={getMapBbox(db)} points={getMapPoints(db)} rows={getHubSummary(db).barangays}>
+    <HubMapProvider bbox={getMapBbox(db)} points={getMapPoints(db)} rows={summary.barangays} confirmed={summary.houses_checked}>
       <HubPage title="Map" active={routes.hub.map} rail={<HubMapRail />}>
         <HubMapMain />
       </HubPage>

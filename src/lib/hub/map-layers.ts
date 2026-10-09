@@ -59,15 +59,17 @@ export function toggleLayer(visibility: LayerVisibility, layer: MapLayer): Layer
 }
 
 /**
- * How many things each toggle controls: pins for the pin layers, shaded
- * barangays for shading. Counted whether or not the layer is on, so a
- * hidden layer still says what it would show.
+ * The number beside each toggle. The pin layers count their pins and shading
+ * counts shaded barangays. Confirmed counts every confirmed entry, from the
+ * summary, because houses with damage class none are confirmed but have no
+ * pin. Counted whether or not the layer is on, so a hidden layer still says
+ * what it would show.
  */
-export function layerCounts(points: readonly MapPoint[], shading: BarangayShading): Record<MapLayer, number> {
-  const counts: Record<MapLayer, number> = { shading: Object.keys(shading).length, confirmed: 0, unvisited: 0, relief: 0, shelter: 0, hazard: 0 };
+export function layerCounts(points: readonly MapPoint[], shading: BarangayShading, confirmedEntries: number): Record<MapLayer, number> {
+  const counts: Record<MapLayer, number> = { shading: Object.keys(shading).length, confirmed: confirmedEntries, unvisited: 0, relief: 0, shelter: 0, hazard: 0 };
   for (const { pin } of points) {
     const layer = layerOf(pin.kind);
-    if (layer) counts[layer] += 1;
+    if (layer && layer !== "confirmed") counts[layer] += 1;
   }
   return counts;
 }
@@ -90,6 +92,12 @@ export function selectedPoint(points: readonly MapPoint[], visibility: LayerVisi
   if (selectedId === null) return null;
   const point = points.find((p) => p.pin.id === selectedId);
   return point && isShown(point, visibility) ? point : null;
+}
+
+/** The selection after a layer is turned off: cleared when the selected pin was in that layer, so it does not come back when the layer does. */
+export function selectionAfterHide(points: readonly MapPoint[], selectedId: string | null, hidden: MapLayer): string | null {
+  const point = points.find((p) => p.pin.id === selectedId);
+  return point && layerOf(point.pin.kind) === hidden ? null : selectedId;
 }
 
 /** Picking the pin that is already selected clears the selection. */

@@ -13,6 +13,7 @@ import {
   layerCounts,
   nextSelection,
   selectedPoint,
+  selectionAfterHide,
   shadingFromRows,
   toggleLayer,
   visiblePins,
@@ -52,10 +53,12 @@ type HubMapProviderProps = {
   points: MapPoint[];
   /** The barangay rows from the summary, which decide the shading. */
   rows: BarangayRow[];
+  /** Confirmed entries of every damage class, from the summary. Counts the Confirmed layer. */
+  confirmed: number;
   children: React.ReactNode;
 };
 
-export function HubMapProvider({ bbox, points, rows, children }: HubMapProviderProps) {
+export function HubMapProvider({ bbox, points, rows, confirmed, children }: HubMapProviderProps) {
   const router = useRouter();
   const [layers, setLayers] = React.useState<LayerVisibility>(ALL_LAYERS_ON);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
@@ -68,13 +71,17 @@ export function HubMapProvider({ bbox, points, rows, children }: HubMapProviderP
       bbox,
       pins: visiblePins(points, layers),
       shading: layers.shading ? shading : {},
-      counts: layerCounts(points, shading),
+      counts: layerCounts(points, shading, confirmed),
       layers,
-      toggle: (layer) => setLayers((current) => toggleLayer(current, layer)),
+      toggle: (layer) => {
+        setLayers((current) => toggleLayer(current, layer));
+        // A pin in a layer that goes off is deselected for good, not hidden until the layer returns.
+        if (layers[layer]) setSelectedId((current) => selectionAfterHide(points, current, layer));
+      },
       selected: selectedPoint(points, layers, selectedId),
       select: (pin) => setSelectedId((current) => nextSelection(current, pin.id)),
     };
-  }, [bbox, points, rows, layers, selectedId]);
+  }, [bbox, points, rows, confirmed, layers, selectedId]);
 
   return <HubMapContext.Provider value={value}>{children}</HubMapContext.Provider>;
 }

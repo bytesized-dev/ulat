@@ -8,6 +8,7 @@ import {
   layerOf,
   nextSelection,
   selectedPoint,
+  selectionAfterHide,
   shadingFromRows,
   summarizePoint,
   toggleLayer,
@@ -74,7 +75,7 @@ describe("shading", () => {
 
 describe("layer counts", () => {
   it("counts the pins in each layer and the shaded barangays", () => {
-    expect(layerCounts(points, { Sinonoc: 1, Napo: 3 })).toEqual({
+    expect(layerCounts(points, { Sinonoc: 1, Napo: 3 }, 3)).toEqual({
       shading: 2,
       confirmed: 3,
       unvisited: 1,
@@ -84,14 +85,25 @@ describe("layer counts", () => {
     });
   });
 
-  it("is zero everywhere when nothing is on the map", () => {
-    expect(Object.values(layerCounts([], {}))).toEqual([0, 0, 0, 0, 0, 0]);
+  it("is zero everywhere when nothing is confirmed or on the map", () => {
+    expect(Object.values(layerCounts([], {}, 0))).toEqual([0, 0, 0, 0, 0, 0]);
+  });
+
+  it("counts Confirmed from confirmed entries, including houses with no pin", () => {
+    // 3 pins on the map, 5 confirmed entries: two have damage class none.
+    const counts = layerCounts(points, {}, 5);
+    expect(counts.confirmed).toBe(5);
+    expect(visiblePins(points, ALL_LAYERS_ON).filter((p) => layerOf(p.kind) === "confirmed")).toHaveLength(3);
+  });
+
+  it("still counts the other layers from their pins", () => {
+    expect(layerCounts(points, {}, 5)).toMatchObject({ unvisited: 1, relief: 1, shelter: 2, hazard: 1 });
   });
 
   it("does not change when a layer is turned off", () => {
     const off = toggleLayer(ALL_LAYERS_ON, "shelter");
     expect(visiblePins(points, off)).toHaveLength(6);
-    expect(layerCounts(points, {}).shelter).toBe(2);
+    expect(layerCounts(points, {}, 3).shelter).toBe(2);
   });
 });
 
@@ -135,6 +147,20 @@ describe("selection", () => {
 
   it("selects nothing when its layer is off", () => {
     expect(selectedPoint(points, toggleLayer(ALL_LAYERS_ON, "confirmed"), id)).toBeNull();
+  });
+
+  it("clears the selection when the selected pin's layer goes off, so it stays cleared when the layer returns", () => {
+    expect(selectionAfterHide(points, id, "confirmed")).toBeNull();
+    // Off, then on again: nothing is selected, where selectedPoint alone would bring the pin back.
+    const back = ALL_LAYERS_ON;
+    expect(selectedPoint(points, back, selectionAfterHide(points, id, "confirmed"))).toBeNull();
+    expect(selectedPoint(points, back, id)?.ref).toBe(entryId);
+  });
+
+  it("keeps the selection when another layer goes off", () => {
+    expect(selectionAfterHide(points, id, "hazard")).toBe(id);
+    expect(selectionAfterHide(points, id, "shading")).toBe(id);
+    expect(selectionAfterHide(points, null, "confirmed")).toBeNull();
   });
 
   it("picks a pin, clears it when picked again, and moves to another", () => {

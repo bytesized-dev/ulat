@@ -8,7 +8,7 @@ Goal: phones with no mobile data join the hub's Wi-Fi, open `https://hub.[your-d
 2. **Certificate.** Get a Let's Encrypt certificate with a DNS challenge, which never needs the hub to be reachable from the internet:
    `certbot certonly --manual --preferred-challenges dns -d hub.<team-domain>`
    Add the TXT record it asks for at your DNS provider. Copy `fullchain.pem` and `privkey.pem` to `/etc/ulat/certs/`. Note the expiry date in Kit setup. Certificates last 90 days.
-3. **Map, model and app.** `ollama pull gemma4:e4b`, build the app, put the map files in `public/map`.
+3. **Map, model and app.** `ollama pull gemma4:e4b`, install ffmpeg (`brew install ffmpeg`, or `winget install Gyan.FFmpeg` on Windows) so voice notes work, build the app, put the map files in `public/map`.
 
 ## In the field
 

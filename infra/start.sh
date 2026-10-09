@@ -54,6 +54,9 @@ caddy="${CADDY:-$(command -v caddy || true)}"
 command -v node >/dev/null || fail "node not found."
 if [ "$with_app" = 1 ]; then
   command -v pnpm >/dev/null || fail "pnpm not found."
+  # Voice notes go through ffmpeg before the model (src/lib/ai/audio.ts). The rest of the app runs without it.
+  [ -n "${FFMPEG_PATH:-}" ] || PATH="$PATH:/opt/homebrew/bin:/usr/local/bin" command -v ffmpeg >/dev/null \
+    || echo "start.sh: ffmpeg not found, so every voice note will fail. Install it with: brew install ffmpeg" >&2
 fi
 
 # dnsmasq lives in sbin, which is often not on PATH.

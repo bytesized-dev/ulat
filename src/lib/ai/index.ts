@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import { AiPhotoDraft, AiTranslation, AiVoiceExtract } from "../contracts";
 import fixtureFile from "../../../seed/ai-fixtures.json";
+import { toWav } from "./audio";
 import { logAiCall } from "./audit";
 import { chatJson, OllamaError, type ChatJsonInput } from "./ollama";
 import { PHOTO_SYSTEM, photoUserPrompt, TEXT_SYSTEM, TRANSLATE_SYSTEM, VOICE_SYSTEM } from "./prompts";
@@ -40,11 +41,19 @@ async function extract<S extends z.ZodType>(
 /**
  * A voice note, up to 30 seconds. The audio goes to Gemma natively, which is
  * the provisional BYT-5 decision. If that fails the risk check, whisper.cpp
- * transcribes first and this sends the transcript as text instead.
+ * transcribes first and this sends the transcript as text instead. Ollama
+ * reads only WAV, so the recording is converted first, see ./audio.
  */
 export async function readVoice(input: { audio: Buffer; mime: string }): Promise<AiVoiceExtract> {
   if (isMock()) return structuredClone(fixtures.voice);
-  return extract("voice", AiVoiceExtract, { system: VOICE_SYSTEM, user: "Read this voice note.", media: [input.audio] });
+  let wav: Buffer;
+  try {
+    wav = await toWav(input.audio);
+  } catch (error) {
+    if (error instanceof OllamaError) await logAiCall("voice", { raw: error.raw, error });
+    throw error;
+  }
+  return extract("voice", AiVoiceExtract, { system: VOICE_SYSTEM, user: "Read this voice note.", media: [wav] });
 }
 
 // A typed note has no transcript. With thinking off the model copied the note

@@ -30,6 +30,8 @@ import type { MapEngineHandle, MapEngineProps, PinKind } from "./types";
 const stacking: PinKind[] = ["unvisited", "partial", "total", "shelter", "relief", "hazard", "you"];
 
 const padding = 16;
+// The tiles stop at zoom 15, which is street level and still sharp.
+const focusZoom = 15;
 const transparent = "rgba(0, 0, 0, 0)";
 
 let prepared = false;
@@ -50,6 +52,8 @@ export function MaplibreMap({
   shading = {},
   selectedId,
   onSelect,
+  focus,
+  onMove,
   label,
   onFail,
 }: MapEngineProps & { ref?: Ref<MapEngineHandle>; onFail: () => void }) {
@@ -57,6 +61,10 @@ export function MaplibreMap({
   const [map, setMap] = useState<MapLibre | null>(null);
   const [palette, setPalette] = useState<MapPalette | null>(null);
   const start = useRef({ bbox, onFail });
+  const moved = useRef(onMove);
+  useEffect(() => {
+    moved.current = onMove;
+  });
 
   useEffect(() => {
     const container = frame.current;
@@ -98,6 +106,29 @@ export function MaplibreMap({
     // bbox is compared by value through bboxKey.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, bboxKey]);
+
+  // Tell the screen where the middle is, so a center pin can read the spot under it.
+  useEffect(() => {
+    if (!map) return;
+    const report = () => {
+      const { lng, lat } = map.getCenter();
+      moved.current?.({ lng, lat });
+    };
+    report();
+    map.on("moveend", report);
+    return () => {
+      map.off("moveend", report);
+    };
+  }, [map]);
+
+  // A GPS fix or saved spot moves the map in close. Compared by value, so a new object each render does not jump it.
+  const focusKey = focus ? `${focus.lng},${focus.lat}` : "";
+  useEffect(() => {
+    if (!map || !focus) return;
+    map.jumpTo({ center: [focus.lng, focus.lat], zoom: focusZoom });
+    // focus is compared by value through focusKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, focusKey]);
 
   // Barangay outlines, names and shading.
   useEffect(() => {

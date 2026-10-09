@@ -2,7 +2,18 @@
 
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { barangayNameProperty } from "@/lib/hub/map-assets";
-import { type Bbox, type Percent, fitBbox, inside, toPercent, zoomBbox } from "@/lib/hub/map-projection";
+import {
+  type Bbox,
+  type LngLat,
+  type Percent,
+  bboxCenter,
+  fitBbox,
+  fromPercent,
+  inside,
+  moveBbox,
+  toPercent,
+  zoomBbox,
+} from "@/lib/hub/map-projection";
 import { cn } from "@/lib/utils";
 import { PinTarget } from "./pin-mark";
 import { barangayName } from "./shading";
@@ -70,9 +81,13 @@ export function SchematicMap({
   shading = {},
   selectedId,
   onSelect,
+  focus,
+  onMove,
   label,
 }: MapEngineProps & { ref?: Ref<MapEngineHandle> }) {
   const [zoom, setZoom] = useState(1);
+  // Where the view is centered. Null until panned or focused, which keeps the town bbox as it was.
+  const [middle, setMiddle] = useState<LngLat | null>(null);
   useImperativeHandle(ref, () => ({
     zoomIn: () => setZoom((z) => Math.min(z * 2, maxZoom)),
     zoomOut: () => setZoom((z) => Math.max(z / 2, 1)),
@@ -92,7 +107,45 @@ export function SchematicMap({
     return () => observer.disconnect();
   }, []);
 
-  const view = zoomBbox(fitBbox(bbox, aspect), zoom);
+  const fitted = fitBbox(bbox, aspect);
+  const view = zoomBbox(middle ? moveBbox(fitted, middle) : fitted, zoom);
+  const center = bboxCenter(view);
+
+  // A GPS fix or saved spot moves the view there, close in. Compared by value, and
+  // adjusted while rendering so the map never draws one frame at the old spot.
+  const focusKey = focus ? `${focus.lng},${focus.lat}` : "";
+  const [seenFocus, setSeenFocus] = useState("");
+  if (focusKey !== seenFocus) {
+    setSeenFocus(focusKey);
+    if (focus) {
+      setMiddle({ lng: focus.lng, lat: focus.lat });
+      setZoom(maxZoom);
+    }
+  }
+
+  // Tell the screen where the middle is, so a center pin can read the spot under it.
+  const moved = useRef(onMove);
+  useEffect(() => {
+    moved.current = onMove;
+  });
+  useEffect(() => {
+    if (aspect > 0) moved.current?.({ lng: center.lng, lat: center.lat });
+  }, [aspect, center.lng, center.lat]);
+
+  // Dragging slides the view the way a thumb would, so the point under the pointer stays put.
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  function pan(event: React.PointerEvent<HTMLDivElement>) {
+    const start = drag.current;
+    const el = frame.current;
+    if (!start || !el) return;
+    const { width, height } = el.getBoundingClientRect();
+    if (!(width > 0) || !(height > 0)) return;
+    const dx = ((event.clientX - start.x) / width) * 100;
+    const dy = ((event.clientY - start.y) / height) * 100;
+    drag.current = { x: event.clientX, y: event.clientY };
+    setMiddle(fromPercent({ x: 50 - dx, y: 50 - dy }, view));
+  }
+
   const features = barangays?.features ?? [];
   const ordered = [...pins].sort(
     (a, b) =>
@@ -100,7 +153,22 @@ export function SchematicMap({
   );
 
   return (
-    <div ref={frame} role="group" aria-label={label} className="absolute inset-0 overflow-hidden bg-map-land">
+    <div
+      ref={frame}
+      role="group"
+      aria-label={label}
+      className="absolute inset-0 touch-none overflow-hidden bg-map-land"
+      onPointerDown={(event) => {
+        drag.current = { x: event.clientX, y: event.clientY };
+      }}
+      onPointerMove={pan}
+      onPointerUp={() => {
+        drag.current = null;
+      }}
+      onPointerCancel={() => {
+        drag.current = null;
+      }}
+    >
       <svg aria-hidden className="absolute inset-0 size-full" viewBox="0 0 100 100" preserveAspectRatio="none">
         {features.map((feature, i) => {
           const name = barangayName(feature.properties, barangayNameProperty);

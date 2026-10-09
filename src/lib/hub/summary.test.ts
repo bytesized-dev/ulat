@@ -76,12 +76,12 @@ describe("summary of the simulation seed", () => {
       r.barangay, r.totally, r.partially, r.families, r.people, r.hurt, r.waiting, r.priority,
     ]);
     expect(rows).toEqual([
-      ["San Isidro", 6, 7, 18, 76, 3, 6, "high"],
-      ["Santa Cruz", 4, 5, 13, 54, 2, 4, "high"],
-      ["Mabini", 1, 3, 8, 33, 1, 2, "medium"],
-      ["Poblacion", 2, 6, 12, 50, 0, 3, "medium"],
-      ["Bagong Silang", 1, 2, 5, 20, 0, 2, "low"],
-      ["Rizal", 0, 0, 2, 8, 0, 0, "low"],
+      ["Sinonoc", 6, 7, 18, 76, 3, 6, "high"],
+      ["Dawo (Pob.)", 4, 5, 13, 54, 2, 4, "high"],
+      ["Potol (Pob.)", 1, 3, 8, 33, 1, 2, "medium"],
+      ["Banonong (Pob.)", 2, 6, 12, 50, 0, 3, "medium"],
+      ["Linabo (Pob.)", 1, 2, 5, 20, 0, 2, "low"],
+      ["Cawa-cawa (Pob.)", 0, 0, 2, 8, 0, 0, "low"],
     ]);
   });
 

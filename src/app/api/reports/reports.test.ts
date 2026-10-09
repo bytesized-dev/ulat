@@ -177,6 +177,28 @@ describe("reports API", () => {
     expect(trail[0]).toMatchObject({ entity: "report", type: "report.created", actor: "family" });
   });
 
+  it("gives the same code for the same client_id, with one row, one audit event and one live event", async () => {
+    const live = await import("@/lib/live/bus");
+    const heard: string[] = [];
+    const stop = live.subscribe({ role: "staff" } as never, (event) => heard.push(event.type));
+    const client_id = "3f6c2a1e-9b0d-4c55-8a7e-1d2f3a4b5c6d";
+
+    const first = await create({ client_id });
+    const again = await create({ client_id });
+    stop();
+
+    expect(first.res.status).toBe(201);
+    expect(again.res.status).toBe(201);
+    expect(again.code).toBe(first.code);
+    expect(db.select().from(schema.reports).where(eq(schema.reports.client_id, client_id)).all()).toHaveLength(1);
+    expect(db.select().from(schema.events).where(eq(schema.events.entity_id, row(first.code).id)).all()).toHaveLength(1);
+    expect(heard).toEqual(["report.created"]);
+    // A different tap is a different report, and a report without a client_id never collides.
+    expect((await create({ client_id: "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d" })).code).not.toBe(first.code);
+    expect((await create()).code).not.toBe((await create()).code);
+    expect((await route.POST(post(report({ client_id: "not-a-uuid" })))).status).toBe(400);
+  });
+
   it("lets only staff file a desk report", async () => {
     expect((await create({ source: "desk" })).res.status).toBe(401);
     await signIn("responder");

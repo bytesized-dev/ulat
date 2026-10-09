@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Need, VoiceField } from "@/lib/contracts";
+import { Need, routes, VoiceField } from "@/lib/contracts";
 import { markChecked, type ReportDraft } from "./report-draft";
 import { NEED_LABELS } from "./send-report";
 
@@ -17,6 +17,16 @@ export const NEED_OPTIONS = Need.options.map((value) => ({ value, label: NEED_LA
 /** True when there is nothing to check yet, so the screen sends the family back to the start. */
 export function isBlankDraft(draft: ReportDraft): boolean {
   return draft.household_head.trim() === "" && draft.barangay.trim() === "" && draft.transcript.trim() === "";
+}
+
+/**
+ * Where Back goes from the check screen: the Details step the draft came from,
+ * the voice note or the typed one. A draft with neither goes to the start.
+ */
+export function checkBackHref(draft: ReportDraft): string {
+  if (isBlankDraft(draft)) return routes.family.report;
+  if (draft.spoken) return routes.family.voice;
+  return draft.transcript.trim() !== "" ? routes.family.type : routes.family.report;
 }
 
 /** True when the model was not sure about the field and the family has not touched it. */

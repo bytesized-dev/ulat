@@ -110,6 +110,8 @@ export const NewEntryMeta = z.object({
   ...LatLng,
   gps_accuracy_m: z.number().min(0).nullable(),
   photo_labels: z.array(z.string().max(40)).max(3),
+  /** Made once on the phone when the responder taps Send. The hub returns the same entry for a repeat. */
+  client_id: z.string().uuid().optional(),
 });
 export type NewEntryMeta = z.infer<typeof NewEntryMeta>;
 

@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { MapIcon, SearchIcon, ShieldCheckIcon, UsersRoundIcon } from "lucide-react";
+import { CurrentPlace } from "@/components/family/current-place";
 import { HomeUpdate } from "@/components/family/home-update";
 import { Button } from "@/components/ui/button";
 import { DarkHero } from "@/components/ui/dark-hero";
 import { Row } from "@/components/ui/row";
+import { readSetting } from "@/lib/auth/settings";
 import { routes } from "@/lib/contracts/routes";
 
-// PLACEHOLDER. The hub has no setting for the evacuation center name yet.
-const centerName = "Poblacion evacuation center";
+// The town is a hub setting, so it is read on each request.
+export const dynamic = "force-dynamic";
 
 const more = [
   { label: "Report for a neighbor", href: routes.family.reportNeighbor, icon: <UsersRoundIcon /> },
@@ -17,9 +19,11 @@ const more = [
 ];
 
 export default function HomePage() {
+  // The phone swaps in its own barangay once it has a position. Until then, the town.
+  const town = readSetting("town")?.trim() || "the evacuation center";
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
-      <DarkHero as="h1" eyebrow="You're at" title={centerName} className="rounded-none px-gutter pt-9 pb-7">
+      <DarkHero as="h1" eyebrow="You're at" title={<CurrentPlace fallback={town} />} className="rounded-none px-gutter pt-9 pb-7">
         <Button asChild className="mt-7 w-full">
           <Link href={routes.family.reportFamily}>Report my household</Link>
         </Button>

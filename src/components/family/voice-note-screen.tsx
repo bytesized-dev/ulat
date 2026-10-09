@@ -70,6 +70,7 @@ function VoiceNoteScreen() {
 
   async function begin() {
     const result = await recorder.start();
+    if (result === "busy" || result === "cancelled") return;
     setPhase(result === "recording" ? "recording" : result === "blocked" ? "blocked" : "unclear");
   }
 

@@ -69,10 +69,11 @@ export async function postReport(body: NewReport, send: typeof fetch = fetch): P
 
 /**
  * Sends the draft to the hub as a NewReport with consent true. Never throws, and
- * never touches the draft, so a failed send leaves it for another try.
+ * never touches the draft, so a failed send leaves it for another try. The
+ * clientId is made once per tap on Send and reused if the report is queued.
  */
-export async function sendReport(draft: ReportDraft, send: typeof fetch = fetch): Promise<SendResult> {
+export async function sendReport(draft: ReportDraft, send: typeof fetch = fetch, clientId?: string): Promise<SendResult> {
   const body = toNewReport(draft);
   if (!body.success) return { ok: false, message: CHECK_REPORT, retry: false };
-  return postReport(body.data, send);
+  return postReport(clientId ? { ...body.data, client_id: clientId } : body.data, send);
 }

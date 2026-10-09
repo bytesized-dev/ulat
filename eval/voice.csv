@@ -1,3 +1,15 @@
 file,language,household_head,people,hurt,missing,what_happened,needs
 voice/bisaya-01.wav,ceb,Ramon Dela Cruz,5,2,1,The roof is gone and one wall fell.,water;food;tarp
 voice/tagalog-01.wav,tl,Liza Santos,6,1,2,The roof is gone and the back wall fell.,water;medicine;baby_needs
+voice/v01.wav,ceb,Maria Santos,5,1,0,"Maayong adlaw. Ako si Maria Santos sa Purok 3. Lima mi sa balay. Nawala ang atop sa among balay. Usa ka bata ang samaran sa tiil. Wala mi tubig ug pagkaon.",water;food
+voice/v02.wav,ceb,Roberto Dela Cruz,7,0,1,"Ako si Roberto Dela Cruz. Pito mi tanan sa balay. Natumba ang among bungbong. Walay nasamdan, pero ang akong igsoon wala pa nakit-an. Kinahanglan mi og tarpolin ug tubig.",tarp;water
+voice/v03.wav,ceb,Ana Reyes,4,2,0,"Si Ana Reyes ni. Upat mi sa balay. Naanod ang among balay sa baha. Duha ang samaran. Naa pud mi gamayng bata, kinahanglan mi og gatas ug diaper, ug tambal.",baby_needs;medicine
+voice/v04.wav,tl,Josefina Ramos,6,0,0,"Magandang umaga po. Ako po si Josefina Ramos. Anim po kami sa bahay. Natangay po ang bubong namin. Walang nasaktan at walang nawawala. Kailangan po namin ng tubig at pagkain.",water;food
+voice/v05.wav,tl,Eduardo Villanueva,4,1,0,"Si Eduardo Villanueva po ito. Apat po kami. Gumuho po ang pader at nasugatan ang asawa ko sa braso. Walang nawawala. Kailangan po namin ng gamot.",medicine
+voice/v06.wav,tl,Carmela Bautista,8,0,2,"Ako si Carmela Bautista, walong tao po kami dito. Binaha po hanggang bubong. Walang nasaktan, pero dalawa po ang nawawala, yung dalawang pamangkin ko. Kailangan po namin ng tarpaulin at hygiene kit.",tarp;hygiene_kit
+voice/v07.wav,mixed,Mark Anthony Flores,5,1,0,"Hi po, si Mark Anthony Flores ito. We're five here sa bahay. Yung roof namin nawala, tapos may isang injured, yung lola ko. Walang missing. Need po namin ng water and medicine.",water;medicine
+voice/v08.wav,mixed,Grace Lim,3,0,0,"Ako po si Grace Lim, three kami sa bahay. Nasira yung wall pero okay naman kami, walang hurt, walang missing. Kailangan lang namin ng tarp.",tarp
+voice/v09.wav,mixed,Ramil Torres,10,0,1,"This is Ramil Torres, ten kami dito. May baby kami na seven months, need namin ng diaper and gatas. Walang hurt, pero isa yung nawawala, si kuya ko, hindi pa namin siya makita.",baby_needs
+voice/v10.wav,en,Patricia Gomez,6,2,0,"Hello, this is Patricia Gomez. There are six of us at home. The roof was blown off and two people are hurt, one with a cut leg. Nobody is missing. We need water and food.",water;food
+voice/v11.wav,en,Daniel Cruz,4,0,1,"My name is Daniel Cruz. We are four in the house. The flood took everything. Nobody is hurt, but my father has been missing since last night. We need a tarp and hygiene kits.",tarp;hygiene_kit
+voice/v12.wav,en,Liza Mendoza,5,0,0,"This is Liza Mendoza, five people. Our house is fine, only the fence fell. No one is hurt or missing. We don't need anything right now.",

@@ -1,5 +1,7 @@
 import { subscribe } from "@/lib/live/bus";
 import { canSee, viewerFromRequest } from "@/lib/live/scope";
+import { markSeen } from "@/lib/status/phones";
+import { startStatusTicker } from "@/lib/status";
 
 export const runtime = "nodejs";
 // A stream is never cached or prerendered.
@@ -11,6 +13,10 @@ export async function GET(request: Request) {
   const result = await viewerFromRequest(request);
   if (!result.ok) return Response.json({ error: "bad_code" }, { status: 400 });
   const { viewer } = result;
+  startStatusTicker();
+  // The hub laptop is not a phone. A phone's stream keeps its address fresh on
+  // every ping, so an open stream keeps counting in the phones number.
+  const isPhone = viewer.role !== "staff";
 
   const encoder = new TextEncoder();
   let cleanup = () => {};
@@ -23,7 +29,11 @@ export async function GET(request: Request) {
         if (canSee(viewer, event)) write(`data: ${JSON.stringify(event)}\n\n`);
       });
       // The comment line keeps phones, Caddy and Wi-Fi from closing an idle stream.
-      const ping = setInterval(() => write(": ping\n\n"), PING_MS);
+      const ping = setInterval(() => {
+        write(": ping\n\n");
+        if (isPhone) markSeen(request);
+      }, PING_MS);
+      if (isPhone) markSeen(request);
 
       let closed = false;
       cleanup = () => {

@@ -25,6 +25,18 @@ export const maxAudioBytes = (mime: string) => (WAV_TYPES.has(mime.split(";")[0]
  */
 export const MAX_UNLINKED_VOICE_BYTES = 200 * 1024 * 1024;
 /**
+ * The most recordings no report has taken that may sit on the hub. A real
+ * recording is linked seconds after it is uploaded, so the count stays near
+ * zero in normal use. The cap keeps a sweep over the unlinked files short,
+ * whatever size the files are.
+ */
+export const MAX_UNLINKED_VOICE_FILES = 2000;
+/** The smallest recording the hub keeps. A real one second note is several KB, and a smaller file holds no speech. */
+export const MIN_VOICE_BYTES = 1024;
+/** The disk block size. Every stored file takes at least one, so the caps count each recording as whole blocks. */
+export const VOICE_BLOCK_BYTES = 4096;
+
+/**
  * How many bytes the whole voice folder may hold, linked recordings included.
  * Anyone can send a report that links a recording, so the unlinked cap alone
  * does not stop the folder from growing. Above this the route answers 507.

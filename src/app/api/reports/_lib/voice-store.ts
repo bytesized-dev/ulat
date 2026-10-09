@@ -5,8 +5,10 @@ import { db } from "@/db/client";
 import { reports } from "@/db/schema";
 import {
   MAX_UNLINKED_VOICE_BYTES,
+  MAX_UNLINKED_VOICE_FILES,
   MAX_VOICE_FOLDER_BYTES,
   UNLINKED_VOICE_MAX_AGE_MS,
+  VOICE_BLOCK_BYTES,
   VOICE_SWEEP_EVERY_MS,
 } from "@/lib/audio-limits";
 import { uploadDir } from "../../entries/_lib/uploads";
@@ -35,6 +37,9 @@ const EXTENSIONS = new Set(Object.values(EXT));
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** What a file of this size takes on disk: whole blocks, and at least one. */
+const billed = (bytes: number) => Math.max(1, Math.ceil(bytes / VOICE_BLOCK_BYTES)) * VOICE_BLOCK_BYTES;
+
 type Recording = { path: string; bytes: number; modified: number };
 
 /** Every stored family recording, with its size and last write time. */
@@ -45,7 +50,7 @@ async function listRecordings(): Promise<Recording[]> {
     for (const name of await readdir(join(voiceDir(), day)).catch(() => [] as string[])) {
       if (!EXTENSIONS.has(name.split(".").pop() ?? "")) continue;
       const info = await stat(join(voiceDir(), day, name)).catch(() => null);
-      if (info?.isFile()) found.push({ path: `${VOICE}/${day}/${name}`, bytes: info.size, modified: info.mtimeMs });
+      if (info?.isFile()) found.push({ path: `${VOICE}/${day}/${name}`, bytes: billed(info.size), modified: info.mtimeMs });
     }
   }
   return found;
@@ -75,7 +80,7 @@ export async function findVoice(voiceId: string): Promise<string | null> {
 // bundle each one lands in. `linked` is what the last sweep found linked, so a
 // report that links a recording the sweep already counted as linked does not
 // take it off the unlinked count a second time.
-type Counts = { total: number; unlinked: number; sweptAt: number; linked: Set<string> };
+type Counts = { total: number; unlinked: number; files: number; sweptAt: number; linked: Set<string> };
 const shared = globalThis as unknown as { ulatVoiceCounts?: Counts; ulatVoiceLock?: Promise<void> };
 
 /**
@@ -99,13 +104,13 @@ async function exclusive<T>(work: () => Promise<T>): Promise<T> {
 
 /**
  * Walks the voice folder: deletes unlinked recordings over an hour old, then
- * counts what is left. A recording a report links is never deleted.
+ * counts what is left. Sizes are counted as disk blocks, see billed. A recording a report links is never deleted.
  */
 async function sweep(now: number): Promise<Counts> {
   const linked = new Set(
     db.select({ path: reports.voice_path }).from(reports).where(like(reports.voice_path, `${VOICE}/%`)).all().flatMap((r) => (r.path ? [r.path] : [])),
   );
-  const counts: Counts = { total: 0, unlinked: 0, sweptAt: now, linked };
+  const counts: Counts = { total: 0, unlinked: 0, files: 0, sweptAt: now, linked };
   for (const recording of await listRecordings()) {
     const isLinked = linked.has(recording.path);
     if (!isLinked && now - recording.modified > UNLINKED_VOICE_MAX_AGE_MS) {
@@ -113,7 +118,10 @@ async function sweep(now: number): Promise<Counts> {
       continue;
     }
     counts.total += recording.bytes;
-    if (!isLinked) counts.unlinked += recording.bytes;
+    if (!isLinked) {
+      counts.unlinked += recording.bytes;
+      counts.files += 1;
+    }
   }
   return (shared.ulatVoiceCounts = counts);
 }
@@ -124,15 +132,17 @@ export async function voiceLinked(path: string): Promise<void> {
   const info = await stat(join(uploadDir, path)).catch(() => null);
   if (!counts || !info || counts.linked.has(path)) return;
   counts.linked.add(path);
-  counts.unlinked = Math.max(0, counts.unlinked - info.size);
+  counts.unlinked = Math.max(0, counts.unlinked - billed(info.size));
+  counts.files = Math.max(0, counts.files - 1);
 }
 
 export type StoreVoiceResult = { ok: true } | { ok: false; error: "audio_type_not_allowed" | "storage_full" };
 
 /**
- * Stores a recording unless the hub is full. Two caps apply: recordings no
- * report has taken may total MAX_UNLINKED_VOICE_BYTES, and the whole voice
- * folder may hold MAX_VOICE_FOLDER_BYTES. An upload under both caps by the
+ * Stores a recording unless the hub is full. Three caps apply: recordings no
+ * report has taken may total MAX_UNLINKED_VOICE_BYTES and MAX_UNLINKED_VOICE_FILES
+ * files, and the whole voice folder may hold MAX_VOICE_FOLDER_BYTES. Every file
+ * counts as whole disk blocks, so a tiny one cannot slip under a byte cap. An upload under both caps by the
  * running counts is written with no walk of the folder. One that looks over a
  * cap, or the first after a minute, sweeps first and is judged on the exact
  * counts, so a 507 is never a stale guess. Uploads run one at a time, see
@@ -156,14 +166,16 @@ async function storeExclusively(data: Buffer, ext: string, voiceId: string, now:
     return { ok: true };
   }
 
-  const size = data.length;
-  const over = (c: Counts) => c.unlinked + size > MAX_UNLINKED_VOICE_BYTES || c.total + size > MAX_VOICE_FOLDER_BYTES;
+  const size = billed(data.length);
+  const over = (c: Counts) =>
+    c.unlinked + size > MAX_UNLINKED_VOICE_BYTES || c.total + size > MAX_VOICE_FOLDER_BYTES || c.files + 1 > MAX_UNLINKED_VOICE_FILES;
   let counts = shared.ulatVoiceCounts;
   if (!counts || now - counts.sweptAt >= VOICE_SWEEP_EVERY_MS || over(counts)) counts = await sweep(now);
   if (over(counts)) return { ok: false, error: "storage_full" };
   // Counted before the write and taken back if the write fails.
   counts.total += size;
   counts.unlinked += size;
+  counts.files += 1;
 
   const day = new Date(now).toISOString().slice(0, 10);
   const target = join(voiceDir(), day, `${voiceId}.${ext}`);
@@ -174,6 +186,7 @@ async function storeExclusively(data: Buffer, ext: string, voiceId: string, now:
   } catch (error) {
     counts.total -= size;
     counts.unlinked -= size;
+    counts.files -= 1;
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
   }
   return { ok: true };

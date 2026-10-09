@@ -1,4 +1,4 @@
-import { MAX_VOICE_BODY_BYTES, maxAudioBytes } from "@/lib/audio-limits";
+import { MAX_VOICE_BODY_BYTES, MIN_VOICE_BYTES, maxAudioBytes } from "@/lib/audio-limits";
 import { NewVoiceMeta, type VoiceStored } from "@/lib/contracts";
 import { storeVoice } from "../_lib/voice-store";
 
@@ -29,6 +29,7 @@ export async function POST(req: Request) {
   if (!meta.success) return reject("bad_meta");
   const audio = form.get("audio");
   if (!(audio instanceof File) || audio.size === 0) return reject("bad_audio");
+  if (audio.size < MIN_VOICE_BYTES) return reject("audio_too_small");
   // Content-Length can lie, so the file is checked against its own format's cap.
   if (audio.size > maxAudioBytes(audio.type)) return reject("too_large", 413);
 

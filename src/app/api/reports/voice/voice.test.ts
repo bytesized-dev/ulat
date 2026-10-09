@@ -23,10 +23,11 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined) }),
 }));
 
-// The caps are 200 MB unlinked and 1 GB in all, and a sweep runs once a minute.
+// The caps are 200 MB and 2000 files unlinked and 1 GB in all, and a sweep runs once a minute.
+// Every file counts as whole 4 KiB blocks, so the small caps below are in blocks.
 // A test that fills a cap or needs a sweep right away sets its own numbers.
-const DEFAULTS = { cap: 200 * 1024 * 1024, folderCap: 1024 * 1024 * 1024, sweepEvery: 60 * 1000 };
-const limits = vi.hoisted(() => ({ cap: 0, folderCap: 0, sweepEvery: 0 }));
+const DEFAULTS = { cap: 200 * 1024 * 1024, folderCap: 1024 * 1024 * 1024, fileCap: 2000, sweepEvery: 60 * 1000 };
+const limits = vi.hoisted(() => ({ cap: 0, folderCap: 0, fileCap: 0, sweepEvery: 0 }));
 Object.assign(limits, DEFAULTS);
 vi.mock("@/lib/audio-limits", async (original) => {
   const real = await original<typeof import("@/lib/audio-limits")>();
@@ -37,6 +38,9 @@ vi.mock("@/lib/audio-limits", async (original) => {
     },
     get MAX_VOICE_FOLDER_BYTES() {
       return limits.folderCap;
+    },
+    get MAX_UNLINKED_VOICE_FILES() {
+      return limits.fileCap;
     },
     get VOICE_SWEEP_EVERY_MS() {
       return limits.sweepEvery;
@@ -58,7 +62,7 @@ vi.mock("node:fs/promises", async (original) => {
 });
 
 const uuid = () => crypto.randomUUID();
-const audio = (size = 64, type = "audio/webm;codecs=opus") => new Blob([new Uint8Array(size).fill(7)], { type });
+const audio = (size = 2000, type = "audio/webm;codecs=opus") => new Blob([new Uint8Array(size).fill(7)], { type });
 
 /** A multipart upload with the Content-Length the browser would send. */
 async function upload(fields: { voice_id?: string; audio?: Blob | string }, headers: Record<string, string | null> = {}) {
@@ -118,6 +122,7 @@ const age = (id: string, ms: number) => {
   utimesSync(voiceFile(id), then, then);
 };
 const HOUR = 60 * 60 * 1000;
+const BLOCK = 4096;
 
 describe("family voice upload and linking", () => {
   let voice: typeof import("./route");
@@ -166,14 +171,14 @@ describe("family voice upload and linking", () => {
   describe("POST /api/reports/voice", () => {
     it("stores the audio with no PIN and answers with the voice_id only", async () => {
       const id = uuid();
-      const res = await voice.POST(await upload({ voice_id: id, audio: audio(200) }));
+      const res = await voice.POST(await upload({ voice_id: id, audio: audio(2000) }));
       expect(res.status).toBe(201);
       const body = await res.json();
       expect(VoiceStored.parse(body)).toEqual({ voice_id: id });
       // Nothing else comes back: no path, no URL.
       expect(Object.keys(body)).toEqual(["voice_id"]);
       // Family voice has its own folder, apart from entry photos and notes.
-      expect(await readFile(voiceFile(id))).toHaveLength(200);
+      expect(await readFile(voiceFile(id))).toHaveLength(2000);
       expect(stored()).toContain(join("voice", today(), `${id}.webm`));
     });
 
@@ -190,16 +195,16 @@ describe("family voice upload and linking", () => {
     it("stores one file when the same recording arrives twice", async () => {
       const id = uuid();
       const before = stored().length;
-      expect((await voice.POST(await upload({ voice_id: id, audio: audio(50) }))).status).toBe(201);
-      expect((await voice.POST(await upload({ voice_id: id, audio: audio(50) }))).status).toBe(201);
+      expect((await voice.POST(await upload({ voice_id: id, audio: audio() }))).status).toBe(201);
+      expect((await voice.POST(await upload({ voice_id: id, audio: audio() }))).status).toBe(201);
       expect(stored().length).toBe(before + 1);
     });
 
     it("does not let a repeat overwrite the first recording", async () => {
       const id = uuid();
-      await voice.POST(await upload({ voice_id: id, audio: audio(10) }));
-      await voice.POST(await upload({ voice_id: id, audio: audio(99) }));
-      expect(await readFile(voiceFile(id))).toHaveLength(10);
+      await voice.POST(await upload({ voice_id: id, audio: audio(2000) }));
+      await voice.POST(await upload({ voice_id: id, audio: audio(3000) }));
+      expect(await readFile(voiceFile(id))).toHaveLength(2000);
     });
 
     it("validates the fields", async () => {
@@ -214,9 +219,16 @@ describe("family voice upload and linking", () => {
       await bad(upload({ voice_id: uuid() }), 400, "bad_audio");
       await bad(upload({ voice_id: uuid(), audio: "text, not a file" }), 400, "bad_audio");
       await bad(upload({ voice_id: uuid(), audio: audio(0) }), 400, "bad_audio");
-      await bad(upload({ voice_id: uuid(), audio: audio(10, "image/png") }), 400, "audio_type_not_allowed");
-      await bad(upload({ voice_id: uuid(), audio: audio(10, "") }), 400, "audio_type_not_allowed");
+      // Too small to hold speech: 1 byte, and one byte under the minimum.
+      await bad(upload({ voice_id: uuid(), audio: audio(1) }), 400, "audio_too_small");
+      await bad(upload({ voice_id: uuid(), audio: audio(1023) }), 400, "audio_too_small");
+      await bad(upload({ voice_id: uuid(), audio: audio(2000, "image/png") }), 400, "audio_type_not_allowed");
+      await bad(upload({ voice_id: uuid(), audio: audio(2000, "") }), 400, "audio_type_not_allowed");
       expect(stored().length).toBe(before);
+    });
+
+    it("keeps a recording at the 1 KB minimum", async () => {
+      expect((await voice.POST(await upload({ voice_id: uuid(), audio: audio(1024) }))).status).toBe(201);
     });
 
     it("takes the AI voice route's size limits: 1 MB compressed, 6 MB for WAV", async () => {
@@ -238,14 +250,14 @@ describe("family voice upload and linking", () => {
   });
 
   describe("POST /api/reports with a voice_id", () => {
-    const send = async (size = 80) => {
+    const send = async (size = 2000) => {
       const id = uuid();
       await voice.POST(await upload({ voice_id: id, audio: audio(size) }));
       return id;
     };
 
     it("links the stored file, and responders and staff can play it", async () => {
-      const id = await send(120);
+      const id = await send(2000);
       const made = await create({ voice_id: id });
       expect(made.res.status).toBe(201);
       expect(made.row.voice_path).toBe(`voice/${today()}/${id}.webm`);
@@ -259,7 +271,7 @@ describe("family voice upload and linking", () => {
         const res = await files.GET(req(), fileCtx(made.row.id));
         expect(res.status).toBe(200);
         expect(res.headers.get("content-type")).toBe("audio/webm");
-        expect(Buffer.from(await res.arrayBuffer())).toHaveLength(120);
+        expect(Buffer.from(await res.arrayBuffer())).toHaveLength(2000);
       }
     });
 
@@ -308,7 +320,7 @@ describe("family voice upload and linking", () => {
       const reportsBefore = db.select().from(schema.reports).all().length;
       const a = await create({ voice_id: id, client_id: clientId });
       // The reply was lost, so the phone uploads and posts again with the same ids.
-      await voice.POST(await upload({ voice_id: id, audio: audio(80) }));
+      await voice.POST(await upload({ voice_id: id, audio: audio() }));
       const b = await create({ voice_id: id, client_id: clientId });
       expect(b.code).toBe(a.code);
       expect(db.select().from(schema.reports).all().length).toBe(reportsBefore + 1);
@@ -350,25 +362,70 @@ describe("family voice upload and linking", () => {
     const put = async (id: string, size: number) => voice.POST(await upload({ voice_id: id, audio: audio(size) }));
 
     it("answers 507 before writing once unlinked recordings fill the cap", async () => {
-      limits.cap = 1000;
+      limits.cap = BLOCK + 2000;
       const first = uuid();
-      expect((await put(first, 600)).status).toBe(201);
-      const full = await put(uuid(), 600);
+      expect((await put(first, 2000)).status).toBe(201);
+      const full = await put(uuid(), 2000);
       expect([full.status, (await full.json()).error]).toEqual([507, "storage_full"]);
       expect(stored()).toHaveLength(1);
       // The same recording again adds no bytes, so a phone retrying it is not turned away.
-      expect((await put(first, 600)).status).toBe(201);
+      expect((await put(first, 2000)).status).toBe(201);
       expect(stored()).toHaveLength(1);
     });
 
     it("does not count a recording a report has taken", async () => {
-      limits.cap = 1000;
+      limits.cap = BLOCK + 2000;
       const first = uuid();
-      await put(first, 600);
-      expect((await put(uuid(), 600)).status).toBe(507);
+      await put(first, 2000);
+      expect((await put(uuid(), 2000)).status).toBe(507);
       await create({ voice_id: first });
-      expect((await put(uuid(), 600)).status).toBe(201);
+      expect((await put(uuid(), 2000)).status).toBe(201);
       expect(stored()).toHaveLength(2);
+    });
+
+    describe("tiny recordings", () => {
+      // A small file takes a whole block on disk, so it counts as one. Run with a sweep
+      // before every upload and with none, to cover the reservation and the sweep.
+      it.each([0, 60 * 60 * 1000])("count as a whole block against the byte cap (sweep every %i ms)", async (sweepEvery) => {
+        limits.sweepEvery = sweepEvery;
+        limits.cap = 2 * BLOCK;
+        const statuses = [];
+        for (let i = 0; i < 5; i++) statuses.push((await put(uuid(), 1024)).status);
+        // By bytes, five of these are 5 KB and all fit. By blocks, two fill the cap.
+        expect(statuses).toEqual([201, 201, 507, 507, 507]);
+        expect(stored()).toHaveLength(2);
+      });
+
+      it("are limited in number, so many small files cannot pile up", async () => {
+        limits.fileCap = 5;
+        const statuses = [];
+        for (let i = 0; i < 8; i++) statuses.push((await put(uuid(), 1024)).status);
+        expect(statuses).toEqual([201, 201, 201, 201, 201, 507, 507, 507]);
+        expect(stored()).toHaveLength(5);
+      });
+
+      it("stop counting once a report takes them, and only the unlinked ones are limited", async () => {
+        limits.fileCap = 2;
+        const [a, b] = [uuid(), uuid()];
+        await put(a, 1024);
+        await put(b, 1024);
+        expect((await put(uuid(), 1024)).status).toBe(507);
+        await create({ voice_id: a });
+        await create({ voice_id: b });
+        expect((await put(uuid(), 1024)).status).toBe(201);
+        expect((await put(uuid(), 1024)).status).toBe(201);
+        expect((await put(uuid(), 1024)).status).toBe(507);
+      });
+
+      it("hold the unlinked file count after a sweep deletes the stale ones", async () => {
+        limits.fileCap = 3;
+        const stale = [uuid(), uuid(), uuid()];
+        for (const id of stale) await put(id, 1024);
+        expect((await put(uuid(), 1024)).status).toBe(507);
+        for (const id of stale) age(id, 2 * HOUR);
+        expect((await put(uuid(), 1024)).status).toBe(201);
+        for (const id of stale) expect(existsSync(voiceFile(id))).toBe(false);
+      });
     });
 
     describe("uploads that arrive together", () => {
@@ -380,73 +437,78 @@ describe("family voice upload and linking", () => {
       };
 
       it("never put more on disk than the cap, and refuse the rest", async () => {
-        limits.cap = 1000;
-        const result = await together(50, 100);
+        limits.cap = 10 * BLOCK;
+        const result = await together(50, 2000);
         expect(result).toEqual({ accepted: 10, refused: 40 });
-        expect(voiceBytes()).toBe(1000);
+        expect(voiceBytes()).toBe(10 * 2000);
       });
 
       it("fit only what a sweep freed, when stale recordings make room", async () => {
-        limits.cap = 1000;
+        limits.cap = 10 * BLOCK;
         const stale = Array.from({ length: 10 }, () => uuid());
-        for (const id of stale) await put(id, 100);
+        for (const id of stale) await put(id, 2000);
         for (const id of stale) age(id, 2 * HOUR);
         // Room for ten opens up as the first upload sweeps, and fifty want it.
-        const result = await together(50, 100);
+        const result = await together(50, 2000);
         expect(result).toEqual({ accepted: 10, refused: 40 });
-        expect(voiceBytes()).toBe(1000);
+        expect(voiceBytes()).toBe(10 * 2000);
         for (const id of stale) expect(existsSync(voiceFile(id))).toBe(false);
       });
 
       it("keep the whole folder under its cap too", async () => {
-        limits.folderCap = 1000;
-        const result = await together(50, 100);
+        limits.folderCap = 10 * BLOCK;
+        const result = await together(50, 2000);
         expect(result).toEqual({ accepted: 10, refused: 40 });
-        expect(voiceBytes()).toBe(1000);
+        expect(voiceBytes()).toBe(10 * 2000);
+      });
+
+      it("keep to the file cap when they are tiny", async () => {
+        limits.fileCap = 10;
+        const result = await together(50, 1024);
+        expect(result).toEqual({ accepted: 10, refused: 40 });
+        expect(stored()).toHaveLength(10);
       });
 
       it.skipIf(process.getuid?.() === 0)("let the next one through after a write fails, and give its bytes back", async () => {
-        limits.cap = 1000;
+        limits.cap = 2 * BLOCK + 2000;
         limits.sweepEvery = 60 * 60 * 1000;
-        expect((await put(uuid(), 50)).status).toBe(201);
+        expect((await put(uuid(), 2000)).status).toBe(201);
         const folder = join(process.env.UPLOAD_DIR!, "voice", today());
         chmodSync(folder, 0o500);
         try {
           // The day folder cannot be written to, so the write fails and the route throws.
-          await expect(put(uuid(), 600)).rejects.toThrow();
+          await expect(put(uuid(), 2000)).rejects.toThrow();
         } finally {
           chmodSync(folder, 0o700);
         }
-        // The lock is free, so this one runs. The failed 600 bytes were given back, so
-        // 50 + 400 fits by the running counts and nothing needs a sweep to find room.
+        // The lock is free, so this one runs. The failed block was given back, so two
+        // blocks fit by the running counts and nothing needs a sweep to find room.
         listings.n = 0;
-        expect((await put(uuid(), 400)).status).toBe(201);
+        expect((await put(uuid(), 2000)).status).toBe(201);
         expect(listings.n).toBe(1);
       });
     });
 
     it("answers 507 once the whole folder is full, even when every recording is linked", async () => {
-      limits.folderCap = 1500;
+      limits.folderCap = 2 * BLOCK + 2000;
       // Upload, link and repeat: nothing is unlinked, so only the folder cap can stop this.
       for (let round = 0; round < 2; round++) {
         const id = uuid();
-        expect((await put(id, 600)).status).toBe(201);
+        expect((await put(id, 2000)).status).toBe(201);
         expect((await create({ voice_id: id })).row.voice_path).not.toBeNull();
       }
-      const full = await put(uuid(), 600);
+      const full = await put(uuid(), 2000);
       expect([full.status, (await full.json()).error]).toEqual([507, "storage_full"]);
       expect(stored().filter((f) => String(f).startsWith("voice") && String(f).endsWith(".webm"))).toHaveLength(2);
-      // Room for a smaller one still, and a repeat of a stored recording is never refused.
-      expect((await put(uuid(), 300)).status).toBe(201);
     });
 
     it("still accepts the report when the folder is full, with voice_path null", async () => {
-      limits.folderCap = 700;
+      limits.folderCap = BLOCK + 100;
       const kept = uuid();
-      await put(kept, 600);
+      await put(kept, 2000);
       await create({ voice_id: kept });
       const refused = uuid();
-      expect((await put(refused, 600)).status).toBe(507);
+      expect((await put(refused, 2000)).status).toBe(507);
       const made = await create({ voice_id: refused });
       expect(made.res.status).toBe(201);
       expect(made.row.voice_path).toBeNull();
@@ -455,23 +517,23 @@ describe("family voice upload and linking", () => {
 
     it("does not walk the folder for an upload that fits under both caps", async () => {
       limits.sweepEvery = 60 * 60 * 1000;
-      await put(uuid(), 50);
+      await put(uuid(), 2000);
       listings.n = 0;
-      for (let i = 0; i < 5; i++) expect((await put(uuid(), 50)).status).toBe(201);
+      for (let i = 0; i < 5; i++) expect((await put(uuid(), 2000)).status).toBe(201);
       // One listing per upload, the voice folder's day folders for findVoice. A sweep would list every day folder too.
       expect(listings.n).toBe(5);
     });
 
     it("sweeps unlinked recordings over an hour old, and keeps linked and fresh ones", async () => {
       const [oldUnlinked, oldLinked, fresh, trigger] = [uuid(), uuid(), uuid(), uuid()];
-      for (const id of [oldUnlinked, oldLinked, fresh]) await put(id, 50);
+      for (const id of [oldUnlinked, oldLinked, fresh]) await put(id, 2000);
       await create({ voice_id: oldLinked });
       age(oldUnlinked, 2 * HOUR);
       age(oldLinked, 2 * HOUR);
       age(fresh, 5 * 60 * 1000);
 
       // The sweep runs on an upload.
-      expect((await put(trigger, 50)).status).toBe(201);
+      expect((await put(trigger, 2000)).status).toBe(201);
       expect(existsSync(voiceFile(oldUnlinked))).toBe(false);
       expect(existsSync(voiceFile(oldLinked))).toBe(true);
       expect(existsSync(voiceFile(fresh))).toBe(true);
@@ -479,21 +541,21 @@ describe("family voice upload and linking", () => {
     });
 
     it("frees room by sweeping, so a full hub takes uploads again an hour later", async () => {
-      limits.cap = 1000;
+      limits.cap = BLOCK + 2000;
       const stale = uuid();
-      await put(stale, 600);
-      expect((await put(uuid(), 600)).status).toBe(507);
+      await put(stale, 2000);
+      expect((await put(uuid(), 2000)).status).toBe(507);
       age(stale, 2 * HOUR);
-      expect((await put(uuid(), 600)).status).toBe(201);
+      expect((await put(uuid(), 2000)).status).toBe(201);
       expect(existsSync(voiceFile(stale))).toBe(false);
     });
 
     it("keeps a recording the phone sends again, so the report on its way can still take it", async () => {
       const id = uuid();
-      await put(id, 50);
+      await put(id, 2000);
       age(id, 2 * HOUR);
-      await put(id, 50);
-      await put(uuid(), 50);
+      await put(id, 2000);
+      await put(uuid(), 2000);
       expect(existsSync(voiceFile(id))).toBe(true);
     });
 
@@ -516,7 +578,7 @@ describe("family voice upload and linking", () => {
       limits.folderCap = 10;
       try {
         const id = uuid();
-        const note = new Blob([new Uint8Array(120).fill(3)], { type: "audio/webm;codecs=opus" });
+        const note = new Blob([new Uint8Array(2000).fill(3)], { type: "audio/webm;codecs=opus" });
         const draft = draftFromReport(NewReport.parse(report({ voice_id: id })));
         const sent = await sendReport(draft, phone(false), newClientId(), note);
         expect(sent).toMatchObject({ ok: true });
@@ -536,7 +598,7 @@ describe("family voice upload and linking", () => {
       const send = phone();
       const id = uuid();
       const reportsBefore = db.select().from(schema.reports).all().length;
-      const note = new Blob([new Uint8Array(120).fill(3)], { type: "audio/webm;codecs=opus" });
+      const note = new Blob([new Uint8Array(2000).fill(3)], { type: "audio/webm;codecs=opus" });
       const store = memoryStore();
       await enqueue(store, NewReport.parse(report({ voice_id: id })), [{ kind: "audio", name: "note.webm", blob: note }]);
 

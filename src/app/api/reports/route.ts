@@ -9,7 +9,7 @@ import { audit, emit } from "./_lib/audit";
 import { readJsonCapped } from "./_lib/body";
 import { deny, getActor } from "./_lib/auth";
 import { freshCode } from "./_lib/code";
-import { findVoice } from "./_lib/voice-store";
+import { findVoice, voiceLinked } from "./_lib/voice-store";
 import { isUrgent, urgentSql } from "./_lib/view";
 
 // POST takes a NewReport from a family phone or the help desk and returns the
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const id = randomUUID();
   const now = new Date().toISOString();
   const urgent = isUrgent(body);
-  const { code, created } = db.transaction((tx) => {
+  const { code, created, attached } = db.transaction((tx) => {
     const fresh = freshCode(tx);
     // Checked in the same transaction as the insert, so two reports cannot take one recording.
     const voice = !body.voice_id
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       .run();
     if (inserted.changes === 0 && body.client_id) {
       const existing = tx.select({ code: reports.code }).from(reports).where(eq(reports.client_id, body.client_id)).get();
-      if (existing) return { code: existing.code, created: false };
+      if (existing) return { code: existing.code, created: false, attached: false };
     }
     audit(tx, id, "report.created", actor, {
       code: fresh,
@@ -92,10 +92,12 @@ export async function POST(req: Request) {
       voice_id: body.voice_id,
       ...(voice ? { voice } : {}),
     });
-    return { code: fresh, created: true };
+    return { code: fresh, created: true, attached: voice === "attached" };
   });
 
   if (created) emit({ type: "report.created", code, urgent });
+  // The recording no longer counts as unlinked, so it stops using the unlinked cap.
+  if (attached && stored) await voiceLinked(stored);
   return Response.json({ code }, { status: 201 });
 }
 

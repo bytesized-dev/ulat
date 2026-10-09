@@ -24,5 +24,13 @@ export const maxAudioBytes = (mime: string) => (WAV_TYPES.has(mime.split(";")[0]
  * filling the laptop that holds the database. Above it the route answers 507.
  */
 export const MAX_UNLINKED_VOICE_BYTES = 200 * 1024 * 1024;
-/** An unlinked recording older than this is deleted on the next upload. */
+/**
+ * How many bytes the whole voice folder may hold, linked recordings included.
+ * Anyone can send a report that links a recording, so the unlinked cap alone
+ * does not stop the folder from growing. Above this the route answers 507.
+ */
+export const MAX_VOICE_FOLDER_BYTES = 1024 * 1024 * 1024;
+/** An unlinked recording older than this is deleted by the next sweep. */
 export const UNLINKED_VOICE_MAX_AGE_MS = 60 * 60 * 1000;
+/** The longest the hub goes between two sweeps, which are the only walks of the voice folder. */
+export const VOICE_SWEEP_EVERY_MS = 60 * 1000;

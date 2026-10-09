@@ -23,8 +23,11 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined) }),
 }));
 
-// The disk cap is 200 MB, so a test that fills it sets a small one for itself.
-const limits = vi.hoisted(() => ({ cap: 200 * 1024 * 1024 }));
+// The caps are 200 MB unlinked and 1 GB in all, and a sweep runs once a minute.
+// A test that fills a cap or needs a sweep right away sets its own numbers.
+const DEFAULTS = { cap: 200 * 1024 * 1024, folderCap: 1024 * 1024 * 1024, sweepEvery: 60 * 1000 };
+const limits = vi.hoisted(() => ({ cap: 0, folderCap: 0, sweepEvery: 0 }));
+Object.assign(limits, DEFAULTS);
 vi.mock("@/lib/audio-limits", async (original) => {
   const real = await original<typeof import("@/lib/audio-limits")>();
   return {
@@ -32,6 +35,25 @@ vi.mock("@/lib/audio-limits", async (original) => {
     get MAX_UNLINKED_VOICE_BYTES() {
       return limits.cap;
     },
+    get MAX_VOICE_FOLDER_BYTES() {
+      return limits.folderCap;
+    },
+    get VOICE_SWEEP_EVERY_MS() {
+      return limits.sweepEvery;
+    },
+  };
+});
+
+// Counts directory listings, to show an upload under the caps does not walk the folder.
+const listings = vi.hoisted(() => ({ n: 0 }));
+vi.mock("node:fs/promises", async (original) => {
+  const real = await original<typeof import("node:fs/promises")>();
+  return {
+    ...real,
+    readdir: ((...args: Parameters<typeof real.readdir>) => {
+      listings.n++;
+      return real.readdir(...args);
+    }) as typeof real.readdir,
   };
 });
 
@@ -292,12 +314,33 @@ describe("family voice upload and linking", () => {
       expect(created).toHaveLength(1);
     });
   });
+  /** The phone's fetch, pointed at the route handlers. The first report post is refused unless told not to. */
+  function phone(refuseFirstReport = true) {
+    let refuse = refuseFirstReport;
+    return (async (url: string, init?: RequestInit) => {
+      if (url.startsWith("/api/health")) return Response.json({ ok: true });
+      let req = new Request(`http://hub${url}`, init);
+      if (init?.body instanceof FormData) {
+        const bytes = Buffer.from(await req.arrayBuffer());
+        req = new Request(req.url, { method: "POST", headers: { "content-type": req.headers.get("content-type")!, "content-length": String(bytes.length) }, body: bytes });
+      }
+      if (url === "/api/reports/voice") return voice.POST(req);
+      if (refuse) {
+        refuse = false;
+        return Response.json({ error: "bad_report" }, { status: 400 });
+      }
+      return reportsRoute.POST(req);
+    }) as typeof fetch;
+  }
+
   describe("the disk bound", () => {
     // Earlier tests left recordings behind, and they count towards the cap.
-    beforeEach(() => rmSync(join(process.env.UPLOAD_DIR!, "voice"), { recursive: true, force: true }));
-    afterEach(() => {
-      limits.cap = 200 * 1024 * 1024;
+    beforeEach(() => {
+      rmSync(join(process.env.UPLOAD_DIR!, "voice"), { recursive: true, force: true });
+      // Sweep on every upload, so each test sees exact counts unless it says otherwise.
+      limits.sweepEvery = 0;
     });
+    afterEach(() => Object.assign(limits, DEFAULTS));
 
     const put = async (id: string, size: number) => voice.POST(await upload({ voice_id: id, audio: audio(size) }));
 
@@ -321,6 +364,43 @@ describe("family voice upload and linking", () => {
       await create({ voice_id: first });
       expect((await put(uuid(), 600)).status).toBe(201);
       expect(stored()).toHaveLength(2);
+    });
+
+    it("answers 507 once the whole folder is full, even when every recording is linked", async () => {
+      limits.folderCap = 1500;
+      // Upload, link and repeat: nothing is unlinked, so only the folder cap can stop this.
+      for (let round = 0; round < 2; round++) {
+        const id = uuid();
+        expect((await put(id, 600)).status).toBe(201);
+        expect((await create({ voice_id: id })).row.voice_path).not.toBeNull();
+      }
+      const full = await put(uuid(), 600);
+      expect([full.status, (await full.json()).error]).toEqual([507, "storage_full"]);
+      expect(stored().filter((f) => String(f).startsWith("voice") && String(f).endsWith(".webm"))).toHaveLength(2);
+      // Room for a smaller one still, and a repeat of a stored recording is never refused.
+      expect((await put(uuid(), 300)).status).toBe(201);
+    });
+
+    it("still accepts the report when the folder is full, with voice_path null", async () => {
+      limits.folderCap = 700;
+      const kept = uuid();
+      await put(kept, 600);
+      await create({ voice_id: kept });
+      const refused = uuid();
+      expect((await put(refused, 600)).status).toBe(507);
+      const made = await create({ voice_id: refused });
+      expect(made.res.status).toBe(201);
+      expect(made.row.voice_path).toBeNull();
+      expect(createdAudit(made.row.id).data).toMatchObject({ voice: "unknown" });
+    });
+
+    it("does not walk the folder for an upload that fits under both caps", async () => {
+      limits.sweepEvery = 60 * 60 * 1000;
+      await put(uuid(), 50);
+      listings.n = 0;
+      for (let i = 0; i < 5; i++) expect((await put(uuid(), 50)).status).toBe(201);
+      // One listing per upload, the voice folder's day folders for findVoice. A sweep would list every day folder too.
+      expect(listings.n).toBe(5);
     });
 
     it("sweeps unlinked recordings over an hour old, and keeps linked and fresh ones", async () => {
@@ -371,26 +451,27 @@ describe("family voice upload and linking", () => {
     });
   });
 
-  describe("a queued report that the hub refuses after its audio went", () => {
-    /** The phone's fetch, pointed at the route handlers. The first report post is refused. */
-    function phone() {
-      let refuse = true;
-      return (async (url: string, init?: RequestInit) => {
-        if (url.startsWith("/api/health")) return Response.json({ ok: true });
-        let req = new Request(`http://hub${url}`, init);
-        if (init?.body instanceof FormData) {
-          const bytes = Buffer.from(await req.arrayBuffer());
-          req = new Request(req.url, { method: "POST", headers: { "content-type": req.headers.get("content-type")!, "content-length": String(bytes.length) }, body: bytes });
-        }
-        if (url === "/api/reports/voice") return voice.POST(req);
-        if (refuse) {
-          refuse = false;
-          return Response.json({ error: "bad_report" }, { status: 400 });
-        }
-        return reportsRoute.POST(req);
-      }) as typeof fetch;
-    }
+  describe("a full hub", () => {
+    it("takes the family's report without its recording, through the real send code", async () => {
+      rmSync(join(process.env.UPLOAD_DIR!, "voice"), { recursive: true, force: true });
+      limits.folderCap = 10;
+      try {
+        const id = uuid();
+        const note = new Blob([new Uint8Array(120).fill(3)], { type: "audio/webm;codecs=opus" });
+        const draft = draftFromReport(NewReport.parse(report({ voice_id: id })));
+        const sent = await sendReport(draft, phone(false), newClientId(), note);
+        expect(sent).toMatchObject({ ok: true });
+        const row = db.select().from(schema.reports).where(eq(schema.reports.code, (sent as { code: string }).code)).get()!;
+        expect(row.voice_path).toBeNull();
+        expect(row.transcript).toBe("Nawala ang atop");
+        expect(existsSync(voiceFile(id))).toBe(false);
+      } finally {
+        Object.assign(limits, DEFAULTS);
+      }
+    });
+  });
 
+  describe("a queued report that the hub refuses after its audio went", () => {
     it("keeps the recording, and the fixed report sends it again: one report, one file, voice_path set", async () => {
       rmSync(join(process.env.UPLOAD_DIR!, "voice"), { recursive: true, force: true });
       const send = phone();

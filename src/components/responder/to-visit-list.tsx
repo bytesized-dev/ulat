@@ -37,7 +37,7 @@ function ToVisitRow({ item }: { item: ToVisitItem }) {
         <HouseIcon />
       </IconPlate>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-body-md font-medium text-ink">{item.household_head} household</span>
+        <span className="truncate text-body-md font-medium text-ink">{item.household_head}</span>
         <span className="truncate text-body-sm text-body">{place(item)}</span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-0.5">

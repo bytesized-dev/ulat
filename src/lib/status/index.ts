@@ -36,11 +36,19 @@ const globalForTicker = globalThis as unknown as { ulatStatusTicker?: NodeJS.Tim
 /** Publishes hub.status on the live bus every 30 s. Calling it again does nothing. */
 export function startStatusTicker(): void {
   if (globalForTicker.ulatStatusTicker) return;
+  // A read that is still running when the next beat comes is not started
+  // again. Without this, a stuck mount would pile up reads on the libuv pool.
+  let reading = false;
   const timer = setInterval(() => {
+    if (reading) return;
+    reading = true;
     readHubStatus()
       .then((status) => publish({ type: "hub.status", status }))
       .catch(() => {
         // A failed read skips this beat. The next one tries again.
+      })
+      .finally(() => {
+        reading = false;
       });
   }, TICK_MS);
   // The ticker never keeps the process alive.

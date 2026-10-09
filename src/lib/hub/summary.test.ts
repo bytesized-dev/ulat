@@ -72,9 +72,13 @@ describe("summary of the simulation seed", () => {
   });
 
   it("matches the canvas table by barangay, in the same order", () => {
-    const rows = getHubSummary(db).barangays.map((r) => [
-      r.barangay, r.totally, r.partially, r.families, r.people, r.hurt, r.waiting, r.priority,
-    ]);
+    // The seed lists all 50 barangays for the family form. Only six have
+    // houses or reports, and the canvas table shows those six.
+    const all = getHubSummary(db).barangays;
+    expect(all).toHaveLength(50);
+    const rows = all
+      .filter((r) => r.families > 0 || r.waiting > 0)
+      .map((r) => [r.barangay, r.totally, r.partially, r.families, r.people, r.hurt, r.waiting, r.priority]);
     expect(rows).toEqual([
       ["Sinonoc", 6, 7, 18, 76, 3, 6, "high"],
       ["Dawo (Pob.)", 4, 5, 13, 54, 2, 4, "high"],

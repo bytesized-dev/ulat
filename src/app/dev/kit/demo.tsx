@@ -37,7 +37,14 @@ export function CounterDemo() {
   const [missing, setMissing] = React.useState(0);
   return (
     <div className="flex flex-col divide-y divide-hairline-soft">
-      <Counter label="In the house" value={inHouse} onChange={setInHouse} />
+      <Counter
+        label="In the house"
+        value={inHouse}
+        onChange={(next) => {
+          setInHouse(next);
+          setHurt((current) => Math.min(current, next));
+        }}
+      />
       <Counter label="Hurt" value={hurt} onChange={setHurt} max={inHouse} />
       <Counter label="Missing" value={missing} onChange={setMissing} />
     </div>

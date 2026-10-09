@@ -129,7 +129,7 @@ Hours per person: Artkin 20, CJ 20, James 17, Sean 24.
 
 **Acceptance criteria**
 
-- [ ] Every component in the DESIGN.md table exists in `src/components/ui` with typed props
+- [ ] Every component in the DESIGN.md table exists in `src/components/ui` with typed props, except MapView, which lives in `src/components/map/map-view.tsx`
 - [ ] `/dev/kit` renders all of them with their variants
 - [ ] Buttons and chips meet 44px targets and icon buttons have aria-labels
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output

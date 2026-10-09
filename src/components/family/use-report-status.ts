@@ -24,7 +24,9 @@ export function useReportStatus(code: string | null): ReportStatus {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [seen, setSeen] = useState<HubEvent | null>(null);
   const [tick, setTick] = useState(0);
-  const { latest, connected } = useLiveEvents({ code });
+  // With no code there is nothing to follow. null would open the unscoped stream
+  // of every event, but a string that is not a report code opens no stream.
+  const { latest, connected } = useLiveEvents({ code: code ?? "" });
 
   // Remember the last event about this report. Other events change `latest`
   // too, and they must not cause a refetch.

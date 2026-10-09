@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BLOCK_MS, MAX_FAILURES, blockedSeconds, clientKey, recordFailure, recordSuccess, resetLimiter } from "./limiter";
+import { BLOCK_MS, MAX_FAILURES, beginAttempt, blockedSeconds, clientKey, endAttempt, resetLimiter } from "./limiter";
 import { sessionExpiry, signSession, verifySession, type ResponderSession, type StaffSession } from "./session";
 
 const secret = Buffer.from("a".repeat(64), "hex");
@@ -58,32 +58,47 @@ describe("session tokens", () => {
 describe("sign in limiter", () => {
   beforeEach(resetLimiter);
 
+  const fail = (key: string, at: number) => {
+    expect(beginAttempt(key, at)).toBe(true);
+    endAttempt(key, "wrong", at);
+  };
+
   it("blocks an address for 30 seconds after 5 wrong tries", () => {
-    for (let i = 0; i < MAX_FAILURES - 1; i++) recordFailure("lan-1", now);
+    for (let i = 0; i < MAX_FAILURES - 1; i++) fail("lan-1", now);
     expect(blockedSeconds("lan-1", now)).toBe(0);
-    recordFailure("lan-1", now);
+    fail("lan-1", now);
     expect(blockedSeconds("lan-1", now)).toBe(BLOCK_MS / 1000);
     expect(blockedSeconds("lan-1", now + BLOCK_MS - 1)).toBe(1);
     expect(blockedSeconds("lan-1", now + BLOCK_MS)).toBe(0);
   });
 
   it("keeps one address from blocking another", () => {
-    for (let i = 0; i < MAX_FAILURES; i++) recordFailure("lan-1", now);
+    for (let i = 0; i < MAX_FAILURES; i++) fail("lan-1", now);
     expect(blockedSeconds("lan-2", now)).toBe(0);
+    expect(beginAttempt("lan-2", now)).toBe(true);
   });
 
   it("starts the count again after a block ends", () => {
-    for (let i = 0; i < MAX_FAILURES; i++) recordFailure("lan-1", now);
+    for (let i = 0; i < MAX_FAILURES; i++) fail("lan-1", now);
     const later = now + BLOCK_MS;
-    for (let i = 0; i < MAX_FAILURES - 1; i++) recordFailure("lan-1", later);
+    for (let i = 0; i < MAX_FAILURES - 1; i++) fail("lan-1", later);
     expect(blockedSeconds("lan-1", later)).toBe(0);
   });
 
   it("clears the count on a correct PIN", () => {
-    for (let i = 0; i < MAX_FAILURES - 1; i++) recordFailure("lan-1", now);
-    recordSuccess("lan-1");
-    recordFailure("lan-1", now);
+    for (let i = 0; i < MAX_FAILURES - 1; i++) fail("lan-1", now);
+    expect(beginAttempt("lan-1", now)).toBe(true);
+    endAttempt("lan-1", "right", now);
+    fail("lan-1", now);
     expect(blockedSeconds("lan-1", now)).toBe(0);
+    expect(beginAttempt("lan-1", now)).toBe(true);
+  });
+
+  it("counts attempts that are still running", () => {
+    for (let i = 0; i < MAX_FAILURES; i++) expect(beginAttempt("lan-1", now)).toBe(true);
+    expect(beginAttempt("lan-1", now)).toBe(false);
+    endAttempt("lan-1", "none", now);
+    expect(beginAttempt("lan-1", now)).toBe(true);
   });
 
   it("reads the address Caddy added to x-forwarded-for", () => {

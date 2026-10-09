@@ -285,6 +285,10 @@ describe("entries API", () => {
     await one.PATCH(patch(body.id, confirmBody()), ctx(body.id));
     const report = db.select().from(schema.reports).all().find((r) => r.id === "rep1");
     expect(report?.status).toBe("visited");
+    // The family timeline reads report.status_changed, so that is the row it writes.
+    const rows = db.select().from(schema.events).where(eq(schema.events.entity_id, "rep1")).all();
+    expect(rows.map((r) => r.type)).toEqual(["report.status_changed"]);
+    expect(rows[0]).toMatchObject({ actor: "r1", data: { status: "visited", entry_id: body.id } });
   });
 
   describe("report counts", () => {
@@ -321,6 +325,19 @@ describe("entries API", () => {
 
   describe("PATCH by a responder", () => {
     const row = (id: string) => db.select().from(schema.entries).where(eq(schema.entries.id, id)).get()!;
+
+    it("answers 404 for an entry that belongs to another responder, and changes nothing", async () => {
+      db.insert(schema.responders).values({ id: "r2", name: "Ben", team: "B", active: true }).run();
+      const { body } = await create(2);
+      db.update(schema.entries).set({ responder_id: "r2" }).where(eq(schema.entries.id, body.id)).run();
+      const before = row(body.id);
+      const res = await one.PATCH(patch(body.id, confirmBody()), ctx(body.id));
+      expect(res.status).toBe(404);
+      expect(await res.json()).toEqual({ error: "not_found" });
+      expect(row(body.id)).toEqual(before);
+      // Staff are not tied to an owner, but the entry must wait for review.
+      expect((await one.PATCH(patch(body.id, confirmBody(), staff), ctx(body.id))).status).toBe(409);
+    });
 
     it("refuses a confirmed entry with 409 not_a_draft and changes nothing", async () => {
       const { body } = await create(2);

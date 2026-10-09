@@ -22,7 +22,7 @@ The canvas is private to its owner's claude.ai account, so agents cannot open it
 - **Families report, responders verify, only verified entries count.** Family reports never change the totals.
 - **Validate every AI output** with the Zod schemas in `src/lib/contracts/schemas.ts`. If validation fails, the result is `unclear` and the raw output goes to the audit log.
 - **Contracts first.** Shared types live in `src/lib/contracts`. Never redefine them in feature folders. Contract changes go through a small PR reviewed by the Platform owner.
-- **Design tokens only.** No hex values and no arbitrary Tailwind values in components. Use the theme tokens in `DESIGN.md`.
+- **Design tokens only.** No hex values and no arbitrary Tailwind values in components. Use the theme tokens in `DESIGN.md`. The only exception is the few values in the vendored shadcn files of `src/components/ui` that have no token or scale equivalent, which the `vendored` list in `tests/rules/no-raw-values.test.ts` names.
 - **UI copy** is sentence case, short, with no em dashes, no en dashes and no exclamation marks. Copy the text from `design/screens` unless the issue says otherwise.
 - **Accessibility.** Real buttons, links, inputs and labels. Touch targets at least 44px. `aria-label` on icon-only buttons.
 - **Privacy.** Families can only see their own report, by code. Names, injuries and home locations are visible only behind the responder PIN or the staff PIN.

@@ -90,22 +90,17 @@ const axes = new Set([
   "translate-y",
 ]);
 
-// The shadcn files in src/components/ui that we keep as generated. The CLI
-// regenerates those, so their internals are not ours to hold to this rule.
-// Every other file in src/components/ui, restyled or new, is held to it. A
-// file leaves this list when it is restyled, never the other way round.
+// The shadcn files in src/components/ui that still hold a value with no token
+// or Tailwind scale equivalent: a calc() size, or the 4px checkbox radius
+// (radius-sm is 8px). The CLI regenerates these, so those few values are not
+// ours to hold to this rule. Every other file in src/components/ui, restyled
+// or new, is held to it. A file leaves this list when it is clean, never the
+// other way round.
 const vendored = new Set(
   [
-    "badge",
     "checkbox",
     "dialog",
-    "dropdown-menu",
-    "label",
-    "popover",
-    "separator",
-    "skeleton",
     "switch",
-    "table",
     "tabs",
     "tooltip",
   ].map((name) => `src/components/ui/${name}.tsx`),

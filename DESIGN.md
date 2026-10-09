@@ -133,6 +133,10 @@ Build these once in `src/components/ui` during the foundation phase. Feature cod
 | `HubShell` | Left sidebar 240px with pill nav items, active surface-strong with primary text, offline status block, lock link. Top bar 72px with title, Simulation pill, search pill and avatar. Optional right rail 320px with a hairline left border | All hub pages |
 | `MapView` | MapLibre with local PMTiles, legend card top left, zoom buttons bottom right | Family, responder and hub maps |
 
+`MapView` is the one component in this table that does not live in `src/components/ui`. It lives in `src/components/map/map-view.tsx`, because it owns the MapLibre instance and the offline tile, glyph and sprite setup, and the Hub owner maintains that.
+
+The shadcn files in `src/components/ui` keep the few arbitrary Tailwind values that have no token or scale equivalent, such as `calc()` sizes and the 4px checkbox radius. The `vendored` list in `tests/rules/no-raw-values.test.ts` names those files, and every other value in them uses a token or the Tailwind scale.
+
 ## Copy rules
 
 - Sentence case everywhere. No all caps.

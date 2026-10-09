@@ -1,9 +1,8 @@
-import { hubNav } from "@/components/hub/hub-nav";
 import { ReportRail } from "@/components/hub/family-reports/report-rail";
 import { ReportTable } from "@/components/hub/family-reports/report-table";
-import { SegmentLinks } from "@/components/hub/segment-links";
+import { HubPage } from "@/components/hub/hub-page";
+import { ReviewTabs, SegmentLinks } from "@/components/hub/segment-links";
 import { LiveRefresh } from "@/components/responder/live-refresh";
-import { HubShell } from "@/components/ui/hub-shell";
 import { db } from "@/db/client";
 import { routes } from "@/lib/contracts";
 import {
@@ -50,24 +49,13 @@ export default async function FamilyReportsPage({ searchParams }: { searchParams
     null;
 
   return (
-    <HubShell
+    <HubPage
       title="Family reports"
-      nav={hubNav(review.second_look + review.duplicates)}
-      activeHref={routes.hub.review}
-      name="MDRRMO staff"
-      initials="MD"
+      active={routes.hub.review}
       rail={<ReportRail report={selected} responders={responders} />}
     >
       <div className="flex flex-col gap-9">
-        <SegmentLinks
-          aria-label="Review lists"
-          className="self-stretch"
-          links={[
-            { label: "Second look", href: routes.hub.review, count: review.second_look, current: false },
-            { label: "Duplicates", href: routes.hub.duplicates, count: review.duplicates, current: false },
-            { label: "Family reports", href: routes.hub.familyReports, count: review.family_reports, current: true },
-          ]}
-        />
+        <ReviewTabs active="family_reports" counts={review} className="self-stretch" />
         <SegmentLinks
           aria-label="Filter"
           className="self-start"
@@ -81,6 +69,6 @@ export default async function FamilyReportsPage({ searchParams }: { searchParams
         <ReportTable rows={rows} selected={selected?.code ?? null} hrefFor={(code) => href(show, code)} />
       </div>
       <LiveRefresh />
-    </HubShell>
+    </HubPage>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { routes } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 
 type SegmentLink = { label: string; href: string; count?: number; current: boolean };
@@ -32,5 +33,31 @@ function SegmentLinks({ links, className, ...props }: SegmentLinksProps) {
   );
 }
 
-export { SegmentLinks };
-export type { SegmentLink };
+type ReviewTab = "second_look" | "duplicates" | "family_reports";
+
+type ReviewTabsProps = {
+  active: ReviewTab;
+  counts: Record<ReviewTab, number>;
+  className?: string;
+};
+
+const REVIEW_TABS: { tab: ReviewTab; label: string; href: string }[] = [
+  { tab: "second_look", label: "Second look", href: routes.hub.review },
+  { tab: "duplicates", label: "Duplicates", href: routes.hub.duplicates },
+  { tab: "family_reports", label: "Family reports", href: routes.hub.familyReports },
+];
+
+// The three Review lists, in the order of the canvas. Every Review page renders
+// this with its own tab active, so the tabs and their counts stay the same.
+function ReviewTabs({ active, counts, className }: ReviewTabsProps) {
+  return (
+    <SegmentLinks
+      aria-label="Review lists"
+      className={className}
+      links={REVIEW_TABS.map(({ tab, label, href }) => ({ label, href, count: counts[tab], current: tab === active }))}
+    />
+  );
+}
+
+export { ReviewTabs, SegmentLinks };
+export type { ReviewTab, SegmentLink };

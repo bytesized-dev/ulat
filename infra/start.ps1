@@ -40,7 +40,7 @@ try {
   $procs += Start-Process node -ArgumentList (Join-Path $infra "dns-stub.mjs") -PassThru -NoNewWindow
   $procs += Start-Process $Caddy -ArgumentList "run", "--config", $caddyfile, "--adapter", "caddyfile" -PassThru -NoNewWindow
   if (-not $NoApp) {
-    $procs += Start-Process pnpm -ArgumentList "start" -WorkingDirectory $root -PassThru -NoNewWindow
+    $procs += Start-Process pnpm -ArgumentList "start", "-H", "127.0.0.1" -WorkingDirectory $root -PassThru -NoNewWindow
   }
   Write-Host "Hub up: https://$HubDomain (DNS $HubIp). Press Ctrl+C to stop."
   Wait-Process -Id $procs[0].Id

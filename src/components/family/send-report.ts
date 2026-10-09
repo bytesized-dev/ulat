@@ -6,7 +6,7 @@ import { toNewReport, type ReportDraft } from "./report-draft";
 // request to the hub and what they read when it fails. The screen only wires
 // them to the page.
 
-const NEED_LABELS: Record<z.infer<typeof Need>, string> = {
+export const NEED_LABELS: Record<z.infer<typeof Need>, string> = {
   water: "Water",
   food: "Food",
   tarp: "Tarp",

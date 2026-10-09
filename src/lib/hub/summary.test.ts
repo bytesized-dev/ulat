@@ -17,11 +17,15 @@ import { getHubSummary } from "./summary";
 let schemaSql: string[];
 const dir = mkdtempSync(join(tmpdir(), "ulat-summary-"));
 
-/** Opens a database file, creating the schema first when `create` is set. */
-function open(path: string, create = false): Db {
+/** A SQLite handle with the schema in place. */
+function create(path: string) {
   const sqlite = new Database(path);
-  if (create) for (const statement of schemaSql) sqlite.exec(statement);
-  return drizzle({ client: sqlite, schema });
+  for (const statement of schemaSql) sqlite.exec(statement);
+  return sqlite;
+}
+
+function open(path: string): Db {
+  return drizzle({ client: new Database(path), schema });
 }
 
 beforeAll(async () => {
@@ -38,7 +42,7 @@ describe("summary of the simulation seed", () => {
 
   beforeAll(() => {
     const path = join(dir, "seed.db");
-    open(path, true).$client.close();
+    create(path).close();
     execFileSync("npx", ["tsx", "scripts/seed.ts"], { env: { ...process.env, DATABASE_PATH: path }, stdio: "pipe" });
     db = open(path);
   }, 60_000);
@@ -111,7 +115,7 @@ describe("priority rule", () => {
   const order = () => getHubSummary(db).barangays.map((r) => r.barangay);
 
   beforeEach(() => {
-    db = open(":memory:", true);
+    db = drizzle({ client: create(":memory:"), schema });
     responderId = db.insert(responders).values({ name: "Test responder" }).returning().get().id;
   });
 

@@ -46,7 +46,7 @@ export default async function ToVisitPage() {
     <div className="flex min-h-dvh flex-col">
       <ToVisitList responderName={session.name} reports={open} />
       <div className="sticky bottom-0 bg-canvas">
-        <footer className="px-gutter pb-4 pt-2">
+        <footer className="px-gutter pb-7 pt-3">
           <Link href={routes.responder.newHouse} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>
             <PlusIcon aria-hidden="true" />
             New house

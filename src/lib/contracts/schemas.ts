@@ -86,6 +86,8 @@ export const NewReport = z.object({
   what_happened: z.string().max(200).nullable(),
   needs: z.array(Need),
   voice_id: z.string().uuid().nullable(),
+  /** Names a photo sent to POST /api/reports/photo. A report queued before photos existed has no key, so a missing one reads as null. */
+  photo_id: z.string().uuid().nullable().default(null),
   transcript: z.string().max(2000).nullable(),
   english: z.string().max(2000).nullable(),
   language: Language.nullable(),
@@ -93,7 +95,9 @@ export const NewReport = z.object({
   client_id: z.string().uuid().optional(),
   consent: z.literal(true),
 });
-export type NewReport = z.infer<typeof NewReport>;
+// The input type, so a caller that builds a report by hand, such as the help
+// desk form, need not name photo_id. Parsing always fills it in.
+export type NewReport = z.input<typeof NewReport>;
 
 /**
  * The fields next to the audio file in POST /api/reports/voice. The phone makes
@@ -106,6 +110,18 @@ export type NewVoiceMeta = z.infer<typeof NewVoiceMeta>;
 /** The answer to a voice upload. No URL: only a responder or staff can read the audio, by report. */
 export const VoiceStored = z.object({ voice_id: z.string().uuid() });
 export type VoiceStored = z.infer<typeof VoiceStored>;
+
+/**
+ * The fields next to the image file in POST /api/reports/photo. The phone makes
+ * the id, as it does the voice_id, so sending the same photo twice stores one
+ * file. NewReport.photo_id names it afterwards.
+ */
+export const NewPhotoMeta = z.object({ photo_id: z.string().uuid() });
+export type NewPhotoMeta = z.infer<typeof NewPhotoMeta>;
+
+/** The answer to a photo upload. No URL: only a responder or staff can see the photo, by id through /api/files. */
+export const PhotoStored = z.object({ photo_id: z.string().uuid() });
+export type PhotoStored = z.infer<typeof PhotoStored>;
 
 export const CantAssess = z.object({
   reason: CantAssessReason,

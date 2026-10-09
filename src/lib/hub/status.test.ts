@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fetchHubStatus, formatBattery, placeholderStatus } from "./status";
+import { fetchHubStatus, formatBattery } from "./status";
 
 const valid = {
   internet: false,
@@ -34,8 +34,8 @@ describe("fetchHubStatus", () => {
     expect(await fetchHubStatus(down)).toBeNull();
   });
 
-  it("uses the placeholder while the route does not exist", async () => {
-    expect(await fetchHubStatus(reply(404, {}))).toEqual(placeholderStatus);
+  it("returns null when the staff session is missing", async () => {
+    expect(await fetchHubStatus(reply(401, { error: "unauthorized" }))).toBeNull();
   });
 });
 

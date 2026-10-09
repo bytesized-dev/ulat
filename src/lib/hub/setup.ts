@@ -19,10 +19,16 @@ export function addressHost(address: string): string {
   return address.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/\/+$/, "");
 }
 
-/** The address the poster prints. The hub_address setting wins, and HUB_DOMAIN is the fallback. */
-export function readHubDomain(db: Db, env: string | undefined = process.env.HUB_DOMAIN): string | undefined {
+/**
+ * The hub's address as setup and the poster both read it. The hub_address
+ * setting wins, as saved. HUB_DOMAIN, passed in as env, is the fallback: a bare
+ * host served over https. host is the part people type.
+ */
+export function readHubAddress(db: Db, env: string | undefined): { address: string; host: string } | null {
   const saved = db.select({ value: settings.value }).from(settings).where(eq(settings.key, "hub_address")).get()?.value?.trim();
-  return (saved ? addressHost(saved) : undefined) || env?.trim() || undefined;
+  if (saved) return { address: saved, host: addressHost(saved) };
+  const domain = env?.trim();
+  return domain ? { address: `https://${domain}`, host: domain } : null;
 }
 
 /** The Wi-Fi name SPEC section 1 gives the router, used when the wifi_name setting is empty. */
@@ -179,7 +185,7 @@ export function readKitSetup(db: Db, status: HubStatus, wifiName?: string, now: 
   return buildKitSetup({
     status,
     certificate: readCertificate(certDir(), now),
-    domain: readHubDomain(db),
+    domain: readHubAddress(db, process.env.HUB_DOMAIN)?.host,
     map: readMapPackage(),
     responders: readActiveResponders(db),
     wifiName,

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { StatusDot } from "@/components/ui/status-dot";
-import { aiSide, familyCounts, responderCounts, responderSide, reviewActions, type CountLine, type ReviewEntry, type ReviewPhoto, type Side } from "@/lib/hub/review";
+import { aiSide, responderCounts, responderSide, reviewActions, type CountLine, type ReviewEntry, type ReviewPhoto, type Side } from "@/lib/hub/review";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ReviewActions } from "./review-actions";
@@ -31,7 +31,7 @@ function PhotoTiles({ photos }: { photos: ReviewPhoto[] }) {
 
 // One side of the comparison. The responder's side has the heavier border, as
 // on the canvas, because it is the value that counts unless staff change it.
-function SideCard({ title, side, counts, emphasis }: { title: string; side: Side; counts: CountLine[]; emphasis?: boolean }) {
+function SideCard({ title, side, counts = [], emphasis }: { title: string; side: Side; counts?: CountLine[]; emphasis?: boolean }) {
   return (
     <section aria-label={title} className={cn("flex flex-col gap-3 rounded-lg border p-6", emphasis ? "border-ink" : "border-hairline")}>
       <p className="text-caption text-muted-text">{title}</p>
@@ -75,7 +75,7 @@ function ReviewDetail({ entry, photos }: ReviewDetailProps) {
       <PhotoTiles photos={photos} />
 
       <div className="grid grid-cols-2 gap-4">
-        <SideCard title="AI draft" side={aiSide(entry)} counts={familyCounts(entry)} />
+        <SideCard title="AI draft" side={aiSide(entry)} />
         <SideCard title={`${responderName} chose`} side={responderSide(entry)} counts={responderCounts(entry)} emphasis />
       </div>
 

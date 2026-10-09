@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
 import type { Db } from "../../db/client";
 import { settings } from "../../db/schema";
-import { addressHost, DEFAULT_WIFI_NAME } from "./setup";
+import { DEFAULT_WIFI_NAME, readHubAddress } from "./setup";
 import { getHazardLines, getSitrep, isSimulationSitrep, readTown, type Sitrep } from "./sitreps";
 
 // BYTE-43. What the two print pages read. Callers pass the database so tests
@@ -46,22 +46,20 @@ export type PosterData = {
   wifiName: string;
   /** Shown only when the hub has one saved, so the poster never prints a placeholder. */
   wifiPassword: string | null;
-  /** The address the QR code encodes, exactly as saved in the hub_address setting. */
+  /** The address the QR code encodes: the hub_address setting as saved, else https and HUB_DOMAIN. */
   hubAddress: string | null;
   /** The address without its scheme, for the line people can type. */
   hubHost: string | null;
 };
 
-export { addressHost };
-
 export function readPoster(db: Db): PosterData {
-  const hubAddress = readText(db, "hub_address") ?? null;
+  const hub = readHubAddress(db, process.env.HUB_DOMAIN);
   return {
     town: readTown(db),
     wifiName: readText(db, "wifi_name") ?? DEFAULT_WIFI_NAME,
     wifiPassword: readText(db, "wifi_password") ?? null,
-    hubAddress,
-    hubHost: hubAddress ? addressHost(hubAddress) : null,
+    hubAddress: hub?.address ?? null,
+    hubHost: hub?.host ?? null,
   };
 }
 

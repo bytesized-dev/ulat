@@ -2,9 +2,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
 import { eq } from "drizzle-orm";
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { PosterSheet } from "../../components/hub/print/poster-sheet";
 import { SitrepSheet } from "../../components/hub/print/sitrep-sheet";
+import { addressHost } from "./setup";
 import { freshDb } from "./test-setup";
 
 type Fresh = Awaited<ReturnType<typeof freshDb>>;
@@ -116,19 +117,29 @@ describe("readPoster", () => {
     expect(renderToStaticMarkup(createElement(PosterSheet, { poster }))).not.toContain('role="img"');
     setSetting("hub_address", "https://hub.dapitan.example");
   });
+
+  it("falls back to HUB_DOMAIN, over https, when the setting is missing, as setup does", () => {
+    db.delete(schema.settings).where(eqKey("hub_address")).run();
+    vi.stubEnv("HUB_DOMAIN", " hub.env.example ");
+    expect(lib.readPoster(db)).toMatchObject({ hubAddress: "https://hub.env.example", hubHost: "hub.env.example" });
+    setSetting("hub_address", "https://hub.dapitan.example");
+    expect(lib.readPoster(db)).toMatchObject({ hubAddress: "https://hub.dapitan.example", hubHost: "hub.dapitan.example" });
+  });
 });
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("addressHost", () => {
   it("drops the scheme and trailing slashes", () => {
-    expect(lib.addressHost("https://hub.example.ph/")).toBe("hub.example.ph");
-    expect(lib.addressHost("http://192.168.1.10:3000")).toBe("192.168.1.10:3000");
-    expect(lib.addressHost("https://hub.[your-domain]")).toBe("hub.[your-domain]");
+    expect(addressHost("https://hub.example.ph/")).toBe("hub.example.ph");
+    expect(addressHost("http://192.168.1.10:3000")).toBe("192.168.1.10:3000");
+    expect(addressHost("https://hub.[your-domain]")).toBe("hub.[your-domain]");
   });
 });
 
 describe("the poster QR code", () => {
   const html = (address: string) => {
-    const poster = { ...lib.readPoster(db), hubAddress: address, hubHost: lib.addressHost(address) };
+    const poster = { ...lib.readPoster(db), hubAddress: address, hubHost: addressHost(address) };
     return renderToStaticMarkup(createElement(PosterSheet, { poster }));
   };
 

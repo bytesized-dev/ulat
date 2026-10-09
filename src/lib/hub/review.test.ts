@@ -15,7 +15,6 @@ import { confirmEntry } from "./api-client";
 import {
   aiSide,
   askForPhotos,
-  familyCounts,
   listReviewEntries,
   listReviewPhotos,
   PHOTOS_REQUESTED,
@@ -153,38 +152,38 @@ describe("the two sides", () => {
 
 describe("the counts a review is about", () => {
   const counts = { people: 5, hurt: 2, missing: 0, report_people: 5, report_hurt: 1, report_missing: 0, review_reason: "Hurt count differs" };
+  const rows = (c: Parameters<typeof responderCounts>[0]) => responderCounts(c).map((l) => [l.label, l.value]);
 
-  it("shows both hurt counts when the reason is a hurt count that differs", () => {
-    expect(responderCounts(counts)).toEqual([{ label: "Hurt", value: "2" }]);
-    expect(familyCounts(counts)).toEqual([{ label: "Family report, hurt", value: "1" }]);
+  it("shows the responder's hurt count beside the family report's when the reason is a hurt count that differs", () => {
+    expect(rows(counts)).toEqual([["Hurt", "2"], ["Family report, hurt", "1"]]);
   });
 
   it("reads the long reason the entries route stores", () => {
     const stored = { ...counts, review_reason: "The hurt count is different from the family report." };
-    expect(responderCounts(stored)).toEqual([{ label: "Hurt", value: "2" }]);
+    expect(rows(stored)).toEqual([["Hurt", "2"], ["Family report, hurt", "1"]]);
   });
 
   it("still shows the hurt count when no family report is linked, and says so", () => {
     const seeded = { ...counts, report_people: null, report_hurt: null, report_missing: null };
-    expect(responderCounts(seeded)).toEqual([{ label: "Hurt", value: "2" }]);
-    expect(familyCounts(seeded)).toEqual([{ label: "Family report, hurt", value: "Not linked" }]);
+    expect(rows(seeded)).toEqual([["Hurt", "2"], ["Family report, hurt", "Not linked"]]);
   });
 
   it("adds people or missing when they differ from the family report", () => {
     const more = { ...counts, report_people: 4, report_missing: 1 };
-    expect(responderCounts(more).map((c) => [c.label, c.value])).toEqual([["People", "5"], ["Hurt", "2"], ["Missing", "0"]]);
-    expect(familyCounts(more).map((c) => c.value)).toEqual(["4", "1", "1"]);
+    expect(rows(more)).toEqual([
+      ["People", "5"], ["Family report, people", "4"],
+      ["Hurt", "2"], ["Family report, hurt", "1"],
+      ["Missing", "0"], ["Family report, missing", "1"],
+    ]);
   });
 
   it("shows no counts when the reason is about the class", () => {
-    const klass = { ...counts, report_hurt: 2, review_reason: "Responder changed class" };
-    expect(responderCounts(klass)).toEqual([]);
-    expect(familyCounts(klass)).toEqual([]);
+    expect(rows({ ...counts, report_hurt: 2, review_reason: "Responder changed class" })).toEqual([]);
   });
 
   it("reads the counts from the seeded entry that needs them", () => {
     const entry = listReviewEntries(db).find((e) => e.number === 241);
-    expect(entry && responderCounts(entry)).toEqual([{ label: "Hurt", value: "2" }]);
+    expect(entry && rows(entry)).toEqual([["Hurt", "2"], ["Family report, hurt", "Not linked"]]);
   });
 });
 

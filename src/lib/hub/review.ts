@@ -226,21 +226,16 @@ function comparedCounts(entry: CountEntry) {
   );
 }
 
-/** The responder's counts, for the card that says what they chose. */
-export function responderCounts(entry: CountEntry): CountLine[] {
-  return comparedCounts(entry).map(({ label, own }) => ({ label, value: String(own) }));
-}
-
 /**
- * The family report's counts, for the card beside the responder's. The AI
- * draft stores no counts, so this is the only other number to compare. A
- * report that is not linked says so.
+ * The counts under the responder's card: their own, then the family report's
+ * for the same fields. A report that is not linked says so. The AI draft stores
+ * no counts, so its card has none.
  */
-export function familyCounts(entry: CountEntry): CountLine[] {
-  return comparedCounts(entry).map(({ label, report }) => ({
-    label: `Family report, ${label.toLowerCase()}`,
-    value: report === null ? "Not linked" : String(report),
-  }));
+export function responderCounts(entry: CountEntry): CountLine[] {
+  return comparedCounts(entry).flatMap(({ label, own, report }) => [
+    { label, value: String(own) },
+    { label: `Family report, ${label.toLowerCase()}`, value: report === null ? "Not linked" : String(report) },
+  ]);
 }
 
 export type ReviewAction = { label: string; body: EntryConfirm };

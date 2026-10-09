@@ -71,7 +71,7 @@ Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Milesto
 | BYT-35 | Pitch and Q&A rehearsal | CJ | 5 Ship | demo | Urgent | 1 |
 | BYT-45 | Submit on Cerebral Valley | CJ | 5 Ship | demo | Urgent | 0.5 |
 
-Hours per person: Artkin 20, CJ 20, James 15.5, Sean 24.
+Hours per person: Artkin 20, CJ 20, James 17, Sean 24.
 
 ---
 

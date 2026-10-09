@@ -9,6 +9,7 @@ import { readSetting } from "@/lib/auth/settings";
 import { readSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts/routes";
 import { getLatest } from "@/lib/hub/latest";
+import { getMapBbox, getMapPins } from "@/lib/hub/map-pins";
 import { getHubSummary } from "@/lib/hub/summary";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -24,6 +25,7 @@ export default async function HubOverviewPage() {
 
   const summary = getHubSummary(db);
   const latest = getLatest(db);
+  const map = { bbox: getMapBbox(db), pins: getMapPins(db) };
   const wifiName = readSetting("wifi_name") ?? "ULAT-HUB";
 
   return (
@@ -33,7 +35,7 @@ export default async function HubOverviewPage() {
       rail={<OverviewRailLive summary={summary} latest={latest} wifiName={wifiName} />}
     >
       <OverviewLive />
-      <OverviewMain summary={summary} />
+      <OverviewMain summary={summary} map={map} />
     </HubPage>
   );
 }

@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import type { HubSummary } from "@/lib/contracts";
+import type { MapPin } from "@/components/map";
 import { routes } from "@/lib/contracts/routes";
 import type { LatestItem } from "@/lib/hub/latest";
+import type { Bbox } from "@/lib/hub/map-projection";
 import { BarangayTable } from "./barangay-table";
 import { OverviewHero } from "./overview-hero";
+import { OverviewMap } from "./overview-map";
 import { OverviewRail } from "./overview-rail";
 import { useHubSummary } from "./use-hub-summary";
 
 type OverviewMainProps = {
   summary: HubSummary;
-  /** The damage map. Left out, an empty frame holds its place until MapView lands with BYT-4. */
-  map?: React.ReactNode;
+  /** The town's box and the pins, read on the server. Shading comes from the live summary. */
+  map: { bbox: Bbox; pins: MapPin[] };
 };
 
 /** The hero, the damage map and the table by barangay. Live through useHubSummary. */
@@ -31,7 +34,9 @@ export function OverviewMain({ summary: initial, map }: OverviewMainProps) {
             Open map
           </Link>
         </div>
-        <div className="mt-4">{map ?? <div aria-hidden="true" className="aspect-video w-full rounded-lg bg-surface-soft" />}</div>
+        <div className="mt-4">
+          <OverviewMap bbox={map.bbox} pins={map.pins} rows={summary.barangays} />
+        </div>
       </section>
 
       <BarangayTable rows={summary.barangays} />

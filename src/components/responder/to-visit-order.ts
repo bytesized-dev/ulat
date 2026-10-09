@@ -65,3 +65,21 @@ export function orderToVisit(items: ToVisitItem[], sort: ToVisitSort): ToVisitIt
     return byDistance(a, b);
   });
 }
+
+/** Keeps houses whose household, barangay, purok or code contains every word typed. */
+export function filterToVisit(items: ToVisitItem[], query: string): ToVisitItem[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return items;
+  return items.filter((item) => {
+    const text = [item.household_head, item.barangay, item.purok ?? "", item.code].join(" ").toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+}
+
+export const MOVE_THRESHOLD_M = 25;
+
+/** The position the list should use next. It ignores small drifts so rows do not shift while the responder walks. */
+export function nextPosition(current: Point | null, fix: Point): Point {
+  if (current === null) return fix;
+  return distanceMeters(current, fix) >= MOVE_THRESHOLD_M ? fix : current;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distanceMeters, formatDistance, orderToVisit, withDistance, type ToVisitReport } from "./to-visit-order";
+import { distanceMeters, filterToVisit, formatDistance, nextPosition, orderToVisit, withDistance, type ToVisitReport } from "./to-visit-order";
 
 const here = { lat: 10.0, lng: 124.0 };
 
@@ -7,7 +7,7 @@ function report(code: string, over: Partial<ToVisitReport> = {}): ToVisitReport 
   return {
     code,
     household_head: `${code} household`,
-    barangay: "San Isidro",
+    barangay: "Sinonoc",
     purok: null,
     lat: 10.0,
     lng: 124.0,
@@ -80,5 +80,44 @@ describe("order to visit", () => {
     const before = items.map((i) => i.code);
     orderToVisit(items, "urgent");
     expect(items.map((i) => i.code)).toEqual(before);
+  });
+});
+
+describe("search", () => {
+  const items = withDistance(
+    [
+      report("D4F5", { household_head: "Dela Cruz household", barangay: "Sinonoc", purok: "Purok 3" }),
+      report("G6H7", { household_head: "Garcia household", barangay: "Mabini", purok: null }),
+      report("B3N6", { household_head: "Bautista household", barangay: "Sinonoc", purok: "Purok 1" }),
+    ],
+    here,
+  );
+
+  it("returns everything for an empty or blank search", () => {
+    expect(filterToVisit(items, "")).toHaveLength(3);
+    expect(filterToVisit(items, "   ")).toHaveLength(3);
+  });
+
+  it("matches household, barangay, purok and code without caring about case", () => {
+    expect(filterToVisit(items, "garcia").map((i) => i.code)).toEqual(["G6H7"]);
+    expect(filterToVisit(items, "MABINI").map((i) => i.code)).toEqual(["G6H7"]);
+    expect(filterToVisit(items, "cruz purok 3").map((i) => i.code)).toEqual(["D4F5"]);
+    expect(filterToVisit(items, "b3n6").map((i) => i.code)).toEqual(["B3N6"]);
+  });
+
+  it("needs every word to match", () => {
+    expect(filterToVisit(items, "sinonoc purok 1").map((i) => i.code)).toEqual(["B3N6"]);
+    expect(filterToVisit(items, "sinonoc mabini")).toEqual([]);
+  });
+});
+
+describe("next position", () => {
+  it("takes the first fix", () => {
+    expect(nextPosition(null, here)).toEqual(here);
+  });
+
+  it("keeps the old position for a move under 25 m and takes it from 25 m", () => {
+    expect(nextPosition(here, at(10))).toEqual(here);
+    expect(nextPosition(here, at(30))).toEqual(at(30));
   });
 });

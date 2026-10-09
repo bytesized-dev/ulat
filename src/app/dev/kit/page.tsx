@@ -150,7 +150,7 @@ export default function KitPage() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="kit-disabled">Barangay</Label>
-                <Input id="kit-disabled" defaultValue="San Isidro" disabled />
+                <Input id="kit-disabled" defaultValue="Sinonoc" disabled />
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Barangay</Label>
@@ -196,11 +196,11 @@ export default function KitPage() {
             <Phone className="px-5">
               <Row href={routes.family.check} label="Head of household" value="Rosa Dela Cruz" />
               <ButtonRowDemo />
-              <Row label="Barangay" value="San Isidro, Purok 3" />
+              <Row label="Barangay" value="Sinonoc, Purok 3" />
               <Row
                 href={routes.responder.report("DC41")}
                 icon={<HouseIcon />}
-                label="San Isidro, Purok 3"
+                label="Sinonoc, Purok 3"
                 value="Dela Cruz household"
                 trailing={
                   <>
@@ -390,11 +390,11 @@ export default function KitPage() {
                   <div className="flex flex-col gap-3">
                     <h2 className="text-title-md">Go first</h2>
                     <div className="flex items-center justify-between">
-                      <span className="text-body-md font-medium">San Isidro</span>
+                      <span className="text-body-md font-medium">Sinonoc</span>
                       <Pill dot="danger">High</Pill>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-body-md font-medium">Mabini</span>
+                      <span className="text-body-md font-medium">Potol (Pob.)</span>
                       <Pill dot="warning">Medium</Pill>
                     </div>
                   </div>

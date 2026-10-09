@@ -19,15 +19,17 @@ type TabBarProps = Omit<React.ComponentProps<"nav">, "children"> & {
 
 // The responder's bottom tabs. The page says which one is active, so the bar
 // needs no router and renders the same on the server and in the browser.
+// 77px in the design: 1px border, 6px above, 48px tabs, 22px below for the
+// phone's home indicator.
 function TabBar({ active, className, ...props }: TabBarProps) {
   return (
-    <nav data-slot="tab-bar" aria-label="Responder sections" className={cn("grid grid-cols-4 border-t border-hairline bg-canvas", className)} {...props}>
+    <nav data-slot="tab-bar" aria-label="Responder sections" className={cn("grid grid-cols-4 border-t border-hairline bg-canvas px-1 pb-5.5 pt-1.5", className)} {...props}>
       {tabs.map(({ key, label, href, Icon }) => (
         <Link
           key={key}
           href={href}
           aria-current={key === active ? "page" : undefined}
-          className={cn("flex h-16 flex-col items-center justify-center gap-1 text-caption-strong", key === active ? "text-primary" : "text-muted-text")}
+          className={cn("flex min-h-12 flex-col items-center justify-center gap-0.75 text-caption-strong", key === active ? "text-primary" : "text-muted-text")}
         >
           <Icon aria-hidden="true" className="size-6" />
           {label}

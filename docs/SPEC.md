@@ -104,7 +104,7 @@ Drizzle with SQLite. IDs are UUID strings unless noted. Timestamps are ISO strin
 | `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `voice_path`, `transcript`, `transcript_en`, `language`, `photo_path`, `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `created_at`, `updated_at` |
 | `entries` | `id`, `number` (integer, shown as 0231), `report_id` (nullable), `responder_id`, `barangay`, `purok`, `household_head`, `lat`, `lng`, `gps_accuracy_m`, `families` (default 1, more when families share a house), `people`, `hurt`, `missing`, `needs` (JSON), `material`, `hazards` (JSON), `damage_class` (`none`, `partial`, `total`), `ai_class`, `ai_confidence`, `ai_reason`, `ai_need_more`, `note_path`, `note_transcript`, `note_en`, `status` (`draft`, `needs_review`, `confirmed`), `review_reason`, `confirmed_by`, `confirmed_at`, `created_at` |
 | `photos` | `id`, `entry_id` or `report_id`, `path`, `label`, `taken_at` |
-| `events` | `id`, `entity` (`report`, `entry`, `update`, `place`, `safe`), `entity_id`, `type`, `actor`, `data` (JSON), `at`. This is the audit trail |
+| `events` | `id`, `entity` (`report`, `entry`, `update`, `place`, `safe`, `ai`), `entity_id`, `type`, `actor`, `data` (JSON), `at`. This is the audit trail. Model calls log as entity `ai` with a fresh UUID per call, type `ai.voice`, `ai.text` and so on, with `.failed` added on a timeout or a schema failure, and the raw output in `data` |
 | `places` | `id`, `type` (`relief`, `shelter`, `hazard`), `name`, `details`, `when_text`, `lat`, `lng`, `visible`, `created_at` |
 | `updates` | `id`, `type` (`water_food`, `shelter`, `hazard`, `notice`), `headline`, `message`, `message_ceb`, `message_tl`, `place_id`, `expires_at`, `seen_count`, `posted_at` |
 | `safe_checkins` | `id`, `name`, `barangay`, `staying_at`, `message`, `source` (`phone`, `desk`), `at` |
@@ -134,6 +134,7 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 | `POST /api/reports/[code]/assign` | Staff | Assign to a responder |
 | `POST /api/reports/[code]/cant-assess` | Responder | Reason and note |
 | `POST /api/entries` | Responder | Creates a draft from photos, note, GPS and an optional report code, then runs the photo pipeline |
+| `POST /api/entries/[id]/photos` | Responder | Adds a photo to a draft and runs the photo draft again |
 | `GET /api/entries/[id]` | Responder, staff | Entry with photos, AI draft and history |
 | `PATCH /api/entries/[id]` | Responder, staff | `EntryConfirm` to confirm, or field edits. Records changes in `events` |
 | `GET /api/entries` | Staff | Paginated and filtered list |

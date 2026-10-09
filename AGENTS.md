@@ -45,6 +45,7 @@ The canvas is private to its owner's claude.ai account, so agents cannot open it
 | `pnpm dev` | Run the app on port 3000 |
 | `pnpm db:push` | Create or update the SQLite schema |
 | `pnpm db:seed` | Load `seed/simulation.json`, the same data the canvas shows |
+| `pnpm demo:reset` | Wipe data and uploads, reload the seed, turn simulation on |
 | `pnpm typecheck` | TypeScript, no emit |
 | `pnpm test` | Vitest |
 | `pnpm e2e` | Playwright smoke tests for the demo loop |

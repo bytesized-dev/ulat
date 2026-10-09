@@ -59,6 +59,17 @@ export const AiTranslation = z.object({
 });
 export type AiTranslation = z.infer<typeof AiTranslation>;
 
+/**
+ * What the AI routes send back when they cannot return an extract. Screens show
+ * a retry button only when `retry` is true. `rejected` is Ollama refusing the
+ * input with a 4xx, so the same request can never succeed.
+ */
+export const AiErrorBody = z.object({
+  error: z.enum(["bad_request", "too_large", "rejected", "timeout", "unavailable", "invalid_output"]),
+  retry: z.boolean(),
+});
+export type AiErrorBody = z.infer<typeof AiErrorBody>;
+
 /* ---------- API inputs ---------- */
 
 export const NewReport = z.object({
@@ -78,6 +89,8 @@ export const NewReport = z.object({
   transcript: z.string().max(2000).nullable(),
   english: z.string().max(2000).nullable(),
   language: Language.nullable(),
+  /** Made once on the phone when the family taps Send. The hub returns the same code for a repeat. */
+  client_id: z.string().uuid().optional(),
   consent: z.literal(true),
 });
 export type NewReport = z.infer<typeof NewReport>;

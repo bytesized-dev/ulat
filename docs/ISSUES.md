@@ -42,6 +42,7 @@ Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Milesto
 | BYT-54 | Sign in and sessions for responders and staff | CJ | 1 Tier 1 | platform | Urgent | 1 |
 | BYT-55 | Hub status and health API | CJ | 1 Tier 1 | platform | Urgent | 1 |
 | BYT-56 | Updates, map places and safe list API | Sean | 1 Tier 1 | hub | Urgent | 1.5 |
+| BYT-60 | Add a photo to an entry and draft again | James | 1 Tier 1 | responder | Urgent | 1.5 |
 | BYT-9 | AI: voice and text to fields | CJ | 2 Real AI loop | ai | Urgent | 2 |
 | BYT-25 | AI: photos to damage class | CJ | 2 Real AI loop | ai | Urgent | 2 |
 | BYT-58 | End to end smoke test of the demo loop | CJ | 2 Real AI loop | platform | High | 1 |
@@ -70,7 +71,7 @@ Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Milesto
 | BYT-35 | Pitch and Q&A rehearsal | CJ | 5 Ship | demo | Urgent | 1 |
 | BYT-45 | Submit on Cerebral Valley | CJ | 5 Ship | demo | Urgent | 0.5 |
 
-Hours per person: Artkin 20, CJ 20, James 15.5, Sean 24.
+Hours per person: Artkin 20, CJ 20, James 17, Sean 24.
 
 ---
 
@@ -447,8 +448,8 @@ Hours per person: Artkin 20, CJ 20, James 15.5, Sean 24.
 **Acceptance criteria**
 
 - [ ] Shows counts, needs, voice note with transcript and English
-- [ ] Start assessment creates a draft entry and opens capture
-- [ ] Can't assess opens the sheet from BYT-53, or links to it if not built yet
+- [ ] Start assessment opens capture for this report. The entry is created when the responder sends it (BYT-50)
+- [ ] Can't assess opens the sheet from BYT-53, or is hidden until then
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
 
 ---
@@ -482,7 +483,7 @@ Hours per person: Artkin 20, CJ 20, James 15.5, Sean 24.
 - **Label:** responder
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2.5 h
-- **Depends on:** BYT-50
+- **Depends on:** BYT-50, BYT-60
 - **Spec:** 5
 - **Screens:**
   - Responder: hub drafting: `design/screens/responder/hub-drafting.html`, `design/png/responder/hub-drafting.png`, route `/r/assess/[entryId]/drafting`
@@ -609,17 +610,41 @@ Hours per person: Artkin 20, CJ 20, James 15.5, Sean 24.
 
 - **Owner:** James
 - **Milestone:** 1 Tier 1
-- **Label:** platform
+- **Label:** responder
 - **Priority:** Urgent, tier 1
-- **Estimate:** 2 h
+- **Estimate:** 2.5 h
 - **Depends on:** BYT-8
 - **Spec:** 3, 4, 5
 
 **Acceptance criteria**
 
-- [ ] `POST /api/entries` stores photos and audio and creates a draft
-- [ ] `PATCH /api/entries/[id]` confirms, records every changed field in events, and sets needs_review per SPEC section 5
-- [ ] Confirming a linked entry sets the report to visited
+- [ ] `POST /api/entries` stores photos and audio under `data/uploads` and creates a draft
+- [ ] `PATCH /api/entries/[id]` confirms with `EntryConfirm`, records every changed field in events, and sets needs_review per SPEC section 5
+- [ ] Confirming a linked entry sets the report to visited and emits `entry.confirmed`
+- [ ] After saving a draft, calls `draftEntry(entryId)` from `src/lib/ai`
+- [ ] `GET /api/entries` lists confirmed entries with paging, filters and search, for the hub
+- [ ] `GET /api/files/[id]` serves stored photos and audio to signed in responders and staff only
+- [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
+
+---
+
+## BYT-60 Add a photo to an entry and draft again
+
+- **Owner:** James
+- **Milestone:** 1 Tier 1
+- **Label:** responder
+- **Priority:** Urgent, tier 1
+- **Estimate:** 1.5 h
+- **Depends on:** BYT-14
+- **Spec:** 4, 5
+
+**Acceptance criteria**
+
+- [ ] `POST /api/entries/[id]/photos` takes one photo and a label as multipart, responders only. It stores the photo with `storeUpload` and adds a `photos` row
+- [ ] Refuses a fourth photo, and an entry that isn't a draft
+- [ ] Runs `draftEntry(entryId)` from `src/lib/ai/draft-entry` again, the same way `POST /api/entries` does, so `entry.drafted` goes out
+- [ ] Writes an `entry.photo_added` event with the actor
+- [ ] PATCH counts the unclear rule as met when the entry has an `entry.photo_added` event, and ignores `new_photo_since_unclear` from the body. No contract change
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
 
 ---

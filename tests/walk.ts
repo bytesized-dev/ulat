@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 
 const skip = new Set(["node_modules", ".next", ".git", "drizzle", "playwright-report", "test-results", "public", "coverage", ".vercel"]);
 
@@ -10,7 +10,7 @@ export function walk(dir: string): string[] {
     if (skip.has(entry)) continue;
     const path = join(dir, entry);
     if (statSync(path).isDirectory()) out.push(...walk(path));
-    else out.push(path);
+    else out.push(path.split(sep).join("/"));
   }
   return out;
 }

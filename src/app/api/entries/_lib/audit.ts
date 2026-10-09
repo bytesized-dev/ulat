@@ -1,0 +1,16 @@
+import type { Db } from "@/db/client";
+import { events } from "@/db/schema";
+import type { HubEvent } from "@/lib/contracts";
+import { publish } from "@/lib/live/bus";
+
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/** One audit row. Every write to an entry adds at least one. */
+export function audit(tx: Tx | Db, entryId: string, type: string, actor: string, data: Record<string, unknown> = {}) {
+  tx.insert(events).values({ entity: "entry", entity_id: entryId, type, actor, data, at: new Date().toISOString() }).run();
+}
+
+/** Tells the open live streams. Call it after the transaction commits. */
+export function emit(event: HubEvent) {
+  publish(event);
+}

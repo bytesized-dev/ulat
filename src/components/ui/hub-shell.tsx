@@ -1,6 +1,8 @@
 import * as React from "react";
 import Link from "next/link";
+import { connection } from "next/server";
 import { LockIcon } from "lucide-react";
+import { isSimulation } from "@/lib/auth/settings";
 import { routes } from "@/lib/contracts/routes";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -31,7 +33,7 @@ type HubShellProps = {
   activeHref: string;
   /** The block above Lock hub, such as internet, phones and battery. */
   status?: React.ReactNode;
-  /** Shows the Simulation pill next to the title. */
+  /** Shows the Simulation pill next to the title. Left out, it follows the simulation setting. */
   simulation?: boolean;
   searchLabel?: string;
   /** Who is signed in. Gives the avatar its name and, by default, its initials. */
@@ -47,8 +49,15 @@ type HubShellProps = {
 const navLink = "flex h-11 items-center gap-3 rounded-pill px-3.5 text-body-md font-medium text-ink outline-none transition-colors hover:bg-surface-soft";
 
 // The frame every hub page sits in. It is layout only: the sections, the
-// counts and the status data come in as props.
-function HubShell({ title, nav, activeHref, status, simulation = false, searchLabel = "Search", name, initials, lockHref = routes.hub.lock, rail, children, className }: HubShellProps) {
+// counts and the status data come in as props. The one thing it reads itself
+// is the simulation setting, so every hub page shows the pill without passing it.
+async function HubShell({ title, nav, activeHref, status, simulation, searchLabel = "Search", name, initials, lockHref = routes.hub.lock, rail, children, className }: HubShellProps) {
+  // The setting changes at runtime, so the read waits for a request. A page
+  // that never reads cookies would otherwise be built with the flag as it was.
+  if (simulation === undefined) {
+    await connection();
+    simulation = isSimulation();
+  }
   return (
     <div data-slot="hub-shell" className={cn("flex min-h-dvh bg-canvas text-ink", className)}>
       <aside className="sticky top-0 flex h-dvh w-sidebar shrink-0 flex-col overflow-y-auto border-r border-hairline p-3">

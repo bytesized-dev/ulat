@@ -144,11 +144,12 @@ describe("PATCH /api/entries/[id] with x-ulat-expect-status", () => {
 });
 
 describe("PATCH /api/entries/[id] without the header", () => {
-  it("behaves as before: a confirmed entry can be edited again", async () => {
+  it("a confirmed entry can be edited again, as a field edit with no new confirmation", async () => {
     const id = newEntry("confirmed");
     const res = await patch(id, body("none"));
     expect(res.status).toBe(200);
     expect(saved(id)).toMatchObject({ status: "confirmed", damage_class: "none" });
-    expect(history(id).filter((e) => e.type === "entry.confirmed")).toHaveLength(1);
+    expect(history(id).filter((e) => e.type === "entry.confirmed")).toHaveLength(0);
+    expect(history(id).filter((e) => e.type === "entry.field_changed").length).toBeGreaterThan(0);
   });
 });

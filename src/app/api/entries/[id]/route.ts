@@ -66,6 +66,13 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const status = reasons.length > 0 ? "needs_review" : "confirmed";
   const now = new Date().toISOString();
 
+  // Staff editing an entry that is already confirmed change fields only. It is not
+  // a new confirmation, so the status, who confirmed and when, and the report stay.
+  // A caller that sends the header is settling a review and keeps the path below.
+  const editing = actor.role === "staff" && entry.status === "confirmed" && expected === null;
+  const changed = FIELDS.filter((field) => JSON.stringify(entry[field]) !== JSON.stringify(confirm[field]));
+  if (editing && changed.length === 0) return Response.json({ entry, status: entry.status, reasons: [] });
+
   const settled = db.transaction((tx) => {
     // The update goes first, and with the header it only matches an entry that is
     // still in the status the caller saw. No row changed means another save got there
@@ -81,22 +88,24 @@ export async function PATCH(req: Request, { params }: Ctx) {
         hurt: confirm.hurt,
         missing: confirm.missing,
         needs: confirm.needs,
-        status,
-        review_reason: reasons.length > 0 ? reasons.map((r) => REVIEW_REASONS[r]).join(" ") : null,
-        confirmed_by: status === "confirmed" ? actor.id : null,
-        confirmed_at: status === "confirmed" ? now : null,
+        ...(editing
+          ? {}
+          : {
+              status,
+              review_reason: reasons.length > 0 ? reasons.map((r) => REVIEW_REASONS[r]).join(" ") : null,
+              confirmed_by: status === "confirmed" ? actor.id : null,
+              confirmed_at: status === "confirmed" ? now : null,
+            }),
       })
       .where(expected?.success ? and(eq(entries.id, id), eq(entries.status, expected.data)) : eq(entries.id, id))
       .run();
     if (expected && result.changes !== 1) return false;
 
-    for (const field of FIELDS) {
-      const from = entry[field];
-      const to = confirm[field];
-      if (JSON.stringify(from) !== JSON.stringify(to)) {
-        audit(tx, id, "entry.field_changed", actor.id, { field, from, to });
-      }
+    for (const field of changed) {
+      audit(tx, id, "entry.field_changed", actor.id, { field, from: entry[field], to: confirm[field] });
     }
+
+    if (editing) return true;
 
     if (status === "confirmed") {
       audit(tx, id, "entry.confirmed", actor.id, { class: confirm.damage_class });
@@ -114,8 +123,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!settled) return Response.json({ error: "not_in_review" }, { status: 409 });
 
   if (status === "confirmed") {
+    // For an edit this is only the refresh signal, so the hub totals refetch.
     emit({ type: "entry.confirmed", entry_id: id, report_code: report?.code ?? null });
-    if (report) emit({ type: "report.updated", code: report.code, status: "visited" });
+    if (report && !editing) emit({ type: "report.updated", code: report.code, status: "visited" });
   } else {
     emit({ type: "entry.needs_review", entry_id: id });
   }

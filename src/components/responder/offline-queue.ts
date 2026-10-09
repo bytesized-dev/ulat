@@ -1,5 +1,6 @@
 import { buildForm } from "./capture";
 import type { NewEntryMeta } from "@/lib/contracts";
+import { parseRetryAfter } from "./retry-backoff";
 
 // Entries saved on the phone while the hub is out of reach. docs/SPEC.md
 // section 9. Photos and the note stay as blobs in IndexedDB until the hub takes them.
@@ -69,7 +70,20 @@ export function describeQueued(entry: Pick<QueuedEntry, "photos" | "note">): str
   return entry.note ? `${photos}, note` : photos;
 }
 
-export type FlushResult = { sent: number; left: number; failed: number; signedOut: boolean };
+export type FlushResult = {
+  sent: number;
+  left: number;
+  failed: number;
+  /** The hub said 401. Nothing more should be posted until the responder signs in again. */
+  signedOut: boolean;
+  /** The run stopped on a failure that can pass: no answer, a timeout, 408, 425, 429 or 5xx. */
+  retry: boolean;
+  /** The hub's Retry-After on a 429 or 503, in milliseconds. */
+  retryAfterMs: number | null;
+};
+
+/** How long one POST may take before the phone gives up on it and tries later. */
+export const SEND_TIMEOUT_MS = 60_000;
 
 /** The queue row for an entry the hub refused. Says what is wrong, since trying again will not help. */
 export function failureText(status: number, code: string | undefined): string {
@@ -90,19 +104,26 @@ function worthRetrying(status: number): boolean {
 /**
  * Sends the queue oldest first. A network failure, a lost session or a hub that
  * says try later (408, 425, 429, 5xx) stops the run and keeps everything not yet
- * sent. Any other refusal can never succeed on retry, so the entry stays with its
+ * sent. The result says which, so the caller can wait before the next run. Any other refusal can never succeed on retry, so the entry stays with its
  * error for the responder to read and dismiss, and the ones behind it still go.
  */
 export async function flushQueue(store: QueueStore = browserStore, send: typeof fetch = fetch): Promise<FlushResult> {
   const items = await store.all();
   let sent = 0;
   let signedOut = false;
+  let retry = false;
+  let retryAfterMs: number | null = null;
   for (const item of items) {
     if (item.failure) continue;
     let res: Response;
     try {
-      res = await send("/api/entries", { method: "POST", body: buildForm(item.meta, item.photos as File[], item.note) });
+      res = await send("/api/entries", {
+        method: "POST",
+        body: buildForm(item.meta, item.photos as File[], item.note),
+        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+      });
     } catch {
+      retry = true;
       break;
     }
     if (res.ok) {
@@ -112,11 +133,13 @@ export async function flushQueue(store: QueueStore = browserStore, send: typeof 
     }
     if (worthRetrying(res.status)) {
       signedOut = res.status === 401;
+      retry = !signedOut;
+      if (res.status === 429 || res.status === 503) retryAfterMs = parseRetryAfter(res.headers.get("retry-after"));
       break;
     }
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     await store.put({ ...item, failure: { status: res.status, message: failureText(res.status, body?.error) } });
   }
   const rest = await store.all();
-  return { sent, left: rest.filter((e) => !e.failure).length, failed: rest.filter((e) => e.failure).length, signedOut };
+  return { sent, left: rest.filter((e) => !e.failure).length, failed: rest.filter((e) => e.failure).length, signedOut, retry, retryAfterMs };
 }

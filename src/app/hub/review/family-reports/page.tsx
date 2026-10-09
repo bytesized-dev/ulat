@@ -56,7 +56,7 @@ export default async function FamilyReportsPage({ searchParams }: { searchParams
       rail={<ReportRail report={selected} responders={responders} />}
     >
       <div className="flex flex-col gap-9">
-        <ReviewTabs active="family_reports" counts={review} className="self-stretch" />
+        <ReviewTabs active="family_reports" counts={review} />
         <SegmentLinks
           aria-label="Filter"
           className="self-start"

@@ -26,6 +26,7 @@ export function EntriesFilter() {
       name="damage_class"
       options={options}
       value={value}
+      className="self-start"
       onValueChange={(next) => {
         const query = new URLSearchParams(params);
         query.delete("page");

@@ -36,7 +36,7 @@ export default async function PossibleDuplicatesPage({ searchParams }: { searchP
   return (
     <HubPage title="Possible duplicates" active={routes.hub.review} rail={<DuplicateRail pairs={pairs} selected={selected?.id ?? null} />}>
       <div className="flex flex-col gap-9">
-        <ReviewTabs active="duplicates" counts={review} className="self-stretch" />
+        <ReviewTabs active="duplicates" counts={review} />
         {selected ? (
           <>
             <DuplicateCompare pair={selected} bbox={getMapBbox(db)} />

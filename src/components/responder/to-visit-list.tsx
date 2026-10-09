@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { HouseIcon } from "lucide-react";
 import { AppTopBar } from "@/components/ui/app-top-bar";
-import { Chip } from "@/components/ui/chip";
 import { IconPlate } from "@/components/ui/icon-plate";
 import { Pill } from "@/components/ui/pill";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -21,6 +20,7 @@ import {
   type ToVisitReport,
   type ToVisitSort,
 } from "./to-visit-order";
+import { TextToggle } from "./text-toggle";
 import { useOwnPosition } from "./use-position";
 import { useVisitFilters, VisitFilterChips } from "./visit-filters";
 
@@ -87,16 +87,16 @@ function ToVisitList({ responderId, responderName, team, reports }: ToVisitListP
           <h1 className="text-title-page text-ink">To visit</h1>
           <span className="font-mono text-mono-sm text-muted-text">{shown.length}</span>
         </div>
-        {/* Sort on top, filters under it, both on the same two columns so every chip lines up. */}
-        <div role="group" aria-label="Sort" className="mt-4 grid grid-cols-2 gap-2">
-          <Chip pressed={sort === "urgent"} onPressedChange={() => setSort("urgent")}>
+        {/* Plain text, not buttons. Sort has an underline under the chosen one, the filters show a check when on. */}
+        <div role="group" aria-label="Sort" className="mt-2 flex gap-x-5 border-b border-hairline-soft">
+          <TextToggle indicator="underline" pressed={sort === "urgent"} onPressedChange={() => setSort("urgent")}>
             Urgent first
-          </Chip>
-          <Chip pressed={sort === "nearest"} onPressedChange={() => setSort("nearest")}>
+          </TextToggle>
+          <TextToggle indicator="underline" pressed={sort === "nearest"} onPressedChange={() => setSort("nearest")}>
             Nearest
-          </Chip>
+          </TextToggle>
         </div>
-        <VisitFilterChips filters={filters} onChange={setFilters} team={team} className="mt-2 grid grid-cols-2 overflow-visible" />
+        <VisitFilterChips variant="text" filters={filters} onChange={setFilters} team={team} />
         <div className="mt-4 flex flex-col">
           {items.map((item) => (
             <ToVisitRow key={item.code} item={item} responderId={responderId} />

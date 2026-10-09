@@ -1,0 +1,106 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { LockIcon, MapPinIcon, UsersIcon } from "lucide-react";
+import { routes } from "@/lib/contracts";
+import { useMounted } from "@/lib/use-mounted";
+import { Button } from "@/components/ui/button";
+import { Pill } from "@/components/ui/pill";
+import { ProgressSteps } from "@/components/ui/progress-steps";
+import { Row } from "@/components/ui/row";
+import { TopBar } from "@/components/ui/top-bar";
+import { canSend, sendReport, summarizeDraft } from "./send-report";
+import { saveSentReport } from "./sent-report";
+import { useReportDraft } from "./use-report-draft";
+
+const PROMISES = [
+  { icon: <UsersIcon />, label: "Only MDRRMO responders see it" },
+  { icon: <MapPinIcon />, label: "Used to plan visits and relief" },
+  { icon: <LockIcon />, label: "Stays on this laptop, never online" },
+];
+
+// Step 4 of 4. Agree and send is the family's consent, so it is the only place
+// a report is posted. The draft stays in place until the report sent screen
+// takes over, so a failed send can be tried again with nothing retyped.
+function BeforeYouSendForm() {
+  const router = useRouter();
+  const draft = useReportDraft();
+  const mounted = useMounted();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<{ message: string; retry: boolean } | null>(null);
+
+  const summary = summarizeDraft(draft);
+  // The server render has an empty draft, so wait for hydration before saying it is incomplete.
+  const incomplete = mounted && !canSend(draft);
+
+  async function submit() {
+    if (busy || !canSend(draft)) return;
+    setBusy(true);
+    setError(null);
+    const result = await sendReport(draft);
+    if (!result.ok) {
+      setError({ message: result.message, retry: result.retry });
+      setBusy(false);
+      return;
+    }
+    saveSentReport(result.code);
+    // Replace, so Back from the next screen does not offer to send it again.
+    router.replace(routes.family.sent);
+  }
+
+  return (
+    <form
+      className="mx-auto flex min-h-dvh w-full max-w-prose flex-col"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <TopBar as="p" title="New report" leading={{ kind: "back", href: routes.family.check }} />
+      <ProgressSteps step={4} className="px-gutter pb-1.5" />
+
+      <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
+        <h1 className="text-title-page text-ink">Before you send</h1>
+
+        <section aria-label="Your report" className="flex flex-col gap-2 rounded-lg bg-surface-soft p-4">
+          <div className="flex items-baseline justify-between gap-4">
+            <p className="min-w-0 text-title-sm break-words text-ink">{summary.household}</p>
+            <Link href={routes.family.check} className="inline-flex min-h-touch shrink-0 items-center text-body-sm font-semibold text-primary">
+              Edit
+            </Link>
+          </div>
+          {summary.place ? <p className="text-body-sm text-body">{summary.place}</p> : null}
+          <ul className="flex flex-wrap gap-2 pt-1">
+            {summary.pills.map((pill) => (
+              <li key={pill.label}>
+                <Pill dot={pill.dot}>{pill.label}</Pill>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <ul className="flex flex-col">
+          {PROMISES.map((promise) => (
+            <li key={promise.label}>
+              <Row icon={promise.icon} label={null} value={promise.label} className="border-b-0" />
+            </li>
+          ))}
+        </ul>
+
+        <p role="alert" className="min-h-5 text-body-sm text-danger">
+          {error?.message ?? (incomplete ? "Some details are missing. Go back and check your report." : null)}
+        </p>
+      </main>
+
+      <footer className="bg-canvas px-gutter pt-3 pb-7">
+        <Button type="submit" className="w-full" disabled={busy || incomplete}>
+          {busy ? "Sending" : error?.retry ? "Try again" : "Agree and send"}
+        </Button>
+      </footer>
+    </form>
+  );
+}
+
+export { BeforeYouSendForm };

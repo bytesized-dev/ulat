@@ -26,6 +26,8 @@ function readName(msg, start) {
 function reply(msg) {
   if (msg.length < 17) return null;
   const { name, end } = readName(msg, 12);
+  // Drop a truncated question instead of reading past the end of the packet.
+  if (end + 4 > msg.length) return null;
   const type = msg.readUInt16BE(end);
   const question = msg.subarray(12, end + 4);
   const match = name === domain;
@@ -53,11 +55,17 @@ function reply(msg) {
 
 const server = dgram.createSocket("udp4");
 server.on("message", (msg, rinfo) => {
-  const out = reply(msg);
-  if (out) server.send(out, rinfo.port, rinfo.address);
+  // One bad packet from a phone must never stop the hub.
+  try {
+    const out = reply(msg);
+    if (out) server.send(out, rinfo.port, rinfo.address, () => {});
+  } catch {
+    // Ignore malformed packets.
+  }
 });
 server.on("error", (err) => {
   console.error(`DNS stub failed: ${err.message}`);
   process.exit(1);
 });
-server.bind(port, () => console.log(`DNS stub: ${domain} -> ${ip} on udp ${port}`));
+// Same as listen-address in dnsmasq.conf: answer on the hub IP only, not every interface.
+server.bind({ port, address: ip }, () => console.log(`DNS stub: ${domain} -> ${ip} on udp ${port}`));

@@ -2,12 +2,12 @@ import { AiPhotoDraft, AiTranslation, AiVoiceExtract } from "../contracts";
 import fixtureFile from "../../../seed/ai-fixtures.json";
 import { logAiCall } from "./audit";
 import { chatJson, OllamaError, type ChatJsonInput } from "./ollama";
-import { TEXT_SYSTEM, VOICE_SYSTEM } from "./prompts";
+import { PHOTO_SYSTEM, photoUserPrompt, TEXT_SYSTEM, VOICE_SYSTEM } from "./prompts";
 
 // Every AI call goes through these four functions. With MOCK_AI=1 they return
-// the fixtures in seed/ai-fixtures.json. Voice and text call Ollama through
-// ./ollama. The photo (BYT-25) and translation (BYT-57) calls land later and
-// keep these signatures. The real calls parse the model's output with the same
+// the fixtures in seed/ai-fixtures.json. Voice, text and photo call Ollama
+// through ./ollama. The translation call (BYT-57) lands later and keeps its
+// signature. The real calls parse the model's output with the same
 // schemas before they return.
 
 // Parsed when the module loads, so a broken fixture fails loudly.
@@ -54,13 +54,33 @@ export async function readText(input: { text: string }): Promise<AiVoiceExtract>
   return { ...value, transcript: "" };
 }
 
-/** One to three photos of one house, with the responder's note if there is one. */
-export async function draftPhoto(input: {
+type PhotoInput = {
   photos: { data: Buffer; mime: string; label: string }[];
   note?: string | null;
-}): Promise<AiPhotoDraft> {
-  if (isMock()) return structuredClone(input.photos.length === 1 ? fixtures.photoUnclear : fixtures.photo);
-  return notWired("draftPhoto", "BYT-25");
+};
+
+/**
+ * draftPhoto, plus the model's raw reply for the audit trail. The raw text is
+ * null under MOCK_AI. On a failed call the OllamaError carries the raw reply.
+ */
+export async function draftPhotoWithRaw(input: PhotoInput): Promise<{ draft: AiPhotoDraft; raw: string | null }> {
+  if (isMock()) {
+    return { draft: structuredClone(input.photos.length === 1 ? fixtures.photoUnclear : fixtures.photo), raw: null };
+  }
+  const { value, raw } = await chatJson({
+    schema: AiPhotoDraft,
+    system: PHOTO_SYSTEM,
+    user: photoUserPrompt({ labels: input.photos.map((photo, i) => photo.label || `Photo ${i + 1}`), note: input.note }),
+    media: input.photos.map((photo) => photo.data),
+    // The same photos should give the same class every time.
+    options: { temperature: 0 },
+  });
+  return { draft: value, raw };
+}
+
+/** One to three photos of one house, with the responder's note if there is one. */
+export async function draftPhoto(input: PhotoInput): Promise<AiPhotoDraft> {
+  return (await draftPhotoWithRaw(input)).draft;
 }
 
 /** An English headline and message to Bisaya and Tagalog drafts. */

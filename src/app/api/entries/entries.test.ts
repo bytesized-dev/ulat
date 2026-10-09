@@ -148,7 +148,7 @@ describe("entries API", () => {
     expect(detail.photos).toHaveLength(2);
     expect(detail.photos[0].path).toMatch(/^\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.png$/);
     expect(detail.entry.ai_class).toBe("total");
-    expect(detail.history.map((h: { type: string }) => h.type)).toEqual(["entry.created", "entry.ai_drafted"]);
+    expect(detail.history.map((h: { type: string }) => h.type)).toEqual(["entry.created", "ai.photo"]);
 
     const file = await files.GET(new TestRequest("http://hub", { headers: resp }), ctx(detail.photos[0].id));
     expect(file.status).toBe(200);

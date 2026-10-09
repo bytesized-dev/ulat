@@ -36,6 +36,8 @@ export type ChatJsonInput<S extends z.ZodType> = {
   user: string;
   /** Images or audio for the user message. Sent base64 in `images`, the one binary field /api/chat has. */
   media?: Buffer[];
+  /** Ollama's `options`, for example `{ temperature: 0 }`. Left out of the request when not set. */
+  options?: Record<string, unknown>;
 };
 
 /**
@@ -59,6 +61,7 @@ export async function chatJson<S extends z.ZodType>(
         stream: false,
         format: z.toJSONSchema(input.schema),
         keep_alive: KEEP_ALIVE,
+        ...(input.options ? { options: input.options } : {}),
         messages: [{ role: "system", content: input.system }, userMessage],
       }),
       signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),

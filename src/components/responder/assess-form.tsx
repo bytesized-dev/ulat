@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { Input } from "@/components/ui/input";
-import { buildForm, buildMeta, BARANGAYS, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, sendError } from "./capture";
+import { buildForm, buildMeta, BARANGAYS, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
 
@@ -105,7 +105,7 @@ function AssessForm({ house: given, newHouse = false }: AssessFormProps) {
         as="p"
         title={house.report_code ?? "New house"}
         leading={{ kind: "back", href: house.report_code ? routes.responder.report(house.report_code) : routes.responder.toVisit }}
-        className="[&_p]:font-mono"
+        className={house.report_code ? "[&_p]:font-mono" : undefined}
       />
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-6">
         <h1 className="text-title-page text-ink">{newHouse ? "House with no report" : "Assess the house"}</h1>
@@ -168,17 +168,21 @@ function AssessForm({ house: given, newHouse = false }: AssessFormProps) {
                 </button>
               </div>
             ))}
-            {next ? (
-              <button
-                type="button"
-                aria-label={`Add ${next} photo`}
-                onClick={() => input.current?.click()}
-                className="flex aspect-3/4 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-caption text-ink"
-              >
-                <CameraIcon aria-hidden="true" className="size-5" />
-                <b className="font-semibold">{next}</b>
-              </button>
-            ) : null}
+            {next
+              ? // A new house shows all the empty slots, as the design does. Each tap fills the next one.
+                (newHouse ? PHOTO_LABELS.slice(photos.length) : [next]).map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-label={`Add ${label} photo`}
+                    onClick={() => input.current?.click()}
+                    className="flex aspect-3/4 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-caption text-ink"
+                  >
+                    <CameraIcon aria-hidden="true" className="size-5" />
+                    <b className="font-semibold">{label}</b>
+                  </button>
+                ))
+              : null}
           </div>
           <input
             ref={input}

@@ -107,6 +107,23 @@ export function filterToVisit(items: ToVisitItem[], query: string): ToVisitItem[
   });
 }
 
+/** The responder's on and off filters. Both on keeps reports that pass both. */
+export type VisitFilters = { mine: boolean; area: boolean };
+
+export const NO_FILTERS: VisitFilters = { mine: false, area: false };
+
+/** Keeps reports assigned to this responder, in their team's barangay, or both, as the filters say. */
+export function filterByAssignment<T extends Pick<ToVisitReport, "assigned_to" | "barangay">>(
+  items: T[],
+  filters: VisitFilters,
+  responderId: string,
+  team: string | null,
+): T[] {
+  return items.filter(
+    (item) => (!filters.mine || item.assigned_to === responderId) && (!filters.area || !team || item.barangay === team),
+  );
+}
+
 export const MOVE_THRESHOLD_M = 25;
 
 /** The position the list should use next. It ignores small drifts so rows do not shift while the responder walks. */

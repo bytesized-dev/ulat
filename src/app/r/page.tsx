@@ -45,9 +45,11 @@ export default async function ToVisitPage() {
     .where(inArray(reports.status, OPEN_STATUSES))
     .all();
 
+  const team = db.select({ team: responders.team }).from(responders).where(eq(responders.id, session.responder_id)).get()?.team ?? null;
+
   return (
     <div className="flex min-h-dvh flex-col">
-      <ToVisitList responderId={session.responder_id} responderName={session.name} reports={open} />
+      <ToVisitList responderId={session.responder_id} responderName={session.name} team={team} reports={open} />
       <div className="sticky bottom-0 bg-canvas">
         <footer className="px-gutter pb-7 pt-3">
           <Link href={routes.responder.newHouse} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>

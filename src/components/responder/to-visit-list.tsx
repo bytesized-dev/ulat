@@ -12,6 +12,7 @@ import { routes } from "@/lib/contracts";
 import {
   assignmentOf,
   assignmentTag,
+  filterByAssignment,
   filterToVisit,
   formatDistance,
   orderToVisit,
@@ -21,8 +22,9 @@ import {
   type ToVisitSort,
 } from "./to-visit-order";
 import { useOwnPosition } from "./use-position";
+import { useVisitFilters, VisitFilterChips } from "./visit-filters";
 
-type ToVisitListProps = { responderId: string; responderName: string; reports: ToVisitReport[] };
+type ToVisitListProps = { responderId: string; responderName: string; team: string | null; reports: ToVisitReport[] };
 
 function place(item: ToVisitItem): string {
   return item.purok ? `${item.barangay}, ${item.purok}` : item.barangay;
@@ -69,11 +71,13 @@ function ToVisitRow({ item, responderId }: { item: ToVisitItem; responderId: str
 
 // Without permission the list still works, ordered by urgency and then by how
 // long the report has waited.
-function ToVisitList({ responderId, responderName, reports }: ToVisitListProps) {
+function ToVisitList({ responderId, responderName, team, reports }: ToVisitListProps) {
   const [sort, setSort] = useState<ToVisitSort>("urgent");
   const [query, setQuery] = useState("");
+  const [filters, setFilters] = useVisitFilters();
   const position = useOwnPosition();
-  const items = useMemo(() => orderToVisit(filterToVisit(withDistance(reports, position), query), sort, responderId), [reports, position, query, sort, responderId]);
+  const shown = useMemo(() => filterByAssignment(reports, filters, responderId, team), [reports, filters, responderId, team]);
+  const items = useMemo(() => orderToVisit(filterToVisit(withDistance(shown, position), query), sort, responderId), [shown, position, query, sort, responderId]);
 
   return (
     <>
@@ -81,7 +85,7 @@ function ToVisitList({ responderId, responderName, reports }: ToVisitListProps) 
       <main className="flex-1 px-gutter pb-6 pt-2">
         <div className="flex items-baseline justify-between">
           <h1 className="text-title-page text-ink">To visit</h1>
-          <span className="font-mono text-mono-sm text-muted-text">{reports.length}</span>
+          <span className="font-mono text-mono-sm text-muted-text">{shown.length}</span>
         </div>
         <div className="mt-4 flex gap-2">
           <Chip pressed={sort === "urgent"} onPressedChange={() => setSort("urgent")}>
@@ -91,12 +95,15 @@ function ToVisitList({ responderId, responderName, reports }: ToVisitListProps) 
             Nearest
           </Chip>
         </div>
+        <VisitFilterChips filters={filters} onChange={setFilters} team={team} className="mt-2" />
         <div className="mt-4 flex flex-col">
           {items.map((item) => (
             <ToVisitRow key={item.code} item={item} responderId={responderId} />
           ))}
         </div>
-        {items.length === 0 ? <p className="py-8 text-center text-body-md text-body">No reports match your search</p> : null}
+        {items.length === 0 ? (
+          <p className="py-8 text-center text-body-md text-body">{query.trim() ? "No reports match your search" : "No reports match your filters"}</p>
+        ) : null}
       </main>
     </>
   );

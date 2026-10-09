@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { pushSQLiteSchema } from "drizzle-kit/api";
 import { beforeAll, describe, expect, it, vi } from "vitest";
@@ -83,7 +84,6 @@ describe("review rules", () => {
   const base = { damage_class: "partial", hurt: 0, new_photo_since_unclear: false } as const;
   it("passes when everything agrees", () => {
     expect(reviewReasons({ aiClass: "partial", confirm: base, reportHurt: 0 })).toEqual([]);
-    expect(reviewReasons({ aiClass: null, confirm: base, reportHurt: null })).toEqual([]);
   });
   it("flags a different class", () => {
     expect(reviewReasons({ aiClass: "total", confirm: base, reportHurt: null })).toEqual(["class_differs"]);
@@ -91,6 +91,10 @@ describe("review rules", () => {
   it("flags unclear without a new photo, and accepts one with a new photo", () => {
     expect(reviewReasons({ aiClass: "unclear", confirm: base, reportHurt: null })).toEqual(["unclear_no_new_photo"]);
     expect(reviewReasons({ aiClass: "unclear", confirm: { ...base, new_photo_since_unclear: true }, reportHurt: null })).toEqual([]);
+  });
+  it("treats a draft the AI has not finished like unclear", () => {
+    expect(reviewReasons({ aiClass: null, confirm: base, reportHurt: null })).toEqual(["unclear_no_new_photo"]);
+    expect(reviewReasons({ aiClass: null, confirm: { ...base, new_photo_since_unclear: true }, reportHurt: null })).toEqual([]);
   });
   it("flags a hurt count that differs from the report", () => {
     expect(reviewReasons({ aiClass: "partial", confirm: { ...base, hurt: 2 }, reportHurt: 1 })).toEqual(["hurt_differs"]);
@@ -192,6 +196,14 @@ describe("entries API", () => {
     expect(res.reasons).toEqual(["unclear_no_new_photo"]);
     const ok = await (await one.PATCH(patch(body.id, confirmBody({ new_photo_since_unclear: true })), ctx(body.id))).json();
     expect(ok.status).toBe("confirmed");
+  });
+
+  it("sends a confirm that beats the AI draft to needs_review", async () => {
+    const { body } = await create(2);
+    db.update(schema.entries).set({ ai_class: null, ai_confidence: null, ai_reason: null, ai_need_more: null }).where(eq(schema.entries.id, body.id)).run();
+    const res = await (await one.PATCH(patch(body.id, confirmBody({ damage_class: "none" })), ctx(body.id))).json();
+    expect(res.status).toBe("needs_review");
+    expect(res.reasons).toEqual(["unclear_no_new_photo"]);
   });
 
   it("marks the linked report visited when confirmed", async () => {

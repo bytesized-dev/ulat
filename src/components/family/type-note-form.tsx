@@ -76,7 +76,7 @@ function TypeNoteForm() {
             disabled={busy}
             aria-describedby="note-count"
             placeholder="Five of us live here. My son hurt his foot. The roof is gone. We need water and a tarp."
-            className="min-h-50"
+            className="min-h-50 resize-none"
             onChange={(e) => setTyped(e.target.value)}
           />
           <p id="note-count" className="text-right font-mono text-mono-xs text-body tabular">

@@ -35,6 +35,9 @@ const LEGEND: LegendItem[] = [
   { kind: "you", label: "You" },
 ];
 
+// "Assigned to me" is a work list, so the houses already assessed leave the map too.
+const MINE_LEGEND = LEGEND.filter((item) => item.kind !== "total" && item.kind !== "partial");
+
 const CLASS_LABEL = { total: "Totally damaged", partial: "Partially damaged" } as const;
 
 // Unvisited reports, confirmed houses, hazards and you. Tapping a pin fills the
@@ -42,8 +45,9 @@ const CLASS_LABEL = { total: "Totally damaged", partial: "Partially damaged" } a
 export function MapScreen({ responderId, team, bbox, barangays, reports, entries, hazards }: MapScreenProps) {
   const position = useOwnPosition();
   const [filters, setFilters] = useVisitFilters();
-  // The filters narrow the reports only. Confirmed houses and hazards stay, so the responder still sees what is around.
+  // The filters narrow the reports. "Assigned to me" also hides confirmed houses. Hazards always stay.
   const shown = useMemo(() => filterByAssignment(reports, filters, responderId, team), [reports, filters, responderId, team]);
+  const assessed = useMemo(() => (filters.mine ? [] : entries), [filters.mine, entries]);
   const placed = useMemo(() => shown.filter((r) => r.lat !== null && r.lng !== null), [shown]);
   const [selectedId, setSelectedId] = useState<string | undefined>(() => {
     const first = reports.find((r) => r.lat !== null && r.lng !== null);
@@ -53,7 +57,7 @@ export function MapScreen({ responderId, team, bbox, barangays, reports, entries
   const pins = useMemo<MapPin[]>(
     () => [
       ...placed.map((r) => ({ id: `report-${r.code}`, kind: "unvisited" as const, label: `${r.household_head}, not visited`, lat: r.lat!, lng: r.lng! })),
-      ...entries.map((e) => ({
+      ...assessed.map((e) => ({
         id: `entry-${e.id}`,
         kind: e.damage_class,
         label: `${e.household_head ?? "House"}, ${CLASS_LABEL[e.damage_class].toLowerCase()}`,
@@ -63,11 +67,11 @@ export function MapScreen({ responderId, team, bbox, barangays, reports, entries
       ...hazards.map((h) => ({ id: `hazard-${h.id}`, kind: "hazard" as const, label: `Hazard, ${h.name}`, lat: h.lat, lng: h.lng })),
       ...(position ? [{ id: "you", kind: "you" as const, label: "You", ...position }] : []),
     ],
-    [placed, entries, hazards, position],
+    [placed, assessed, hazards, position],
   );
 
   const report = placed.find((r) => `report-${r.code}` === selectedId);
-  const entry = entries.find((e) => `entry-${e.id}` === selectedId);
+  const entry = assessed.find((e) => `entry-${e.id}` === selectedId);
   const hazard = hazards.find((h) => `hazard-${h.id}` === selectedId);
   const away = report ? howFar(position, { lat: report.lat!, lng: report.lng! }) : null;
 
@@ -88,7 +92,7 @@ export function MapScreen({ responderId, team, bbox, barangays, reports, entries
         onSelect={(pin) => {
           if (pin.kind !== "you") setSelectedId(pin.id);
         }}
-        legend={LEGEND}
+        legend={filters.mine ? MINE_LEGEND : LEGEND}
         label="Map of reports and confirmed houses"
       />
       <section aria-live="polite" className="border-t border-hairline bg-canvas px-gutter pb-4 pt-3 shadow-float">

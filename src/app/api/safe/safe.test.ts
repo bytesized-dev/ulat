@@ -94,6 +94,14 @@ describe("safe API", () => {
     expect(published).toEqual([]);
   });
 
+  it("refuses a body over 32 KB with 413 and saves nothing", async () => {
+    const big = `{"name":"Lorna Bautista","barangay":"Sinonoc","staying_at":"With relatives","source":"phone","message":"${"a".repeat(40_000)}"}`;
+    const res = await route.POST(postJson("/api/safe", null, big));
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: "too_large" });
+    expect(published).toEqual([]);
+  });
+
   it("only lets staff check in as the desk", async () => {
     expect((await route.POST(postJson("/api/safe", null, body({ source: "desk" })))).status).toBe(401);
     expect((await route.POST(postJson("/api/safe", "responder", body({ source: "desk" })))).status).toBe(401);

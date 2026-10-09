@@ -5,7 +5,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LiveRefresh } from "@/components/responder/live-refresh";
 import { ToVisitList } from "@/components/responder/to-visit-list";
-import { AppTopBar } from "@/components/ui/app-top-bar";
 import { buttonVariants } from "@/components/ui/button";
 import { TabBar } from "@/components/ui/tab-bar";
 import { db } from "@/db/client";
@@ -45,10 +44,7 @@ export default async function ToVisitPage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AppTopBar name={session.name} searchLabel="Search reports" />
-      <main className="flex-1 px-gutter pb-6 pt-2">
-        <ToVisitList reports={open} />
-      </main>
+      <ToVisitList responderName={session.name} reports={open} />
       <div className="sticky bottom-0 bg-canvas">
         <footer className="px-gutter pb-4 pt-2">
           <Link href={routes.responder.newHouse} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>

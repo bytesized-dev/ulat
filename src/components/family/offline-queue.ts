@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { NewReport } from "@/lib/contracts";
-import { newClientId } from "./client-id";
+import { newClientId } from "@/lib/client-id";
 import { postReport, uploadVoice } from "./send-report";
 
 // Reports a family agreed to send while the hub could not be reached. They wait

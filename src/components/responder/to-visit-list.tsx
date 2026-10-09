@@ -82,7 +82,7 @@ function ToVisitList({ responderId, responderName, team, reports }: ToVisitListP
   return (
     <>
       <AppTopBar name={responderName} searchLabel="Search reports" searchProps={{ value: query, onChange: (e) => setQuery(e.target.value) }} />
-      <main className="flex-1 px-gutter pb-6 pt-2">
+      <main className="flex-1 px-gutter pb-24 pt-2">
         <div className="flex items-baseline justify-between">
           <h1 className="text-title-page text-ink">To visit</h1>
           <span className="font-mono text-mono-sm text-muted-text">{shown.length}</span>

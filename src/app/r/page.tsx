@@ -51,12 +51,14 @@ export default async function ToVisitPage() {
     <div className="flex min-h-dvh flex-col">
       <ToVisitList responderId={session.responder_id} responderName={session.name} team={team} reports={open} />
       <div className="sticky bottom-0 bg-canvas">
-        <footer className="px-gutter pb-7 pt-3">
-          <Link href={routes.responder.newHouse} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>
-            <PlusIcon aria-hidden="true" />
-            New house
-          </Link>
-        </footer>
+        {/* Floats over the list, bottom right, just above the tab bar. */}
+        <Link
+          href={routes.responder.newHouse}
+          aria-label="New house"
+          className={cn(buttonVariants({ variant: "secondary", size: "icon" }), "absolute right-gutter bottom-full mb-4 size-14 [&_svg]:size-6")}
+        >
+          <PlusIcon aria-hidden="true" />
+        </Link>
         <TabBar active="toVisit" />
       </div>
       <LiveRefresh />

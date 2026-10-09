@@ -41,9 +41,9 @@ export function MapView({ layout = "phone", legend = [], zoomControls = true, cl
         ) : (
           <MaplibreMap ref={engineRef} {...engine} onFail={() => setNoWebGL(true)} />
         )}
-        {/* ODbL needs this credit wherever the map shows. */}
-        <p className="pointer-events-none absolute bottom-1 left-2 text-caption-strong text-muted-text">
-          © OpenStreetMap contributors
+        {/* ODbL needs the OpenStreetMap credit and CC BY-IGO needs the boundary credit, wherever the map shows. */}
+        <p className="pointer-events-none absolute right-16 bottom-1 left-2 w-fit rounded-sm bg-canvas/80 px-1 text-caption-strong text-body">
+          © OpenStreetMap contributors. Boundaries: OCHA, PSA, NAMRIA
         </p>
         {layout === "phone" && <MapLegend items={legend} placement="card" />}
         {zoomControls && (

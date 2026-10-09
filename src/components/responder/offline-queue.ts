@@ -1,4 +1,5 @@
 import { buildForm } from "./capture";
+import { newClientId } from "@/components/family/client-id";
 import type { NewEntryMeta } from "@/lib/contracts";
 import { parseRetryAfter } from "./retry-backoff";
 
@@ -59,7 +60,8 @@ export const browserStore: QueueStore = {
 };
 
 export async function enqueue(meta: NewEntryMeta, photos: Blob[], note: Blob | null, store: QueueStore = browserStore): Promise<QueuedEntry> {
-  const entry: QueuedEntry = { id: crypto.randomUUID(), saved_at: new Date().toISOString(), meta, photos, note };
+  // The row id uses the same helper: crypto.randomUUID is missing on a page served over plain HTTP.
+  const entry: QueuedEntry = { id: newClientId(), saved_at: new Date().toISOString(), meta: { ...meta, client_id: meta.client_id ?? newClientId() }, photos, note };
   await store.put(entry);
   return entry;
 }
@@ -82,11 +84,29 @@ export type FlushResult = {
   retryAfterMs: number | null;
 };
 
-/** How long one POST may take before the phone gives up on it and tries later. */
-export const SEND_TIMEOUT_MS = 60_000;
+/** A small entry gets this long for one POST. */
+export const SEND_TIMEOUT_BASE_MS = 60_000;
+/** Each megabyte of photos and note adds this much, so a 30 MB entry on weak Wi-Fi is not cut off at the base. */
+export const SEND_TIMEOUT_PER_MB_MS = 10_000;
+/** No POST is given longer than this, so one stuck upload cannot hold the run for more than ten minutes. */
+export const SEND_TIMEOUT_CAP_MS = 600_000;
+
+/** How long one POST of this many bytes may take before the phone gives up on it and tries later. */
+export function sendTimeoutMs(bytes: number): number {
+  return Math.min(SEND_TIMEOUT_CAP_MS, SEND_TIMEOUT_BASE_MS + Math.ceil(bytes / 1_000_000) * SEND_TIMEOUT_PER_MB_MS);
+}
+
+function payloadBytes(item: Pick<QueuedEntry, "photos" | "note">): number {
+  return item.photos.reduce((sum, photo) => sum + photo.size, 0) + (item.note?.size ?? 0);
+}
+
+function timedOut(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "TimeoutError";
+}
 
 /** The queue row for an entry the hub refused. Says what is wrong, since trying again will not help. */
 export function failureText(status: number, code: string | undefined): string {
+  if (code === "client_id_taken") return "Another responder already used this entry's ID. Dismiss it and take the entry again.";
   if (status === 404 || code === "report_not_found") return "That family report was not found.";
   if (status === 413 || code?.endsWith("_size_not_allowed")) return "A file is too big for the hub.";
   if (code?.endsWith("_type_not_allowed")) return "A file type is not supported.";
@@ -106,27 +126,49 @@ function worthRetrying(status: number): boolean {
  * says try later (408, 425, 429, 5xx) stops the run and keeps everything not yet
  * sent. The result says which, so the caller can wait before the next run. Any other refusal can never succeed on retry, so the entry stays with its
  * error for the responder to read and dismiss, and the ones behind it still go.
+ *
+ * A POST that outruns its timeout does not stop the run: the entries behind it
+ * still go, and the result asks for a retry so the backoff covers the one that
+ * timed out. `stalled` remembers those entries between runs, and a stalled entry
+ * goes last so it cannot hold up the rest again. The hub may have saved it before
+ * the phone gave up, which is safe because every try carries the same client_id.
+ * A 200 means the hub already had the entry, and counts as sent like a 201.
  */
-export async function flushQueue(store: QueueStore = browserStore, send: typeof fetch = fetch): Promise<FlushResult> {
-  const items = await store.all();
+export async function flushQueue(store: QueueStore = browserStore, send: typeof fetch = fetch, stalled: Set<string> = new Set()): Promise<FlushResult> {
+  const items = [...(await store.all())].sort((a, b) => Number(stalled.has(a.id)) - Number(stalled.has(b.id)));
   let sent = 0;
   let signedOut = false;
   let retry = false;
   let retryAfterMs: number | null = null;
-  for (const item of items) {
+  for (let item of items) {
     if (item.failure) continue;
+    if (!item.meta.client_id) {
+      // Saved before the phone sent ids. The id is stored before the first send, so a lost reply is resent under the same one.
+      item = { ...item, meta: { ...item.meta, client_id: newClientId() } };
+      try {
+        await store.put(item);
+      } catch {
+        retry = true;
+        break;
+      }
+    }
     let res: Response;
     try {
       res = await send("/api/entries", {
         method: "POST",
         body: buildForm(item.meta, item.photos as File[], item.note),
-        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+        signal: AbortSignal.timeout(sendTimeoutMs(payloadBytes(item))),
       });
-    } catch {
+    } catch (error) {
       retry = true;
+      if (timedOut(error)) {
+        stalled.add(item.id);
+        continue;
+      }
       break;
     }
     if (res.ok) {
+      stalled.delete(item.id);
       await store.remove(item.id);
       sent += 1;
       continue;

@@ -33,14 +33,18 @@ export function gpsText(gps: Gps | null, failed: boolean): string {
   return failed ? "GPS is not available. The entry is sent without a location." : "Finding your location";
 }
 
-/** Checks the meta against the shared contract before it is sent. */
-export function buildMeta(house: House, labels: string[], gps: Gps | null) {
+/**
+ * Checks the meta against the shared contract before it is sent. The client id is made
+ * once per tap on Send, and the online try and the queued copy both carry it.
+ */
+export function buildMeta(house: House, labels: string[], gps: Gps | null, clientId: string) {
   return NewEntryMeta.safeParse({
     ...house,
     lat: gps?.lat ?? null,
     lng: gps?.lng ?? null,
     gps_accuracy_m: gps ? gps.accuracy_m : null,
     photo_labels: labels,
+    client_id: clientId,
   });
 }
 

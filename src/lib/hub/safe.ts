@@ -1,4 +1,4 @@
-import { desc, sql } from "drizzle-orm";
+import { asc, count, desc, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { safe_checkins } from "@/db/schema";
 
@@ -6,7 +6,7 @@ import { safe_checkins } from "@/db/schema";
 // person is staying and when they checked in. The message is for the desk and
 // family, never for a stranger searching a name.
 
-export const MIN_QUERY = 2;
+export { MIN_QUERY } from "./safe-query";
 const SEARCH_LIMIT = 20;
 const RECENT_LIMIT = 50;
 
@@ -38,4 +38,18 @@ export function searchSafe(db: Db, q: string): SafeResult[] {
 /** The latest check-ins, for the hub safe list before staff type a name. */
 export function recentSafe(db: Db): SafeResult[] {
   return db.select(publicColumns).from(safe_checkins).orderBy(desc(safe_checkins.at)).limit(RECENT_LIMIT).all();
+}
+
+export type SafeCounts = { total: number; staying: { staying_at: string; count: number }[] };
+
+/** Everyone on the list and how many are at each place, biggest first. Counted in SQL. */
+export function safeCounts(db: Db): SafeCounts {
+  const total = db.select({ n: count() }).from(safe_checkins).get()?.n ?? 0;
+  const staying = db
+    .select({ staying_at: safe_checkins.staying_at, count: count() })
+    .from(safe_checkins)
+    .groupBy(safe_checkins.staying_at)
+    .orderBy(desc(count()), asc(safe_checkins.staying_at))
+    .all();
+  return { total, staying };
 }

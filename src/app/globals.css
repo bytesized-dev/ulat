@@ -122,8 +122,9 @@
   --shadow-float: 0 4px 12px rgb(0 0 0 / 0.08);
 
   /* The type scale from DESIGN.md. text-body is the secondary text colour, so
-     the body sizes are text-body-md and text-body-sm. mono-md and mono-sm are
-     ranges in DESIGN.md (26 to 36, 12 to 14) and are left to the UI kit. */
+     the body sizes are text-body-md and text-body-sm. DESIGN.md gives mono-md
+     and mono-sm as ranges (26 to 36, 12 to 14). The screens use three sizes:
+     26 for hub stats, 14 for distances and table figures, 12 for hub times. */
   --text-display-xl: 3.5rem;
   --text-display-xl--line-height: 1.05;
   --text-display-xl--letter-spacing: -0.0875rem;
@@ -167,6 +168,15 @@
   --text-mono-lg--line-height: 1.1;
   --text-mono-lg--letter-spacing: 0.16em;
   --text-mono-lg--font-weight: 500;
+  --text-mono-md: 1.625rem;
+  --text-mono-md--line-height: 1.1;
+  --text-mono-md--font-weight: 500;
+  --text-mono-sm: 0.875rem;
+  --text-mono-sm--line-height: 1.5;
+  --text-mono-sm--font-weight: 500;
+  --text-mono-xs: 0.75rem;
+  --text-mono-xs--line-height: 1.5;
+  --text-mono-xs--font-weight: 500;
 
   /* Layout. The numbers DESIGN.md names, so no component measures its own.
      Sizes become h-control, w-sidebar, px-gutter. Widths become max-w-auth,

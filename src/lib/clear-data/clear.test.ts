@@ -121,6 +121,19 @@ describe("clearData", () => {
     expect(existsSync(m.uploadsPath)).toBe(true);
   });
 
+  it("deletes family voice recordings in the voice folder too", () => {
+    seed();
+    mkdirSync(join(m.uploadsPath, "voice", "2026-06-12"), { recursive: true });
+    const recording = join(m.uploadsPath, "voice", "2026-06-12", "7d5c1e2a-3b4f-4a6d-9c8e-0f1a2b3c4d5e.webm");
+    writeFileSync(recording, "voice");
+
+    m.clearData();
+
+    expect(existsSync(recording)).toBe(false);
+    expect(existsSync(join(m.uploadsPath, "voice"))).toBe(false);
+    expect(existsSync(m.uploadsPath)).toBe(true);
+  });
+
   it("runs on an empty hub with no uploads folder", () => {
     rmSync(m.uploadsPath, { recursive: true, force: true });
     const responders = counts().responders;

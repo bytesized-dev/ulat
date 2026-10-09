@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,8 +7,12 @@ import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { pushSQLiteSchema } from "drizzle-kit/api";
 import { eq } from "drizzle-orm";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { VoiceStored } from "@/lib/contracts";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { NewReport, VoiceStored } from "@/lib/contracts";
+import { draftFromReport } from "@/components/family/report-draft";
+import { enqueue, flushQueue, memoryStore } from "@/components/family/offline-queue";
+import { sendReport } from "@/components/family/send-report";
+import { newClientId } from "@/components/family/client-id";
 
 const dir = mkdtempSync(join(tmpdir(), "ulat-voice-"));
 process.env.DATABASE_PATH = join(dir, "test.db");
@@ -18,6 +22,18 @@ const jar = vi.hoisted(() => new Map<string, string>());
 vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined) }),
 }));
+
+// The disk cap is 200 MB, so a test that fills it sets a small one for itself.
+const limits = vi.hoisted(() => ({ cap: 200 * 1024 * 1024 }));
+vi.mock("@/lib/audio-limits", async (original) => {
+  const real = await original<typeof import("@/lib/audio-limits")>();
+  return {
+    ...real,
+    get MAX_UNLINKED_VOICE_BYTES() {
+      return limits.cap;
+    },
+  };
+});
 
 const uuid = () => crypto.randomUUID();
 const audio = (size = 64, type = "audio/webm;codecs=opus") => new Blob([new Uint8Array(size).fill(7)], { type });
@@ -66,7 +82,15 @@ const post = (body: unknown) =>
     body: JSON.stringify(body),
   });
 const fileCtx = (id: string) => ({ params: Promise.resolve({ id }) });
+const today = () => new Date().toISOString().slice(0, 10);
+const voiceFile = (id: string, ext = "webm") => join(process.env.UPLOAD_DIR!, "voice", today(), `${id}.${ext}`);
 const stored = () => readdirSync(process.env.UPLOAD_DIR!, { recursive: true }).filter((f) => String(f).includes("."));
+/** Makes a stored file look this old, for the sweep. */
+const age = (id: string, ms: number) => {
+  const then = new Date(Date.now() - ms);
+  utimesSync(voiceFile(id), then, then);
+};
+const HOUR = 60 * 60 * 1000;
 
 describe("family voice upload and linking", () => {
   let voice: typeof import("./route");
@@ -121,8 +145,9 @@ describe("family voice upload and linking", () => {
       expect(VoiceStored.parse(body)).toEqual({ voice_id: id });
       // Nothing else comes back: no path, no URL.
       expect(Object.keys(body)).toEqual(["voice_id"]);
-      const day = new Date().toISOString().slice(0, 10);
-      expect(await readFile(join(process.env.UPLOAD_DIR!, day, `${id}.webm`))).toHaveLength(200);
+      // Family voice has its own folder, apart from entry photos and notes.
+      expect(await readFile(voiceFile(id))).toHaveLength(200);
+      expect(stored()).toContain(join("voice", today(), `${id}.webm`));
     });
 
     it("does not serve audio back, to a family or by voice_id", async () => {
@@ -147,8 +172,7 @@ describe("family voice upload and linking", () => {
       const id = uuid();
       await voice.POST(await upload({ voice_id: id, audio: audio(10) }));
       await voice.POST(await upload({ voice_id: id, audio: audio(99) }));
-      const day = new Date().toISOString().slice(0, 10);
-      expect(await readFile(join(process.env.UPLOAD_DIR!, day, `${id}.webm`))).toHaveLength(10);
+      expect(await readFile(voiceFile(id))).toHaveLength(10);
     });
 
     it("validates the fields", async () => {
@@ -197,8 +221,7 @@ describe("family voice upload and linking", () => {
       const id = await send(120);
       const made = await create({ voice_id: id });
       expect(made.res.status).toBe(201);
-      const day = new Date().toISOString().slice(0, 10);
-      expect(made.row.voice_path).toBe(`${day}/${id}.webm`);
+      expect(made.row.voice_path).toBe(`voice/${today()}/${id}.webm`);
       expect(createdAudit(made.row.id).data).toMatchObject({ voice_id: id, voice: "attached" });
 
       // No PIN, no audio.
@@ -267,6 +290,134 @@ describe("family voice upload and linking", () => {
       // The resend did not add a second created row to the audit trail.
       const created = db.select().from(schema.events).where(eq(schema.events.entity_id, a.row.id)).all().filter((e) => e.type === "report.created");
       expect(created).toHaveLength(1);
+    });
+  });
+  describe("the disk bound", () => {
+    // Earlier tests left recordings behind, and they count towards the cap.
+    beforeEach(() => rmSync(join(process.env.UPLOAD_DIR!, "voice"), { recursive: true, force: true }));
+    afterEach(() => {
+      limits.cap = 200 * 1024 * 1024;
+    });
+
+    const put = async (id: string, size: number) => voice.POST(await upload({ voice_id: id, audio: audio(size) }));
+
+    it("answers 507 before writing once unlinked recordings fill the cap", async () => {
+      limits.cap = 1000;
+      const first = uuid();
+      expect((await put(first, 600)).status).toBe(201);
+      const full = await put(uuid(), 600);
+      expect([full.status, (await full.json()).error]).toEqual([507, "storage_full"]);
+      expect(stored()).toHaveLength(1);
+      // The same recording again adds no bytes, so a phone retrying it is not turned away.
+      expect((await put(first, 600)).status).toBe(201);
+      expect(stored()).toHaveLength(1);
+    });
+
+    it("does not count a recording a report has taken", async () => {
+      limits.cap = 1000;
+      const first = uuid();
+      await put(first, 600);
+      expect((await put(uuid(), 600)).status).toBe(507);
+      await create({ voice_id: first });
+      expect((await put(uuid(), 600)).status).toBe(201);
+      expect(stored()).toHaveLength(2);
+    });
+
+    it("sweeps unlinked recordings over an hour old, and keeps linked and fresh ones", async () => {
+      const [oldUnlinked, oldLinked, fresh, trigger] = [uuid(), uuid(), uuid(), uuid()];
+      for (const id of [oldUnlinked, oldLinked, fresh]) await put(id, 50);
+      await create({ voice_id: oldLinked });
+      age(oldUnlinked, 2 * HOUR);
+      age(oldLinked, 2 * HOUR);
+      age(fresh, 5 * 60 * 1000);
+
+      // The sweep runs on an upload.
+      expect((await put(trigger, 50)).status).toBe(201);
+      expect(existsSync(voiceFile(oldUnlinked))).toBe(false);
+      expect(existsSync(voiceFile(oldLinked))).toBe(true);
+      expect(existsSync(voiceFile(fresh))).toBe(true);
+      expect(existsSync(voiceFile(trigger))).toBe(true);
+    });
+
+    it("frees room by sweeping, so a full hub takes uploads again an hour later", async () => {
+      limits.cap = 1000;
+      const stale = uuid();
+      await put(stale, 600);
+      expect((await put(uuid(), 600)).status).toBe(507);
+      age(stale, 2 * HOUR);
+      expect((await put(uuid(), 600)).status).toBe(201);
+      expect(existsSync(voiceFile(stale))).toBe(false);
+    });
+
+    it("keeps a recording the phone sends again, so the report on its way can still take it", async () => {
+      const id = uuid();
+      await put(id, 50);
+      age(id, 2 * HOUR);
+      await put(id, 50);
+      await put(uuid(), 50);
+      expect(existsSync(voiceFile(id))).toBe(true);
+    });
+
+    it("never links a photo or a responder note that shares a name with a voice_id", async () => {
+      const id = uuid();
+      const day = join(process.env.UPLOAD_DIR!, today());
+      const { mkdirSync, writeFileSync } = await import("node:fs");
+      mkdirSync(day, { recursive: true });
+      writeFileSync(join(day, `${id}.webm`), "a responder note");
+      writeFileSync(join(day, `${id}.jpg`), "an entry photo");
+      const made = await create({ voice_id: id });
+      expect(made.row.voice_path).toBeNull();
+      expect(createdAudit(made.row.id).data).toMatchObject({ voice: "unknown" });
+    });
+  });
+
+  describe("a queued report that the hub refuses after its audio went", () => {
+    /** The phone's fetch, pointed at the route handlers. The first report post is refused. */
+    function phone() {
+      let refuse = true;
+      return (async (url: string, init?: RequestInit) => {
+        if (url.startsWith("/api/health")) return Response.json({ ok: true });
+        let req = new Request(`http://hub${url}`, init);
+        if (init?.body instanceof FormData) {
+          const bytes = Buffer.from(await req.arrayBuffer());
+          req = new Request(req.url, { method: "POST", headers: { "content-type": req.headers.get("content-type")!, "content-length": String(bytes.length) }, body: bytes });
+        }
+        if (url === "/api/reports/voice") return voice.POST(req);
+        if (refuse) {
+          refuse = false;
+          return Response.json({ error: "bad_report" }, { status: 400 });
+        }
+        return reportsRoute.POST(req);
+      }) as typeof fetch;
+    }
+
+    it("keeps the recording, and the fixed report sends it again: one report, one file, voice_path set", async () => {
+      rmSync(join(process.env.UPLOAD_DIR!, "voice"), { recursive: true, force: true });
+      const send = phone();
+      const id = uuid();
+      const reportsBefore = db.select().from(schema.reports).all().length;
+      const note = new Blob([new Uint8Array(120).fill(3)], { type: "audio/webm;codecs=opus" });
+      const store = memoryStore();
+      await enqueue(store, NewReport.parse(report({ voice_id: id })), [{ kind: "audio", name: "note.webm", blob: note }]);
+
+      // The audio reaches the hub, then the hub refuses the report.
+      expect(await flushQueue(store, send)).toMatchObject({ sent: [], refused: 1 });
+      expect(existsSync(voiceFile(id))).toBe(true);
+      expect(db.select().from(schema.reports).all()).toHaveLength(reportsBefore);
+      const [refused] = await store.list();
+      expect(refused.attachments).toHaveLength(1);
+
+      // The family taps fix: the draft and the recording come back, and Send goes again.
+      const recording = refused.attachments.find((a) => a.kind === "audio")!.blob;
+      await store.remove(refused.id);
+      const sent = await sendReport(draftFromReport(refused.report), send, newClientId(), recording);
+      expect(sent).toMatchObject({ ok: true });
+
+      const rows = db.select().from(schema.reports).all();
+      expect(rows).toHaveLength(reportsBefore + 1);
+      const row = rows.find((r) => r.code === (sent as { code: string }).code)!;
+      expect(row.voice_path).toBe(`voice/${today()}/${id}.webm`);
+      expect(stored().filter((f) => String(f).startsWith("voice") && String(f).endsWith(".webm"))).toEqual([join("voice", today(), `${id}.webm`)]);
     });
   });
 });

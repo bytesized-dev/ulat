@@ -192,18 +192,30 @@ describe("flushQueue with a voice note", () => {
     expect(result).toMatchObject({ sent: [expect.objectContaining({ code: "K7M4" })], left: 0 });
   });
 
-  it("uploads once even when the report has to be tried again", async () => {
+  it("keeps the audio until the report is accepted, and sends it again on each try", async () => {
     const store = memoryStore();
     await enqueue(store, spoken, [note]);
-    const h = voiceHub([stored], [{ status: 503 }, created("K7M4")]);
+    const h = voiceHub([stored, stored], [{ status: 503 }, created("K7M4")]);
     await flushQueue(store, h.send);
-    // The hub took the audio, so the queue let go of its copy and the report still waits.
+    // The hub deletes a recording no report has taken within an hour, so the queue holds on to its copy.
     const [waiting] = await store.list();
-    expect([waiting.state, waiting.attachments, waiting.report.voice_id]).toEqual(["waiting", [], voiceId]);
+    expect([waiting.state, waiting.attachments.map((a) => a.kind), waiting.report.voice_id]).toEqual(["waiting", ["audio"], voiceId]);
     const result = await flushQueue(store, h.send);
-    expect(h.calls.filter((c) => c === "/api/reports/voice")).toHaveLength(1);
+    expect(h.calls.filter((c) => c === "/api/reports/voice")).toHaveLength(2);
     expect(h.bodies.map((b) => b.voice_id)).toEqual([voiceId, voiceId]);
     expect(result.sent.map((s) => s.code)).toEqual(["K7M4"]);
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("keeps the audio on a report the hub refuses, so the fix can send it", async () => {
+    const store = memoryStore();
+    await enqueue(store, spoken, [note]);
+    const h = voiceHub([stored], [{ status: 400, body: { error: "bad_report" } }]);
+    expect(await flushQueue(store, h.send)).toMatchObject({ refused: 1, left: 1, sent: [] });
+    const [refused] = await store.list();
+    expect(refused.state).toBe("refused");
+    expect(refused.report.voice_id).toBe(voiceId);
+    expect(refused.attachments).toEqual([note]);
   });
 
   it("stops and keeps the report and its audio when the hub goes away during the upload", async () => {

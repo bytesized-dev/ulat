@@ -52,7 +52,6 @@ describe("draftEntry", () => {
   });
 
   beforeEach(() => {
-    vi.stubEnv("MOCK_AI", "0");
     chat.chatJson.mockReset();
     bus.publish.mockReset();
   });
@@ -187,12 +186,4 @@ describe("draftEntry", () => {
     expect(bus.publish).toHaveBeenCalledWith({ type: "entry.drafted", entry_id: id });
   });
 
-  it("returns the mock fixture under MOCK_AI without calling the model", async () => {
-    vi.stubEnv("MOCK_AI", "1");
-    const id = newEntry(["front", "roof"]);
-    await draftEntry(id);
-    expect(chat.chatJson).not.toHaveBeenCalled();
-    expect(entryRow(id).ai_class).toBe("total");
-    expect(bus.publish).toHaveBeenCalledWith({ type: "entry.drafted", entry_id: id });
-  });
 });

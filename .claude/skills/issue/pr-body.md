@@ -6,7 +6,7 @@ BYT-<n> <issue title>
 
 ## What changed
 
-<!-- One line per plan step. Say where the data comes from: real API, seed data, or MOCK_AI fixtures. -->
+<!-- One line per plan step. -->
 
 ## Screen
 
@@ -26,7 +26,6 @@ BYT-<n> <issue title>
 ## Checks
 
 - [ ] `pnpm typecheck && pnpm lint && pnpm test` pass
-- [ ] Works with `MOCK_AI=1`
 - [ ] Tokens and shared components only, no hex or arbitrary values
 - [ ] Stayed inside my ownership area, or the owner reviewed
 - [ ] No network requests outside the hub

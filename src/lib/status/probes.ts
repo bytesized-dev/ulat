@@ -70,10 +70,9 @@ const OllamaTags = z.object({
 /**
  * True when Ollama lists the model. /api/tags and not /api/ps, because Ollama
  * unloads an idle model after 5 minutes and /api/ps would say "not loaded" in
- * the middle of a drill. With MOCK_AI=1 the AI calls succeed on fixtures.
+ * the middle of a drill.
  */
 export async function readModelLoaded(): Promise<boolean> {
-  if (process.env.MOCK_AI === "1") return true;
   try {
     const response = await fetch(`${ollamaUrl()}/api/tags`, {
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),

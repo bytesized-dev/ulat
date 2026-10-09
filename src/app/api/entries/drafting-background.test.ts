@@ -10,7 +10,6 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 const dir = mkdtempSync(join(tmpdir(), "ulat-entries-bg-"));
 process.env.DATABASE_PATH = join(dir, "test.db");
 process.env.UPLOAD_DIR = join(dir, "uploads");
-delete process.env.MOCK_AI;
 
 vi.mock("@/lib/auth/session", () => ({
   requireResponder: async () => ({ role: "responder", responder_id: "r1", name: "Ana", exp: Date.now() + 1000 }),
@@ -34,7 +33,7 @@ function postForm() {
   return new Request("http://hub/api/entries", { method: "POST", body: form });
 }
 
-describe("POST /api/entries without MOCK_AI", () => {
+describe("POST /api/entries", () => {
   let route: typeof import("./route");
 
   beforeAll(async () => {

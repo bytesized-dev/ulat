@@ -46,11 +46,9 @@ export async function POST(req: Request, { params }: Ctx) {
     audit(tx, id, "entry.photo_added", actor.id, { label: label.data || null, photos: existing + 1 });
   });
 
-  // Same as POST /api/entries: the real model can take up to 60 seconds, so the
-  // response does not wait for it. Fixtures under MOCK_AI are instant, so those
-  // are awaited and the response carries the new AI fields.
-  const drafting = draftEntry(id).catch((error) => console.error("Drafting entry failed", id, error));
-  if (process.env.MOCK_AI === "1") await drafting;
+  // Same as POST /api/entries: the model can take up to 60 seconds, so the
+  // response does not wait for it.
+  void draftEntry(id).catch((error) => console.error("Drafting entry failed", id, error));
   const saved = db.select().from(entries).where(eq(entries.id, id)).get();
   return Response.json({ id, photos: existing + 1, entry: saved }, { status: 201 });
 }

@@ -58,7 +58,7 @@ Done means the acceptance criteria pass, pnpm typecheck && pnpm test pass, and t
 ```
 
 - If Claude Code wants to change a contract or add a dependency, stop and post in chat instead.
-- Windows teammates without Ollama use `MOCK_AI=1`. For real AI during development, CJ exposes Ollama over Tailscale with `OLLAMA_HOST=0.0.0.0`, and you point `OLLAMA_URL` at CJ's Tailscale address.
+- Teammates without a local Ollama point `OLLAMA_URL` at CJ's Tailscale address. CJ exposes Ollama there with `OLLAMA_HOST=0.0.0.0`.
 
 ## Talking
 
@@ -72,5 +72,4 @@ Done means the acceptance criteria pass, pnpm typecheck && pnpm test pass, and t
 - Acceptance criteria in the issue pass.
 - `pnpm typecheck && pnpm test` pass.
 - The screen matches its PNG at 390px for phones or 1440px for the hub, using tokens and shared components only.
-- Works with `MOCK_AI=1`.
 - The PR has a screenshot or command output as evidence.

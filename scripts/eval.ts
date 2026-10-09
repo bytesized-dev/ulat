@@ -12,10 +12,6 @@ import { readBattery } from "../src/lib/status/probes";
 // (or EVAL_REPEAT=100) so the photo set loops until 100 photo calls are done.
 
 async function main() {
-  if (process.env.MOCK_AI === "1") {
-    console.error("pnpm eval needs the real model. MOCK_AI=1 returns fixtures, so the numbers would mean nothing. Unset MOCK_AI and start Ollama.");
-    process.exit(1);
-  }
   const repeat = parseRepeat(process.argv.slice(2), process.env);
   const dir = resolve("eval");
   console.log(`Model ${OLLAMA_MODEL} at ${ollamaUrl()}`);

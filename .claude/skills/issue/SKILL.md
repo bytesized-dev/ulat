@@ -32,7 +32,7 @@ Stop if the issue is Done or Canceled. If it is In Review, ask whether to contin
 **Blockers.** For each blocking issue, check whether its work is on main, either Done in Linear or a commit mentioning it in `git log origin/main --oneline`.
 
 - If a blocker is platform work this issue builds on (repo, tokens, schema, contracts, UI kit, or an API this issue calls), stop and name it. Building without it means doing the work twice.
-- If the missing blocker is the real AI or another screen, continue against `MOCK_AI=1` fixtures and seed data, and say so in the pull request.
+- If the missing blocker is another screen, continue without it, and say so in the pull request.
 
 **Non-code issues.** Risk checks, collecting eval photos, the video, the pitch and the submission need no worktree or pull request. Show the acceptance criteria as a checklist, help the user through it, and at the end post a short Linear comment with the results.
 
@@ -71,7 +71,7 @@ Set up the worktree:
 
 - `pnpm install --frozen-lockfile`
 - `.env.local` should arrive through `.worktreeinclude`. If it is missing, copy it from the main checkout, three levels up.
-- Give the worktree its own database with `pnpm db:push && pnpm db:seed`, so seeds and tests never collide with another session.
+- Give the worktree its own database with `pnpm db:push && pnpm db:seed`, so its data never collides with another session.
 - Use port `3000 + n` for the dev server, for example `PORT=3021` for BYT-21, so several sessions can run at once.
 
 Then set the Linear issue to In Progress with `save_issue`, and assign it to `me` if it has no assignee.

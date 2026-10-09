@@ -144,12 +144,10 @@ export async function POST(req: Request) {
     return winner ?? Response.json({ error: "client_id_conflict" }, { status: 409 });
   }
 
-  // The draft is saved. The real model can take up to 60 seconds, so the
-  // response does not wait for it: the /drafting screen waits for the
-  // entry.drafted event instead. Fixtures under MOCK_AI are instant, so those
-  // are awaited and the response carries the AI fields.
-  const drafting = draftEntry(id).catch((error) => console.error("Drafting entry failed", id, error));
-  if (process.env.MOCK_AI === "1") await drafting;
+  // The draft is saved. The model can take up to 60 seconds, so the response
+  // does not wait for it: the /drafting screen waits for the entry.drafted
+  // event instead.
+  void draftEntry(id).catch((error) => console.error("Drafting entry failed", id, error));
   const saved = db.select().from(entries).where(eq(entries.id, id)).get();
   return Response.json({ id, number, status: "draft", entry: saved }, { status: 201 });
 }

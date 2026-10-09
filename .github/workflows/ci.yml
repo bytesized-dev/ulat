@@ -8,8 +8,6 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    env:
-      MOCK_AI: "1"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -37,5 +35,3 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm e2e

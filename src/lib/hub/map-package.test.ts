@@ -1,6 +1,6 @@
 import { existsSync, openSync, readFileSync, readSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { barangayNameProperty, labelFont, mapAssets } from "./map-assets";
+import { barangayNameProperty, labelFont, mapAssets, mapTokens } from "./map-assets";
 
 // The offline map package in public/map. If any of it is missing, the map
 // loses tiles or labels with no error on screen, so check it here.
@@ -28,6 +28,11 @@ describe("offline map package", () => {
       expect(existsSync(`${pub(mapAssets.sprite)}${suffix}.json`)).toBe(true);
       expect(existsSync(`${pub(mapAssets.sprite)}${suffix}.png`)).toBe(true);
     }
+  });
+
+  it("styles the map only with colors that exist as design tokens", () => {
+    const tokens = readFileSync("design/tokens.css", "utf8");
+    for (const name of Object.values(mapTokens)) expect(tokens).toContain(`--color-${name}:`);
   });
 
   it("has all 50 Dapitan City barangays, each named, with closed outlines", () => {

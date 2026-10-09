@@ -93,6 +93,40 @@ function stripCodeFence(text: string) {
     .trim();
 }
 
+/**
+ * With the schema in the prompt, the model often writes an empty key as the
+ * string "null", which a nullable string field would take and the family
+ * would then see as "null" on the check screen. Those become real nulls, and
+ * a "null" item in a list is dropped.
+ */
+function unquoteNulls(value: unknown): unknown {
+  const isNull = (item: unknown) => typeof item === "string" && item.trim().toLowerCase() === "null";
+  if (Array.isArray(value)) return value.filter((item) => !isNull(item)).map(unquoteNulls);
+  if (value === null || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, isNull(item) ? null : unquoteNulls(item)]));
+}
+
+/**
+ * The model also quotes a number now and then, "5" for 5. Where the schema
+ * wanted a number and got a string of digits, this writes the number in its
+ * place and returns true. Any other mismatch is left to fail.
+ */
+function unquoteNumbers(value: unknown, issues: z.ZodError["issues"]): boolean {
+  type Node = Record<PropertyKey, unknown> | null | undefined;
+  let changed = false;
+  for (const issue of issues) {
+    if (issue.code !== "invalid_type" || issue.expected !== "number" || issue.path.length === 0) continue;
+    const parent = issue.path.slice(0, -1).reduce<unknown>((node, key) => (node as Node)?.[key], value) as Node;
+    const key = issue.path[issue.path.length - 1];
+    const item = parent?.[key];
+    if (parent && typeof item === "string" && /^\s*-?\d+(\.\d+)?\s*$/.test(item)) {
+      parent[key] = Number(item);
+      changed = true;
+    }
+  }
+  return changed;
+}
+
 /** One POST to /api/chat. Returns the reply text, or throws an OllamaError. */
 async function chat<S extends z.ZodType>(input: ChatJsonInput<S>, withFormat: boolean): Promise<string> {
   const user = withFormat ? input.user : `${input.user}\n\n${schemaInstructions(input.schema, input.schemaHint)}`;
@@ -146,7 +180,9 @@ async function chat<S extends z.ZodType>(input: ChatJsonInput<S>, withFormat: bo
  * `format` and the reply is parsed with it again, so a model that ignores the
  * format still cannot hand back a wrong shape. If Ollama has no structured
  * output, the call is sent again with the schema in the user message, and
- * every later call does the same. A reply wrapped in a code fence is unwrapped.
+ * every later call does the same. A reply wrapped in a code fence is unwrapped,
+ * a quoted "null" counts as null, and a quoted number counts as the number
+ * where the schema wants one.
  * The raw reply is returned and attached to errors as it came, fence included.
  */
 export async function chatJson<S extends z.ZodType>(
@@ -172,7 +208,9 @@ export async function chatJson<S extends z.ZodType>(
   } catch {
     throw new OllamaError("invalid_output", "The reply was not JSON", content);
   }
-  const parsed = input.schema.safeParse(json);
+  const value = unquoteNulls(json);
+  let parsed = input.schema.safeParse(value);
+  if (!parsed.success && unquoteNumbers(value, parsed.error.issues)) parsed = input.schema.safeParse(value);
   if (!parsed.success) {
     throw new OllamaError("invalid_output", `The reply did not match the schema: ${z.prettifyError(parsed.error)}`, content);
   }

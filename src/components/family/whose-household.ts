@@ -15,7 +15,7 @@ export type StartError = { field: StartField; message: string };
 export function firstMissing(draft: ReportDraft, barangays: string[]): StartError | null {
   const neighbor = draft.source === "neighbor";
   if (draft.household_head.trim() === "") {
-    return { field: "household_head", message: neighbor ? "Enter their name" : "Enter the head of household" };
+    return { field: "household_head", message: neighbor ? "Enter the neighbor's name" : "Enter the head of household" };
   }
   if (!barangays.includes(draft.barangay)) return { field: "barangay", message: "Choose a barangay" };
   if (neighbor && draft.reporter_name.trim() === "") return { field: "reporter_name", message: "Enter your name" };

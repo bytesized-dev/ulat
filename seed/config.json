@@ -61,7 +61,7 @@
    "north": 8.6855
   },
   "wifi_name": "ULAT-HUB",
-  "hub_address": "https://hub.[your-domain]",
+  "hub_address": "https://hub.cjjutba.dev",
   "staff_pin": "1234"
  },
  "responders": [

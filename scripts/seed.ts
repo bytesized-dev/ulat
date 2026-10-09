@@ -145,10 +145,17 @@ function settingText(value: unknown): string {
 /** The bbox from the seed, else the one already in the database, else the placeholder. */
 function resolveBBox(seedValue: unknown): BBox {
   if (seedValue !== null && seedValue !== undefined) return BBox.parse(seedValue);
-  // The BYT-1 seed stored the string "null" here, so a stored value only counts when it parses as a bbox.
+  // The BYT-1 seed stored the string "null" here, and a hand edit can leave text
+  // that is not JSON. A stored value only counts when it parses as a bbox.
   const existing = db.select().from(settings).where(eq(settings.key, "map_bbox")).get();
-  const stored = BBox.safeParse(existing ? JSON.parse(existing.value) : null);
-  return stored.success ? stored.data : PLACEHOLDER_BBOX;
+  let stored: unknown = null;
+  try {
+    stored = existing ? JSON.parse(existing.value) : null;
+  } catch {
+    // Not JSON, so there is no stored bbox.
+  }
+  const parsed = BBox.safeParse(stored);
+  return parsed.success ? parsed.data : PLACEHOLDER_BBOX;
 }
 
 const bbox = resolveBBox(seed.settings.map_bbox);

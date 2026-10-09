@@ -6,14 +6,21 @@ import { CameraIcon, MapPinIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
-import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, sendError } from "./capture";
+import { Input } from "@/components/ui/input";
+import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
 import { NoteRecorder } from "./note-recorder";
+import { enqueue } from "./offline-queue";
 
 type Photo = { file: File; label: string; url: string };
 
-type AssessFormProps = { house: House };
+// With newHouse, the responder types the house in, because no family report named it.
+type AssessFormProps = { house: House; newHouse?: boolean; barangays?: string[] };
 
-function AssessForm({ house }: AssessFormProps) {
+function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFormProps) {
+  const [fields, setFields] = useState({ barangay: given.barangay, purok: given.purok ?? "", head: given.household_head ?? "" });
+  const house: House = newHouse
+    ? { report_code: null, barangay: fields.barangay, purok: fields.purok.trim() || null, household_head: fields.head.trim() || null }
+    : given;
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const sending = useRef(false);
@@ -76,7 +83,15 @@ function AssessForm({ house }: AssessFormProps) {
       }
       setError(sendError(res.status, body?.error));
     } catch {
-      setError("Could not reach the hub. Check the Wi-Fi and try again.");
+      // The hub is out of reach: keep the entry on the phone. It sends from the Queue tab.
+      try {
+        await enqueue(meta.data, photos.map((p) => p.file), note);
+        // Stay locked while the Queue tab loads, as after a send.
+        router.push(routes.responder.queue);
+        return;
+      } catch {
+        setError("Could not reach the hub, and this phone could not save it. Try again.");
+      }
     }
     sending.current = false;
     setBusy(false);
@@ -90,10 +105,41 @@ function AssessForm({ house }: AssessFormProps) {
         as="p"
         title={house.report_code ?? "New house"}
         leading={{ kind: "back", href: house.report_code ? routes.responder.report(house.report_code) : routes.responder.toVisit }}
-        className="[&_p]:font-mono"
+        className={house.report_code ? "[&_p]:font-mono" : undefined}
       />
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-6">
-        <h1 className="text-title-page text-ink">Assess the house</h1>
+        <h1 className="text-title-page text-ink">{newHouse ? "House with no report" : "Assess the house"}</h1>
+        {newHouse ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="nb" className="text-body-sm font-semibold text-ink">
+                Barangay
+              </label>
+              <select
+                id="nb"
+                value={fields.barangay}
+                onChange={(e) => setFields((f) => ({ ...f, barangay: e.target.value }))}
+                className="h-13 w-full rounded-md border border-hairline bg-canvas px-4 text-body-md text-ink outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary"
+              >
+                {barangays.map((b) => (
+                  <option key={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="np" className="text-body-sm font-semibold text-ink">
+                Purok
+              </label>
+              <Input id="np" value={fields.purok} maxLength={60} onChange={(e) => setFields((f) => ({ ...f, purok: e.target.value }))} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="nh" className="text-body-sm font-semibold text-ink">
+                Head of household
+              </label>
+              <Input id="nh" value={fields.head} maxLength={120} onChange={(e) => setFields((f) => ({ ...f, head: e.target.value }))} />
+            </div>
+          </div>
+        ) : null}
         <section className="flex flex-col gap-3" aria-labelledby="photos-h">
           <div className="flex items-baseline justify-between">
             <h2 id="photos-h" className="text-title-md text-ink">
@@ -122,17 +168,21 @@ function AssessForm({ house }: AssessFormProps) {
                 </button>
               </div>
             ))}
-            {next ? (
-              <button
-                type="button"
-                aria-label={`Add ${next} photo`}
-                onClick={() => input.current?.click()}
-                className="flex aspect-3/4 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-caption text-ink"
-              >
-                <CameraIcon aria-hidden="true" className="size-5" />
-                <b className="font-semibold">{next}</b>
-              </button>
-            ) : null}
+            {next
+              ? // A new house shows all the empty slots, as the design does. Each tap fills the next one.
+                (newHouse ? PHOTO_LABELS.slice(photos.length) : [next]).map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-label={`Add ${label} photo`}
+                    onClick={() => input.current?.click()}
+                    className="flex aspect-3/4 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hairline text-caption text-ink"
+                  >
+                    <CameraIcon aria-hidden="true" className="size-5" />
+                    <b className="font-semibold">{label}</b>
+                  </button>
+                ))
+              : null}
           </div>
           <input
             ref={input}
@@ -171,7 +221,7 @@ function AssessForm({ house }: AssessFormProps) {
         </p>
       </main>
       <footer className="px-gutter pb-7">
-        <Button type="button" className="w-full" disabled={busy || photos.length === 0} aria-busy={busy} onClick={() => void send()}>
+        <Button type="button" className="w-full" disabled={busy || photos.length === 0 || !house.barangay} aria-busy={busy} onClick={() => void send()}>
           {busy ? "Sending" : "Send to hub"}
         </Button>
       </footer>

@@ -47,6 +47,10 @@ export type MapEngineProps = {
   shading?: BarangayShading;
   selectedId?: string;
   onSelect?: (pin: MapPin) => void;
+  /** Moves the map to this spot, close in, each time it changes. For a GPS fix or a saved home. */
+  focus?: LngLat;
+  /** The middle of the map, once it is ready and each time it stops moving. For a center pin. */
+  onMove?: (center: LngLat) => void;
   label: string;
 };
 

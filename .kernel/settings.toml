@@ -1,0 +1,14 @@
+# Kernel settings for this repo. Commit it so the whole team shares it.
+# Personal overrides go in .kernel/settings.local.toml, which stays out of git.
+
+[files]
+# Copied from this checkout into every new worktree.
+copy = [".env", ".env.local"]
+
+[scripts]
+# data/ is gitignored, so each worktree builds its own database.
+# No-ops until the starter kit lands in BYT-1.
+setup = "[ -f package.json ] && pnpm install && pnpm db:push && pnpm db:seed || true"
+# Agent worktrees can't always reach Ollama, so AI calls return fixtures.
+run = "MOCK_AI=1 pnpm dev --port $KERNEL_PORT"
+# archive = ""

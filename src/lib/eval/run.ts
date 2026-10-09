@@ -84,12 +84,13 @@ const parseLabel = (value: string): PhotoClass | "missing" | "invalid" => {
 
 /**
  * Same rule as the app: a reply that is invalid or too slow reads as
- * "unclear". Ollama being down is not a verdict on the model, so it is an
- * error and stays out of the scores.
+ * "unclear". Ollama being down (no connection) is not a verdict on the model,
+ * so it is an error and stays out of the scores.
  */
 function failureKind(error: unknown): { kind: string; asUnclear: boolean; unavailable: boolean } {
   if (error instanceof OllamaError) {
-    const unavailable = error.kind === "unavailable";
+    // Only a failed connection counts. An Ollama that answered with an error is up.
+    const unavailable = error.kind === "unavailable" && error.status === null;
     return { kind: error.kind, asUnclear: !unavailable, unavailable };
   }
   return { kind: error instanceof Error ? error.message : "unknown", asUnclear: false, unavailable: false };

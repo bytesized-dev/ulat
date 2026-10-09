@@ -254,6 +254,17 @@ describe("runEval when Ollama drops", () => {
     expect(calls).toBe(MAX_UNAVAILABLE_IN_A_ROW);
   });
 
+  it("treats an Ollama that answered with an HTTP error as up, not as unreachable", async () => {
+    await writeSet();
+    const draftPhoto = async () => {
+      throw new OllamaError("unavailable", "Ollama answered 500", "boom", 500);
+    };
+    const results = await runEval({ dir, model: "stub-model", deps: deps({ draftPhoto }) });
+    expect(results.skipped.some((item) => item.reason === "unavailable")).toBe(false);
+    expect(results.photos.items[0]).toMatchObject({ got: "unclear", error: "unavailable" });
+    expect(results.counts.photos).toMatchObject({ run: 5, call_failed: 5 });
+  });
+
   it("does not stop when a call gets through between the failures", async () => {
     await writeSet();
     const results = await runEval({ dir, model: "stub-model", deps: deps({ draftPhoto: nth(["down", "down", "ok", "down", "down"]) }) });

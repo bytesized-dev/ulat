@@ -85,6 +85,26 @@ describe("name rule", () => {
     expect(lib.detectDuplicates(db)).toBe(1);
   });
 
+  it("compares names with a trailing household word removed", () => {
+    report({ household_head: "Aquino household" });
+    report({ household_head: "  aquino HOUSEHOLD " });
+    report({ household_head: "Aquino" });
+    expect(lib.detectDuplicates(db)).toBe(3);
+  });
+
+  it("matches a desk full name to a surname household in the same barangay", () => {
+    report({ household_head: "Santiago household" });
+    report({ household_head: "Pedro Santiago", source: "desk" });
+    expect(lib.detectDuplicates(db)).toBe(1);
+  });
+
+  it("does not match two full names that only share a surname", () => {
+    report({ household_head: "Pedro Santiago" });
+    report({ household_head: "Maria Santiago" });
+    report({ household_head: "Santiago Reyes household" });
+    expect(lib.detectDuplicates(db)).toBe(0);
+  });
+
   it("does not flag different names, or two empty names", () => {
     report({ household_head: "Ramil Aquino" });
     report({ household_head: "Ramil Aquino Jr" });

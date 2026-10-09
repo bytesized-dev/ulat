@@ -4,10 +4,13 @@ import { audit, setStatus, type Tx } from "@/app/api/reports/_lib/audit";
 import type { Db } from "../../db/client";
 import { duplicates, entries, events, reports } from "../../db/schema";
 import type { HubEvent, Need } from "../contracts/schemas";
+import { withoutHousehold } from "./desk-name";
 
 // Possible duplicates, docs/SPEC.md section 6. Two reports, or a report and an
 // entry, in the same barangay with the same household name, within 50 m when
-// both have GPS. Plain SQL and TypeScript: the model never decides this.
+// both have GPS. A trailing "household" is not part of the name, and a name
+// that is only a surname ("Santiago household") also matches a full name that
+// ends in it ("Pedro Santiago"). Plain SQL and TypeScript: the model never decides this.
 // Callers pass the database so tests can use their own file.
 
 export const DUPLICATE_RADIUS_M = 50;
@@ -17,6 +20,15 @@ type Point = { lat: number; lng: number };
 
 /** The name rule: lowercased and trimmed, so "  Ramil AQUINO " matches "ramil aquino". */
 export const normalizeName = (value: string | null | undefined): string => (value ?? "").trim().toLowerCase();
+
+/** The name rule with a trailing "household" dropped, so "Santiago household" reads "santiago". */
+export const householdKey = (value: string | null | undefined): string => normalizeName(withoutHousehold(value ?? ""));
+
+/** The surname a full name or a bare surname is filed under, the last word of its key. */
+const surnameOf = (key: string): string => key.split(/\s+/).pop() ?? "";
+
+/** Same household: the keys are equal, or one of them is a bare surname that ends the other. */
+const sameHousehold = (a: string, b: string): boolean => a === b || !/\s/.test(a) || !/\s/.test(b);
 
 const EARTH_RADIUS_M = 6_371_000;
 
@@ -40,6 +52,8 @@ type Candidate = {
   created_at: string;
   /** The report code, to order two reports created in the same instant. */
   code: string;
+  /** householdKey of the name. */
+  who: string;
   lat: number | null;
   lng: number | null;
   /** For an entry, the report it was opened from. Null for a report. */
@@ -75,11 +89,11 @@ export function detectDuplicates(db: Db): number {
     const home = (reportId: string | null) => (reportId ? (mergedInto.get(reportId) ?? reportId) : null);
 
     const buckets = new Map<string, Candidate[]>();
-    const add = (name: string | null, barangay: string, candidate: Candidate) => {
-      const who = normalizeName(name);
+    const add = (name: string | null, barangay: string, candidate: Omit<Candidate, "who">) => {
+      const who = householdKey(name);
       if (!who) return;
-      const key = `${normalizeName(barangay)}\u0000${who}`;
-      buckets.set(key, [...(buckets.get(key) ?? []), candidate]);
+      const key = `${normalizeName(barangay)}\u0000${surnameOf(who)}`;
+      buckets.set(key, [...(buckets.get(key) ?? []), { ...candidate, who }]);
     };
     for (const r of live) add(r.name, r.barangay, { type: "report", id: r.id, created_at: r.created_at, code: r.code, lat: r.lat, lng: r.lng, report_id: null });
     for (const e of rows) add(e.name, e.barangay, { type: "entry", id: e.id, created_at: e.created_at, code: "", lat: e.lat, lng: e.lng, report_id: home(e.report_id) });
@@ -92,6 +106,7 @@ export function detectDuplicates(db: Db): number {
         for (let j = i + 1; j < group.length; j += 1) {
           const [first, second] = [group[i], group[j]];
           if (first.type === "entry" && second.type === "entry") continue;
+          if (!sameHousehold(first.who, second.who)) continue;
           // The report goes first. Two reports go oldest first, so side a keeps its code.
           const [a, b] =
             first.type !== second.type

@@ -1,7 +1,8 @@
 /**
  * Parses a CSV file into records keyed by the header row. Handles quoted
  * fields with commas, doubled quotes and line breaks inside quotes, CRLF line
- * ends and a leading byte order mark. Blank lines are skipped. Throws if a
+ * ends and a leading byte order mark. A quote opens a quoted field only at the
+ * start of a field, so a quote inside an unquoted field is plain text. Blank lines are skipped. Throws if a
  * required column is missing, so a renamed header fails loudly.
  */
 export function parseCsv(text: string, required: readonly string[] = []): Record<string, string>[] {
@@ -9,11 +10,14 @@ export function parseCsv(text: string, required: readonly string[] = []): Record
   let row: string[] = [];
   let field = "";
   let quoted = false;
+  // A quote opens a quoted field only before the field has any character.
+  let fieldStarted = false;
   const body = text.replace(/^﻿/, "");
 
   const endField = () => {
     row.push(field);
     field = "";
+    fieldStarted = false;
   };
   const endRow = () => {
     endField();
@@ -32,8 +36,9 @@ export function parseCsv(text: string, required: readonly string[] = []): Record
       } else {
         field += ch;
       }
-    } else if (ch === '"') {
+    } else if (ch === '"' && !fieldStarted) {
       quoted = true;
+      fieldStarted = true;
     } else if (ch === ",") {
       endField();
     } else if (ch === "\n" || ch === "\r") {
@@ -41,6 +46,7 @@ export function parseCsv(text: string, required: readonly string[] = []): Record
       endRow();
     } else {
       field += ch;
+      fieldStarted = true;
     }
   }
   if (quoted) throw new Error("CSV has an unclosed quote");

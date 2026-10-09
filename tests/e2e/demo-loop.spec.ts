@@ -6,6 +6,10 @@ import { smsSegments } from "../../src/lib/sms";
 // failure names the step that broke. Copy, names and routes come from
 // design/screens. The app runs with MOCK_AI=1 on a freshly seeded database,
 // see playwright.config.ts, so the totals before the loop are the seed totals.
+// The family and the responder share a GPS fix, because a report or an entry
+// without a position has no pin on the hub map. A staff page stays open on
+// /hub/map for the whole run and is never reloaded, so the pin counts in its
+// rail can only change through live events.
 
 const seed = JSON.parse(readFileSync("seed/simulation.json", "utf8")) as {
   _expected_totals: { houses: number; totally: number };
@@ -17,6 +21,8 @@ const responderName = seed.responders[0].name;
 const FIXTURES = ["tests/e2e/fixtures/front.png", "tests/e2e/fixtures/roof.png"];
 const PHONE = { width: 390, height: 844 };
 const LAPTOP = { width: 1440, height: 900 };
+// A spot inside the town. The family confirms it on the map and the responder reports it from the house.
+const GPS = { geolocation: { latitude: 8.6556, longitude: 123.429 }, permissions: ["geolocation"] };
 
 /** Buttons are links or buttons depending on the screen, so match either. */
 const action = (page: Page, name: string | RegExp) =>
@@ -27,15 +33,23 @@ const action = (page: Page, name: string | RegExp) =>
 const houseCount = (page: Page) => page.getByText(/^\s*\d+\s*houses checked\s*$/);
 const totallyCount = (page: Page) => page.getByText(/^\s*\d+\s*totally\s*$/);
 const numberIn = async (text: string | null) => Number((text ?? "").replace(/\D/g, ""));
+/** The count beside a layer in the map rail, by its label. Reads text, never the pin marks. */
+const layerCount = async (page: Page, label: string) =>
+  numberIn(await page.getByRole("region", { name: "Layers" }).getByRole("listitem").filter({ hasText: label }).textContent());
 
 test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser }, testInfo) => {
   const baseURL = testInfo.project.use.baseURL;
-  const family = await (await browser.newContext({ baseURL, viewport: PHONE })).newPage();
-  const responder = await (await browser.newContext({ baseURL, viewport: PHONE, permissions: ["microphone"] })).newPage();
+  const family = await (await browser.newContext({ baseURL, viewport: PHONE, ...GPS })).newPage();
+  const responder = await (
+    await browser.newContext({ baseURL, viewport: PHONE, geolocation: GPS.geolocation, permissions: ["microphone", "geolocation"] })
+  ).newPage();
   const staffContext = await browser.newContext({ baseURL, viewport: LAPTOP });
   const staff = await staffContext.newPage();
+  // Same staff session, kept on /hub/map from step 0 to the end.
+  const map = await staffContext.newPage();
 
   let code = "";
+  const pins = { notVisited: 0, confirmed: 0 };
 
   await test.step("0. Staff sign in, and the hub starts on the seed totals", async () => {
     await staff.goto("/hub");
@@ -45,6 +59,13 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(staff.getByRole("heading", { name: "Overview" })).toBeVisible();
     await expect(houseCount(staff)).toHaveText(new RegExp(`^\\s*${before.houses}\\s*houses checked\\s*$`));
     await expect(totallyCount(staff)).toHaveText(new RegExp(`^\\s*${before.totally}\\s*totally\\s*$`));
+
+    // Open the map and read its counts as they are now, whatever the seed holds.
+    await map.goto("/hub/map");
+    await expect(map.getByRole("region", { name: "Layers" })).toBeVisible();
+    await map.evaluate(() => Object.assign(window, { mapKeptOpen: true }));
+    pins.notVisited = await layerCount(map, "Not visited");
+    pins.confirmed = await layerCount(map, "Confirmed");
   });
 
   await test.step("1. Family sends a report and gets a 4 character code", async () => {
@@ -70,6 +91,13 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await family.getByRole("button", { name: /Head of household/ }).click();
     await family.getByRole("textbox", { name: "Head of household" }).fill("Ocampo household");
     await family.getByRole("button", { name: "Save" }).click();
+
+    // Where the house is. Without a position the report has no pin on the hub map.
+    await family.getByRole("link", { name: /Location/ }).click();
+    await expect(family.getByText("Move the map to your house")).toBeVisible();
+    await expect(family.getByRole("button", { name: "Use this spot" })).toBeEnabled();
+    await family.getByRole("button", { name: "Use this spot" }).click();
+    await expect(family.getByRole("heading", { name: "Check your report" })).toBeVisible();
     await action(family, "Continue").click();
 
     // Before you send
@@ -81,6 +109,14 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     const shown = family.getByRole("region", { name: "Your report code" }).getByText(/^[A-HJ-NP-Z2-9]{4}$/);
     await expect(shown).toBeVisible();
     code = (await shown.innerText()).trim();
+  });
+
+  await test.step("1b. A hollow pin appears on the hub map, with no reload", async () => {
+    // One more house not visited. The family report on its own confirms nothing.
+    await expect
+      .poll(() => layerCount(map, "Not visited"), { message: "not visited pins" })
+      .toBe(pins.notVisited + 1);
+    expect(await layerCount(map, "Confirmed")).toBe(pins.confirmed);
   });
 
   await test.step("2. The report shows on the responder's To visit list", async () => {
@@ -132,6 +168,16 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await action(responder, "Confirm entry").click();
 
     await expect(responder.getByRole("heading", { name: "Entry confirmed" })).toBeVisible();
+  });
+
+  await test.step("3b. The pin turns red on the hub map, with no reload", async () => {
+    // The hollow pin is gone and a confirmed one took its place.
+    await expect
+      .poll(() => layerCount(map, "Confirmed"), { message: "confirmed pins" })
+      .toBe(pins.confirmed + 1);
+    expect(await layerCount(map, "Not visited")).toBe(pins.notVisited);
+    // A reload would have dropped this flag, so the counts came from live events.
+    expect(await map.evaluate(() => "mapKeptOpen" in window)).toBe(true);
   });
 
   await test.step("4. The hub totals change on the hub overview after staff sign in", async () => {

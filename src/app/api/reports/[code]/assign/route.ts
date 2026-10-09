@@ -13,6 +13,9 @@ import { readJsonCapped } from "../../_lib/body";
 /** Reports nobody has finished with. Visited and merged reports stay as they are. */
 const ASSIGNABLE = new Set(["waiting", "assigned", "on_the_way", "cant_assess"]);
 
+/** Statuses where the report is already with a responder. Sending the same one again changes nothing. */
+const WITH_RESPONDER = new Set(["assigned", "on_the_way"]);
+
 export async function POST(req: Request, ctx: { params: Promise<{ code: string }> }) {
   const blocked = deny(await getActor(), ["staff"]);
   if (blocked) return blocked;
@@ -39,6 +42,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ code: string }
       .get();
     if (!responder) return { error: "bad_responder", status: 400 } as const;
 
+    // A second tab that loaded before the change can send the same responder
+    // again. Writing would move on_the_way back to assigned and add a second
+    // row to the family timeline, so leave the report as it is.
+    if (WITH_RESPONDER.has(report.status) && report.assigned_to === responder.id) {
+      return { unchanged: report.status } as const;
+    }
+
     const event = setStatus(
       tx,
       report,
@@ -51,6 +61,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ code: string }
   });
 
   if ("error" in result) return Response.json({ error: result.error }, { status: result.status });
+  if ("unchanged" in result) {
+    return Response.json({ code: code.data, status: result.unchanged, assigned_to: responder_id });
+  }
   emit(result.event);
   return Response.json({ code: code.data, status: "assigned", assigned_to: responder_id });
 }

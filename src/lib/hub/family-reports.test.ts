@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
+import { eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { generateSQLiteDrizzleJson, generateSQLiteMigration } from "drizzle-kit/api";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -11,6 +12,8 @@ import * as schema from "../../db/schema";
 import {
   countFamilyReports,
   countReview,
+  countReviewQueues,
+  getFamilyReport,
   listFamilyReports,
   listResponders,
   parseFilter,
@@ -52,6 +55,22 @@ describe("family reports list", () => {
     expect(calm).toEqual([...calm].sort().reverse());
   });
 
+  it("finds one report by code, even when a filter would hide it", () => {
+    const waiting = listFamilyReports(db, "not_assigned")[0];
+    expect(listFamilyReports(db, "problems").map((r) => r.code)).not.toContain(waiting.code);
+    expect(getFamilyReport(db, waiting.code)).toEqual(waiting);
+  });
+
+  it("does not find desk, merged or unknown codes", () => {
+    const hidden = db
+      .select({ code: schema.reports.code })
+      .from(schema.reports)
+      .where(or(eq(schema.reports.source, "desk"), eq(schema.reports.status, "merged")))
+      .all();
+    for (const { code } of hidden) expect(getFamilyReport(db, code)).toBeUndefined();
+    expect(getFamilyReport(db, "ZZZZ")).toBeUndefined();
+  });
+
   it("names the assigned responder", () => {
     const assigned = listFamilyReports(db).filter((r) => r.assigned_to);
     expect(assigned.length).toBeGreaterThan(0);
@@ -71,6 +90,7 @@ describe("family reports list", () => {
     const review = countReview(db);
     expect(review.family_reports).toBe(countFamilyReports(db).all);
     expect(review.second_look).toBeGreaterThanOrEqual(0);
+    expect(countReviewQueues(db)).toEqual({ second_look: review.second_look, duplicates: review.duplicates });
   });
 
   it("offers active responders only", () => {

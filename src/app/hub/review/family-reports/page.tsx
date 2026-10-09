@@ -10,6 +10,7 @@ import {
   countReview,
   FAMILY_FILTERS,
   FILTER_LABELS,
+  getFamilyReport,
   listFamilyReports,
   listResponders,
   parseFilter,
@@ -44,7 +45,7 @@ export default async function FamilyReportsPage({ searchParams }: { searchParams
   const wanted = typeof params.code === "string" ? params.code.toUpperCase() : null;
   const selected =
     rows.find((r) => r.code === wanted) ??
-    (wanted ? listFamilyReports(db).find((r) => r.code === wanted) : undefined) ??
+    (wanted ? getFamilyReport(db, wanted) : undefined) ??
     rows[0] ??
     null;
 

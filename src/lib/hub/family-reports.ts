@@ -45,25 +45,37 @@ export type FamilyReportRow = {
 
 const listed: SQL[] = [inArray(reports.source, ["family", "neighbor"]), ne(reports.status, "merged")];
 
+const rowColumns = {
+  code: reports.code,
+  household_head: reports.household_head,
+  barangay: reports.barangay,
+  purok: reports.purok,
+  hurt: reports.hurt,
+  missing: reports.missing,
+  status: reports.status,
+  cant_reason: reports.cant_reason,
+  assigned_to: reports.assigned_to,
+  assigned_name: responders.name,
+  transcript: reports.transcript,
+  what_happened: reports.what_happened,
+  created_at: reports.created_at,
+};
+
+/** One report from the list, whatever the filter. Undefined for a desk, merged or unknown code. */
+export function getFamilyReport(db: Db, code: string): FamilyReportRow | undefined {
+  return db
+    .select(rowColumns)
+    .from(reports)
+    .leftJoin(responders, eq(responders.id, reports.assigned_to))
+    .where(and(...listed, eq(reports.code, code)))
+    .get();
+}
+
 /** Urgent first, then the newest, as the canvas shows. */
 export function listFamilyReports(db: Db, filter: FamilyFilter = "all"): FamilyReportRow[] {
   const where = filter === "all" ? and(...listed) : and(...listed, inArray(reports.status, FILTER_STATUSES[filter]));
   return db
-    .select({
-      code: reports.code,
-      household_head: reports.household_head,
-      barangay: reports.barangay,
-      purok: reports.purok,
-      hurt: reports.hurt,
-      missing: reports.missing,
-      status: reports.status,
-      cant_reason: reports.cant_reason,
-      assigned_to: reports.assigned_to,
-      assigned_name: responders.name,
-      transcript: reports.transcript,
-      what_happened: reports.what_happened,
-      created_at: reports.created_at,
-    })
+    .select(rowColumns)
     .from(reports)
     .leftJoin(responders, eq(responders.id, reports.assigned_to))
     .where(where)
@@ -90,11 +102,16 @@ export function countFamilyReports(db: Db): FamilyCounts {
 
 export type ReviewCounts = { second_look: number; duplicates: number; family_reports: number };
 
-/** The numbers on the Review lists tabs. */
-export function countReview(db: Db): ReviewCounts {
+/** The second look and duplicates tabs. The sidebar badge is their sum. */
+export function countReviewQueues(db: Db): Pick<ReviewCounts, "second_look" | "duplicates"> {
   const second = db.select({ n: sql<number>`count(*)` }).from(entries).where(eq(entries.status, "needs_review")).get();
   const dupes = db.select({ n: sql<number>`count(*)` }).from(duplicates).where(eq(duplicates.status, "open")).get();
-  return { second_look: second?.n ?? 0, duplicates: dupes?.n ?? 0, family_reports: countFamilyReports(db).all };
+  return { second_look: second?.n ?? 0, duplicates: dupes?.n ?? 0 };
+}
+
+/** The numbers on the Review lists tabs. */
+export function countReview(db: Db): ReviewCounts {
+  return { ...countReviewQueues(db), family_reports: countFamilyReports(db).all };
 }
 
 /** Active responders for the Assign to list. */

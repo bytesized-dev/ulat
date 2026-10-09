@@ -138,6 +138,30 @@ describe("POST /api/reports/[code]/assign", () => {
     expect(row("T5H8").assigned_to).toBe(JUN);
   });
 
+  it("leaves the report alone when the same responder is sent again", async () => {
+    addReport("W4N7");
+    await signIn("staff");
+    expect((await route.POST(...post("W4N7", { responder_id: MAE }))).status).toBe(200);
+    // Mae taps On the way on her phone, then a stale hub tab sends her again.
+    db.update(schema.reports).set({ status: "on_the_way" }).where(eq(schema.reports.code, "W4N7")).run();
+
+    const heard: HubEvent[] = [];
+    const stop = bus.subscribe({ role: "staff" }, (event) => heard.push(event));
+    const res = await route.POST(...post("W4N7", { responder_id: MAE }));
+    stop();
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ code: "W4N7", status: "on_the_way", assigned_to: MAE });
+    expect(row("W4N7")).toMatchObject({ status: "on_the_way", assigned_to: MAE });
+    expect(heard).toEqual([]);
+    const audit = db
+      .select()
+      .from(schema.events)
+      .where(and(eq(schema.events.entity_id, row("W4N7").id), eq(schema.events.type, "report.status_changed")))
+      .all();
+    expect(audit).toHaveLength(1);
+  });
+
   it("clears the reason when a report that could not be assessed is sent again", async () => {
     addReport("J2V8", "cant_assess");
     await signIn("staff");

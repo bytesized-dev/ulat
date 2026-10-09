@@ -44,7 +44,6 @@ function ReportTable({ rows, selected, hrefFor }: ReportTableProps) {
           return (
             <TableRow
               key={row.code}
-              aria-selected={current}
               className={cn("relative border-hairline-soft hover:bg-surface-soft", current && "bg-surface-soft")}
             >
               <TableCell className={cn(cell, "font-mono text-mono-xs text-muted-text")}>{row.code}</TableCell>

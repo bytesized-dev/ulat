@@ -10,21 +10,39 @@ const storageKey = "ulat.hub.sidebar-collapsed";
 // It sets data-collapsed, and the nav inside reads it with group-data-collapsed/sidebar
 // so the server-rendered links can hide their text without knowing the state.
 // The choice is remembered in this browser.
-function CollapsibleSidebar({ children, className }: { children: React.ReactNode; className?: string }) {
-  const [collapsed, setCollapsed] = React.useState(false);
+const listeners = new Set<() => void>();
 
-  React.useEffect(() => {
-    try {
-      if (window.localStorage.getItem(storageKey) === "1") setCollapsed(true);
-    } catch {}
-  }, []);
+// Kept when the browser refuses storage, so the button still works for this visit.
+let remembered: boolean | null = null;
+
+function readCollapsed() {
+  if (remembered !== null) return remembered;
+  try {
+    return window.localStorage.getItem(storageKey) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", listener);
+  };
+}
+
+function CollapsibleSidebar({ children, className }: { children: React.ReactNode; className?: string }) {
+  // The server renders it open. The saved choice applies right after hydration.
+  const collapsed = React.useSyncExternalStore(subscribe, readCollapsed, () => false);
 
   const toggle = () => {
-    const next = !collapsed;
-    setCollapsed(next);
+    remembered = !collapsed;
     try {
-      window.localStorage.setItem(storageKey, next ? "1" : "0");
+      window.localStorage.setItem(storageKey, collapsed ? "0" : "1");
     } catch {}
+    listeners.forEach((listener) => listener());
   };
 
   const Icon = collapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon;

@@ -32,8 +32,9 @@ type HubShellProps = {
   /** Shows the Simulation pill next to the title. */
   simulation?: boolean;
   searchLabel?: string;
-  /** Who is signed in. Gives the avatar its name and its initials. */
+  /** Who is signed in. Gives the avatar its name and, by default, its initials. */
   name: string;
+  initials?: string;
   lockHref?: string;
   /** The right rail. Left out, the page has no rail. */
   rail?: React.ReactNode;
@@ -45,7 +46,7 @@ const navLink = "flex h-11 items-center gap-3 rounded-pill px-3.5 text-body-md f
 
 // The frame every hub page sits in. It is layout only: the sections, the
 // counts and the status data come in as props.
-function HubShell({ title, nav, activeHref, status, simulation = false, searchLabel = "Search", name, lockHref = routes.hub.lock, rail, children, className }: HubShellProps) {
+function HubShell({ title, nav, activeHref, status, simulation = false, searchLabel = "Search", name, initials, lockHref = routes.hub.lock, rail, children, className }: HubShellProps) {
   return (
     <div data-slot="hub-shell" className={cn("flex min-h-dvh bg-canvas text-ink", className)}>
       <aside className="sticky top-0 flex h-dvh w-sidebar shrink-0 flex-col overflow-y-auto border-r border-hairline p-3">
@@ -90,7 +91,7 @@ function HubShell({ title, nav, activeHref, status, simulation = false, searchLa
           <div className="flex items-center gap-3">
             <SearchPill size="hub" aria-label={searchLabel} placeholder={searchLabel} className="w-72" />
             <Avatar role="img" aria-label={name}>
-              <AvatarFallback>{initialsOf(name)}</AvatarFallback>
+              <AvatarFallback>{initials ?? initialsOf(name)}</AvatarFallback>
             </Avatar>
           </div>
         </header>

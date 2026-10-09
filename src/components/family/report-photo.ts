@@ -1,15 +1,16 @@
-// The photo a family picked for the report, kept in memory so the send screen
-// can upload it. Like the voice note, a reload loses it and the report then
-// goes without a photo. The check screen sets it, see BYTE-66.
+// The photo a family picked for the report, as the send screen and the saved on
+// phone screen see it. It is kept in IndexedDB by report-photo-store.ts, so a
+// reload, Back and Continue keep it, and these two calls are the way in and out.
+// The check screen sets it, see BYTE-66.
 
-let photo: Blob | null = null;
+import { clearReportPhoto, getPhotoSnapshot, keepReportPhoto } from "./report-photo-store";
 
-/** Keeps the photo the family just picked and drops the one before it. */
+/** Keeps the photo the family just picked in place of the one before it, or drops it when null. */
 export function setReportPhoto(blob: Blob | null): void {
-  photo = blob;
+  void (blob ? keepReportPhoto(blob) : clearReportPhoto());
 }
 
-/** The photo itself, for the send screen. Null when there is none. */
+/** The photo itself, for the send screen. Null when there is none. Await loadReportPhoto first after a reload. */
 export function reportPhotoBlob(): Blob | null {
-  return photo;
+  return getPhotoSnapshot().photo;
 }

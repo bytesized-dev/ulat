@@ -29,6 +29,9 @@ export const typeScale = [
   "caption-strong",
   "mono-xl",
   "mono-lg",
+  "mono-md",
+  "mono-sm",
+  "mono-xs",
 ] as const;
 
 export const cn = createCn({

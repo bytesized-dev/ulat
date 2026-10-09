@@ -14,14 +14,17 @@ const MaplibreMap = dynamic(() => import("./maplibre-map").then((m) => m.Maplibr
   loading: () => <div className="absolute inset-0 bg-map-land" />,
 });
 
-/** The pin's tip sits on the exact middle of the map, so the spot under the tip is the map center. */
+/**
+ * The pin's tip sits on the exact middle of the map, so the spot under the tip is the map center.
+ * The tip is at y=21 of the 24 unit box, so the pin rises 7/8 of its height, not all of it.
+ */
 function CenterPin() {
   return (
     <svg
       aria-hidden
       viewBox="0 0 24 24"
       strokeWidth={1.5}
-      className="pointer-events-none absolute top-1/2 left-1/2 size-11 -translate-x-1/2 -translate-y-full fill-primary text-canvas"
+      className="pointer-events-none absolute top-1/2 left-1/2 size-11 -translate-x-1/2 -translate-y-7/8 fill-primary text-canvas"
     >
       <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" stroke="currentColor" />
       <circle cx="12" cy="9.5" r="2.5" className="fill-canvas" />

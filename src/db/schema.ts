@@ -113,9 +113,11 @@ export const entries = sqliteTable(
     review_reason: text("review_reason"),
     confirmed_by: text("confirmed_by"),
     confirmed_at: text("confirmed_at"),
+    /** Set by a phone so a resend of the same entry finds the one it already made. Null for seed entries. */
+    client_id: text("client_id"),
     created_at: text("created_at").notNull(),
   },
-  (t) => [index("entries_status_idx").on(t.status)],
+  (t) => [index("entries_status_idx").on(t.status), uniqueIndex("entries_client_id_unique").on(t.client_id)],
 );
 
 export const photos = sqliteTable("photos", {

@@ -26,10 +26,10 @@
 | Role | How they get in | Can see |
 |---|---|---|
 | Family | Opens the address | Home, their own report by code, map, updates, safe list search |
-| Responder | Name plus the team PIN on `/r/sign-in` | All reports and entries, map with households |
+| Responder | Email and password on `/r/sign-in`, one account each | All reports and entries, map with households |
 | Hub staff | The laptop, staff PIN on `/hub/lock` after idle | Everything |
 
-PINs are hashed in the `settings` table. Sessions are signed cookies. No accounts, no email.
+Responder passwords are hashed in the `responders` table and the staff PIN in the `settings` table. Sessions are signed cookies. The hub sends no email, and an email is only the name a responder signs in with.
 
 ## 2. Screens and routes
 
@@ -103,8 +103,8 @@ Drizzle with SQLite. IDs are UUID strings unless noted. Timestamps are ISO strin
 
 | Table | Columns |
 |---|---|
-| `settings` | `key` primary, `value`. Keys: `town`, `barangays` (JSON list), `map_bbox` (west, south, east, north), `team_pin_hash`, `staff_pin_hash`, `simulation` (`true` or `false`), `wifi_name`, `hub_address` |
-| `responders` | `id`, `name`, `team`, `active` |
+| `settings` | `key` primary, `value`. Keys: `town`, `barangays` (JSON list), `map_bbox` (west, south, east, north), `staff_pin_hash`, `simulation` (`true` or `false`), `wifi_name`, `hub_address` |
+| `responders` | `id`, `name`, `team`, `active`, `email` (nullable and unique, stored in lower case), `password_hash` (nullable, scrypt). A responder with no email or no password hash cannot sign in |
 | `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `voice_path` (the family's recording, relative to the uploads folder, set from `voice_id`), `transcript`, `transcript_en`, `language`, `photo_path` (the family's photo, relative to the uploads folder, set from `photo_id`), `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `client_id` (nullable and unique, set by a phone so a resend of the same tap finds the report it already made), `created_at`, `updated_at` |
 | `entries` | `id`, `number` (integer, shown as 0231), `report_id` (nullable), `responder_id`, `barangay`, `purok`, `household_head`, `lat`, `lng`, `gps_accuracy_m`, `families` (default 1, more when families share a house), `people`, `hurt`, `missing`, `needs` (JSON), `material`, `hazards` (JSON), `damage_class` (`none`, `partial`, `total`), `ai_class`, `ai_confidence`, `ai_reason`, `ai_need_more`, `note_path`, `note_transcript`, `note_en`, `status` (`draft`, `needs_review`, `confirmed`), `review_reason`, `confirmed_by`, `confirmed_at`, `created_at` |
 | `photos` | `id`, `entry_id` or `report_id`, `path`, `label`, `taken_at`. A family report photo has the `photo_id` as its `id`, the report as `report_id` and a path under `photo/` |
@@ -128,7 +128,7 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 
 | Method and path | Who | Does |
 |---|---|---|
-| `POST /api/auth/responder` | Responder | Name and PIN, sets session |
+| `POST /api/auth/responder` | Responder | Email and password, sets session. A miss is 401 `wrong_email_or_password` |
 | `POST /api/auth/staff` | Staff | PIN, sets session |
 | `POST /api/ai/voice` | Family, responder | Audio up to 30 s. Returns `AiVoiceExtract` |
 | `POST /api/ai/text` | Family | Typed note. Returns `AiVoiceExtract` with an empty transcript |

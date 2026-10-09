@@ -57,7 +57,7 @@ Start Ollama (`ollama serve`, or the desktop app) before the app. The app reads 
 
 ### Where to go
 
-Seeded PINs live in `seed/simulation.json` under `settings`, and the database stores only their hashes. The team PIN is `123456` and the staff PIN is `1234`. Seeded responders are Mae Santos, Jun Reyes, Carlo Mendoza, Ana Villanueva and Lito Bautista, and they all share the team PIN.
+Seeded sign ins live in `seed/simulation.json`, and the database stores only their hashes. The staff PIN is `1234`. Each seeded responder has an account and they all use the password `ulat2026`: CJ Jutba `cjjutba@gmail.com`, Artkin Carreon `artkin@gmail.com`, Sean Jacinto `sean@gmail.com` and James Calunsag `james@gmail.com`. After pulling a change that adds columns, run `pnpm db:push` and then `pnpm demo:reset`, because accounts already in your database have no password until the seed reloads.
 
 | Route | Who | Sign in |
 |---|---|---|
@@ -65,8 +65,8 @@ Seeded PINs live in `seed/simulation.json` under `settings`, and the database st
 | `/report`, then `/report/voice` or `/report/type`, `/report/check`, `/report/location`, `/report/send`, `/report/sent` | Families, send a report by voice or typing | None |
 | `/status` | Families, check a report with its 4 character code. `K7P4` is in the seed | None |
 | `/updates`, `/map`, `/safe`, `/safe/done` | Families, updates from the MDRRMO, map of relief points, shelters and hazards, "I'm safe" check in | None |
-| `/r` | Responders, redirects to `/r/sign-in` | Pick a name and enter the team PIN |
-| `/r/queue`, `/r/map`, `/r/new`, `/r/done`, `/r/reports/K7P4` | Responders, visit queue, map, a house nobody reported, done list, one family report. The photo flow lives under `/r/assess/<entry id>` | Team PIN |
+| `/r` | Responders, redirects to `/r/sign-in` | Email and password |
+| `/r/queue`, `/r/map`, `/r/new`, `/r/done`, `/r/reports/K7P4` | Responders, visit queue, map, a house nobody reported, done list, one family report. The photo flow lives under `/r/assess/<entry id>` | Responder sign in |
 | `/hub` | MDRRMO staff on the laptop, redirects to `/hub/lock` | Staff PIN |
 | `/hub/review`, `/hub/review/family-reports`, `/hub/review/duplicates` | Review of drafted entries, family reports and assigning, possible duplicates | Staff PIN |
 | `/hub/entries`, `/hub/entries/<id>` | All entries and one entry | Staff PIN |

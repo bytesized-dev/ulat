@@ -3,7 +3,12 @@ import { join } from "node:path";
 import { like } from "drizzle-orm";
 import { db } from "@/db/client";
 import { reports } from "@/db/schema";
-import { MAX_UNLINKED_VOICE_BYTES, UNLINKED_VOICE_MAX_AGE_MS } from "@/lib/audio-limits";
+import {
+  MAX_UNLINKED_VOICE_BYTES,
+  MAX_VOICE_FOLDER_BYTES,
+  UNLINKED_VOICE_MAX_AGE_MS,
+  VOICE_SWEEP_EVERY_MS,
+} from "@/lib/audio-limits";
 import { uploadDir } from "../../entries/_lib/uploads";
 
 // Family recordings live apart from photos and responder notes, in
@@ -46,25 +51,70 @@ async function listRecordings(): Promise<Recording[]> {
   return found;
 }
 
-/** The relative path of the recording stored under this voice_id, or null. */
+/**
+ * The relative path of the recording stored under this voice_id, or null. It
+ * lists the day folders and probes for the file in each, so it never lists a
+ * folder that holds recordings.
+ */
 export async function findVoice(voiceId: string): Promise<string | null> {
   if (!UUID.test(voiceId)) return null;
   const days = (await readdir(voiceDir()).catch(() => [] as string[])).filter((d) => DAY.test(d)).sort().reverse();
   for (const day of days) {
-    const names = await readdir(join(voiceDir(), day)).catch(() => [] as string[]);
-    const name = names.find((n) => n.startsWith(`${voiceId}.`) && EXTENSIONS.has(n.slice(voiceId.length + 1)));
-    if (name) return `${VOICE}/${day}/${name}`;
+    for (const ext of EXTENSIONS) {
+      const info = await stat(join(voiceDir(), day, `${voiceId}.${ext}`)).catch(() => null);
+      if (info?.isFile()) return `${VOICE}/${day}/${voiceId}.${ext}`;
+    }
   }
   return null;
+}
+
+// What the hub knows about the folder without walking it. An upload adds to
+// both counts, and a report that links a recording takes it off the unlinked
+// one. Only a sweep, which walks the folder, makes them exact. They live on
+// globalThis so the voice route and the reports route share them, whichever
+// bundle each one lands in.
+type Counts = { total: number; unlinked: number; sweptAt: number };
+const shared = globalThis as unknown as { ulatVoiceCounts?: Counts };
+
+/**
+ * Walks the voice folder: deletes unlinked recordings over an hour old, then
+ * counts what is left. A recording a report links is never deleted.
+ */
+async function sweep(now: number): Promise<Counts> {
+  const linked = new Set(
+    db.select({ path: reports.voice_path }).from(reports).where(like(reports.voice_path, `${VOICE}/%`)).all().map((r) => r.path),
+  );
+  const counts: Counts = { total: 0, unlinked: 0, sweptAt: now };
+  for (const recording of await listRecordings()) {
+    const isLinked = linked.has(recording.path);
+    if (!isLinked && now - recording.modified > UNLINKED_VOICE_MAX_AGE_MS) {
+      await rm(join(uploadDir, recording.path), { force: true }).catch(() => undefined);
+      continue;
+    }
+    counts.total += recording.bytes;
+    if (!isLinked) counts.unlinked += recording.bytes;
+  }
+  return (shared.ulatVoiceCounts = counts);
+}
+
+/** Tells the counts that a report took this recording, so it stops counting as unlinked. */
+export async function voiceLinked(path: string): Promise<void> {
+  const counts = shared.ulatVoiceCounts;
+  const info = await stat(join(uploadDir, path)).catch(() => null);
+  if (counts && info) counts.unlinked = Math.max(0, counts.unlinked - info.size);
 }
 
 export type StoreVoiceResult = { ok: true } | { ok: false; error: "audio_type_not_allowed" | "storage_full" };
 
 /**
- * Deletes unlinked recordings older than an hour, then stores this one unless
- * the unlinked ones already take MAX_UNLINKED_VOICE_BYTES. A recording a report
- * links is never deleted. The phone keeps its copy until the hub has accepted
- * the report, so a recording swept before its report arrives is sent again.
+ * Stores a recording unless the hub is full. Two caps apply: recordings no
+ * report has taken may total MAX_UNLINKED_VOICE_BYTES, and the whole voice
+ * folder may hold MAX_VOICE_FOLDER_BYTES. An upload under both caps by the
+ * running counts is written with no walk of the folder. One that looks over a
+ * cap, or the first after a minute, sweeps first and is judged on the exact
+ * counts, so a 507 is never a stale guess. The phone keeps its copy until the
+ * hub accepts the report, so a recording swept before its report arrives is
+ * sent again.
  */
 export async function storeVoice(file: File, voiceId: string, now = Date.now()): Promise<StoreVoiceResult> {
   const ext = EXT[file.type.split(";")[0].trim().toLowerCase()];
@@ -78,26 +128,23 @@ export async function storeVoice(file: File, voiceId: string, now = Date.now()):
     return { ok: true };
   }
 
-  const linked = new Set(
-    db.select({ path: reports.voice_path }).from(reports).where(like(reports.voice_path, `${VOICE}/%`)).all().map((r) => r.path),
-  );
-  let unlinkedBytes = 0;
-  for (const recording of await listRecordings()) {
-    if (linked.has(recording.path)) continue;
-    if (now - recording.modified > UNLINKED_VOICE_MAX_AGE_MS) {
-      await rm(join(uploadDir, recording.path), { force: true }).catch(() => undefined);
-    } else {
-      unlinkedBytes += recording.bytes;
-    }
-  }
-  if (unlinkedBytes + file.size > MAX_UNLINKED_VOICE_BYTES) return { ok: false, error: "storage_full" };
+  const over = (c: Counts) => c.unlinked + file.size > MAX_UNLINKED_VOICE_BYTES || c.total + file.size > MAX_VOICE_FOLDER_BYTES;
+  let counts = shared.ulatVoiceCounts;
+  if (!counts || now - counts.sweptAt >= VOICE_SWEEP_EVERY_MS || over(counts)) counts = await sweep(now);
+  if (over(counts)) return { ok: false, error: "storage_full" };
+  // Reserved before the write, with no await in between, so uploads that arrive together cannot all fit.
+  counts.total += file.size;
+  counts.unlinked += file.size;
 
   const day = new Date(now).toISOString().slice(0, 10);
-  await mkdir(join(voiceDir(), day), { recursive: true });
+  const target = join(voiceDir(), day, `${voiceId}.${ext}`);
   try {
+    await mkdir(join(voiceDir(), day), { recursive: true });
     // wx: two sends of one voice_id at once cannot overwrite each other.
-    await writeFile(join(voiceDir(), day, `${voiceId}.${ext}`), Buffer.from(await file.arrayBuffer()), { flag: "wx" });
+    await writeFile(target, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
   } catch (error) {
+    counts.total -= file.size;
+    counts.unlinked -= file.size;
     if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
   }
   return { ok: true };

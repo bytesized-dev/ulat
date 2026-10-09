@@ -8,6 +8,7 @@ import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, sendError } from "./capture";
 import { NoteRecorder } from "./note-recorder";
+import { enqueue } from "./offline-queue";
 
 type Photo = { file: File; label: string; url: string };
 
@@ -61,7 +62,14 @@ function AssessForm({ house }: AssessFormProps) {
       }
       setError(sendError(res.status, body?.error));
     } catch {
-      setError("Could not reach the hub. Check the Wi-Fi and try again.");
+      // The hub is out of reach: keep the entry on the phone. It sends from the Queue tab.
+      try {
+        await enqueue(meta.data, photos.map((p) => p.file), note);
+        router.push(routes.responder.queue);
+        return;
+      } catch {
+        setError("Could not reach the hub, and this phone could not save it. Try again.");
+      }
     } finally {
       setBusy(false);
     }

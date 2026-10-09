@@ -112,6 +112,33 @@ describe("draftEntry", () => {
     expect(entryRow(id)).toMatchObject({ ai_class: "unclear", ai_need_more: "Roof from the side" });
   });
 
+  it("asks for a photo when the model says unclear without saying which", async () => {
+    const unclear: AiPhotoDraft = { ...partial, damage_class: "unclear", confidence: "low", need_more: null };
+    chat.chatJson.mockResolvedValue({ value: unclear, raw: JSON.stringify(unclear) });
+    const id = newEntry(["front"]);
+    await draftEntry(id);
+    expect(entryRow(id)).toMatchObject({ ai_class: "unclear", ai_need_more: "Clear photo of the whole house" });
+  });
+
+  it("keeps the responder's material and hazards when they confirm while the model runs", async () => {
+    const id = newEntry(["front", "roof"]);
+    chat.chatJson.mockImplementation(async () => {
+      // The responder confirms before the model answers.
+      db.update(schema.entries)
+        .set({ status: "confirmed", damage_class: "none", material: "concrete", hazards: [] })
+        .where(eq(schema.entries.id, id))
+        .run();
+      return { value: partial, raw: rawReply };
+    });
+    await draftEntry(id);
+
+    const row = entryRow(id);
+    expect(row).toMatchObject({ status: "confirmed", damage_class: "none", material: "concrete", hazards: [] });
+    // The draft is still recorded, and the screen still hears about it.
+    expect(row).toMatchObject({ ai_class: "partial", ai_confidence: "high" });
+    expect(bus.publish).toHaveBeenCalledWith({ type: "entry.drafted", entry_id: id });
+  });
+
   it("falls back to unclear, logs the raw output and still emits when the output is invalid", async () => {
     chat.chatJson.mockRejectedValue(new OllamaError("invalid_output", "The reply was not JSON", "I think the roof is gone"));
     const id = newEntry(["front", "roof"]);

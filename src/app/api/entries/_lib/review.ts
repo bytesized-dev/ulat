@@ -2,7 +2,8 @@ import type { EntryConfirm } from "@/lib/contracts";
 
 // SPEC section 5: an entry goes to needs_review when
 // - the responder picks a different class than the AI,
-// - the AI said unclear and the responder picks without a new photo,
+// - the AI said unclear, or has not drafted yet, and the responder picks
+//   without a new photo,
 // - the hurt count differs from the linked family report.
 
 export const REVIEW_REASONS = {
@@ -18,7 +19,7 @@ export function reviewReasons(input: {
 }): (keyof typeof REVIEW_REASONS)[] {
   const out: (keyof typeof REVIEW_REASONS)[] = [];
   const { aiClass, confirm, reportHurt } = input;
-  if (aiClass === "unclear") {
+  if (aiClass === "unclear" || aiClass === null) {
     if (!confirm.new_photo_since_unclear) out.push("unclear_no_new_photo");
   } else if (aiClass && aiClass !== confirm.damage_class) {
     out.push("class_differs");

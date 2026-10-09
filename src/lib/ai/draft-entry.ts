@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { readUpload } from "@/app/api/entries/_lib/uploads";
 import { db } from "@/db/client";
 import { entries, photos } from "@/db/schema";
@@ -30,6 +30,9 @@ export async function draftEntry(entryId: string): Promise<void> {
   }
 
   let fields: Partial<typeof entries.$inferInsert>;
+  // What the responder may have changed while the model ran. Only written
+  // while the entry is still a draft.
+  let editable: Partial<typeof entries.$inferInsert> = {};
   try {
     if (files.length === 0) throw new Error("No readable photos for this entry");
     const { draft, raw } = await draftPhotoWithRaw({ photos: files, note: entry.note_transcript });
@@ -38,10 +41,10 @@ export async function draftEntry(entryId: string): Promise<void> {
       ai_class: draft.damage_class,
       ai_confidence: draft.confidence,
       ai_reason: draft.reason,
-      ai_need_more: draft.need_more,
-      material: draft.material,
-      hazards: draft.hazards,
+      // An unclear class always says which photo is missing.
+      ai_need_more: draft.need_more ?? (draft.damage_class === "unclear" ? FALLBACK_NEED_MORE : null),
     };
+    editable = { material: draft.material, hazards: draft.hazards };
   } catch (error) {
     const failure = error instanceof Error ? error : new Error(String(error));
     await logEntryAiCall(entryId, "photo", {
@@ -56,6 +59,15 @@ export async function draftEntry(entryId: string): Promise<void> {
     };
   }
 
+  // The AI fields are the draft's own record, so they are always stored. The
+  // responder can confirm while the model runs, and then material and hazards
+  // are theirs: a late draft must not overwrite them.
   db.update(entries).set(fields).where(eq(entries.id, entryId)).run();
+  if (Object.keys(editable).length > 0) {
+    db.update(entries)
+      .set(editable)
+      .where(and(eq(entries.id, entryId), eq(entries.status, "draft")))
+      .run();
+  }
   publish({ type: "entry.drafted", entry_id: entryId });
 }

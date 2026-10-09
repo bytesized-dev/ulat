@@ -16,8 +16,8 @@ import { TopBar } from "@/components/ui/top-bar";
 import { checkBackHref, householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, NOT_SET, setCount, setNeed, whatHappened } from "./check-report";
 import { EditFieldSheet, type EditableField } from "./edit-field-sheet";
 import type { ReportDraft } from "./report-draft";
-import { PHOTO_ERRORS, preparePhoto } from "./report-photo";
-import { clearReportPhoto, setReportPhoto } from "./report-photo-store";
+import { PHOTO_ERRORS, preparePhoto } from "./photo-shrink";
+import { clearReportPhoto, keepReportPhoto } from "./report-photo-store";
 import { updateDraft, useReportDraft } from "./use-report-draft";
 import { usePhotoUrl, useReportPhoto } from "./use-report-photo";
 import { voiceAudioDuration } from "./voice-audio";
@@ -85,7 +85,7 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
     setAdding(true);
     setPhotoError(null);
     const result = await preparePhoto(file);
-    if (result.ok) await setReportPhoto(result.photo);
+    if (result.ok) await keepReportPhoto(result.photo);
     else setPhotoError(PHOTO_ERRORS[result.error]);
     setAdding(false);
   }

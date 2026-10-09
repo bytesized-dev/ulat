@@ -19,7 +19,11 @@ type Session = {
   cancelled: boolean;
 };
 
-export type StartResult = "recording" | "blocked" | "failed";
+/**
+ * "busy" means a recording or a microphone prompt is already under way, and
+ * "cancelled" means cancel ran while the prompt was open. The screen ignores both.
+ */
+export type StartResult = "recording" | "blocked" | "failed" | "busy" | "cancelled";
 
 type Options = {
   /** Called with the finished recording, after stop or at the time limit. Not after cancel. */
@@ -32,6 +36,9 @@ function useVoiceRecorder({ onFinish }: Options) {
   const session = useRef<Session | null>(null);
   // True while the browser waits for the person to allow the microphone.
   const asking = useRef(false);
+  // Set when cancel runs during that wait, for example when the person leaves
+  // the page before answering. The microphone must not start after that.
+  const abandoned = useRef(false);
 
   const finish = useRef(onFinish);
   useEffect(() => {
@@ -46,7 +53,7 @@ function useVoiceRecorder({ onFinish }: Options) {
   }, []);
 
   const start = useCallback(async (): Promise<StartResult> => {
-    if (session.current || asking.current) return "recording";
+    if (session.current || asking.current) return "busy";
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return "blocked";
 
     // Made here, inside the tap, because a browser keeps an audio context
@@ -61,13 +68,20 @@ function useVoiceRecorder({ onFinish }: Options) {
 
     let stream: MediaStream;
     asking.current = true;
+    abandoned.current = false;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch (error) {
       void context?.close().catch(() => {});
-      return micFailure(error);
+      return abandoned.current ? "cancelled" : micFailure(error);
     } finally {
       asking.current = false;
+    }
+
+    if (abandoned.current) {
+      stream.getTracks().forEach((track) => track.stop());
+      void context?.close().catch(() => {});
+      return "cancelled";
     }
 
     try {
@@ -131,6 +145,7 @@ function useVoiceRecorder({ onFinish }: Options) {
 
   /** Throws the recording away and lets go of the microphone. */
   const cancel = useCallback(() => {
+    if (asking.current) abandoned.current = true;
     const s = session.current;
     if (!s) return;
     s.cancelled = true;

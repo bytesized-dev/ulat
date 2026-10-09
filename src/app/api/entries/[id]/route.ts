@@ -67,9 +67,10 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const now = new Date().toISOString();
 
   const settled = db.transaction((tx) => {
-    // The update goes first, and with the header it only matches an entry that is
-    // still in the status the caller saw. No row changed means another save got there
-    // first, so nothing has been written and the audit rows below never are.
+    // The update goes first. A responder only matches a draft, since confirmed and
+    // held entries are the hub's to change, and with the header it only matches an
+    // entry still in the status the caller saw. No row changed means another save
+    // got there first, so nothing has been written and the audit rows below never are.
     const result = tx
       .update(entries)
       .set({
@@ -86,9 +87,15 @@ export async function PATCH(req: Request, { params }: Ctx) {
         confirmed_by: status === "confirmed" ? actor.id : null,
         confirmed_at: status === "confirmed" ? now : null,
       })
-      .where(expected?.success ? and(eq(entries.id, id), eq(entries.status, expected.data)) : eq(entries.id, id))
+      .where(
+        and(
+          eq(entries.id, id),
+          actor.role === "responder" ? eq(entries.status, "draft") : undefined,
+          expected?.success ? eq(entries.status, expected.data) : undefined,
+        ),
+      )
       .run();
-    if (expected && result.changes !== 1) return false;
+    if (result.changes !== 1) return false;
 
     for (const field of FIELDS) {
       const from = entry[field];
@@ -111,7 +118,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
     }
     return true;
   });
-  if (!settled) return Response.json({ error: "not_in_review" }, { status: 409 });
+  if (!settled) return Response.json({ error: actor.role === "responder" ? "not_a_draft" : "not_in_review" }, { status: 409 });
 
   if (status === "confirmed") {
     emit({ type: "entry.confirmed", entry_id: id, report_code: report?.code ?? null });

@@ -286,4 +286,70 @@ describe("entries API", () => {
     const report = db.select().from(schema.reports).all().find((r) => r.id === "rep1");
     expect(report?.status).toBe("visited");
   });
+
+  describe("report counts", () => {
+    const now = new Date().toISOString();
+    const reportRow = {
+      id: "rep-k9f5", code: "K9F5", source: "family" as const, household_head: "Santos", barangay: "Poblacion",
+      people: 6, hurt: 1, missing: 0, needs: ["water", "food", "medicine"] as ("water" | "food" | "medicine")[],
+      status: "assigned" as const, created_at: now, updated_at: now,
+    };
+    const row = (id: string) => db.select().from(schema.entries).where(eq(schema.entries.id, id)).get()!;
+
+    beforeAll(() => {
+      db.insert(schema.reports).values(reportRow).run();
+    });
+
+    it("prefills a new entry with the counts and needs of its linked report", async () => {
+      const { body } = await create(2, { report_code: "K9F5" });
+      expect(row(body.id)).toMatchObject({ people: 6, hurt: 1, missing: 0, needs: ["water", "food", "medicine"], families: 1 });
+    });
+
+    it("confirms without edits when the responder keeps the report counts", async () => {
+      const { body } = await create(2, { report_code: "K9F5" });
+      const keep = confirmBody({ people: 6, hurt: 1, needs: ["water", "food", "medicine"] });
+      const res = await (await one.PATCH(patch(body.id, keep), ctx(body.id))).json();
+      expect(res.status).toBe("confirmed");
+      expect(res.reasons).toEqual([]);
+    });
+
+    it("leaves the counts at zero for an entry with no report", async () => {
+      const { body } = await create(2);
+      expect(row(body.id)).toMatchObject({ people: 0, hurt: 0, missing: 0, needs: [] });
+    });
+  });
+
+  describe("PATCH by a responder", () => {
+    const row = (id: string) => db.select().from(schema.entries).where(eq(schema.entries.id, id)).get()!;
+
+    it("refuses a confirmed entry with 409 not_a_draft and changes nothing", async () => {
+      const { body } = await create(2);
+      expect((await one.PATCH(patch(body.id, confirmBody()), ctx(body.id))).status).toBe(200);
+      const before = row(body.id);
+      const res = await one.PATCH(patch(body.id, confirmBody({ damage_class: "none", people: 9 })), ctx(body.id));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "not_a_draft" });
+      expect(row(body.id)).toEqual(before);
+    });
+
+    it("refuses a needs_review entry with 409 not_a_draft, also when it sends the status it saw", async () => {
+      const { body } = await create(2);
+      expect((await (await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" })), ctx(body.id))).json()).status).toBe("needs_review");
+      const before = row(body.id);
+      for (const headers of [resp, { ...resp, "x-ulat-expect-status": "needs_review" }]) {
+        const res = await one.PATCH(patch(body.id, confirmBody({ damage_class: "total" }), headers), ctx(body.id));
+        expect(res.status).toBe(409);
+        expect(await res.json()).toEqual({ error: "not_a_draft" });
+      }
+      expect(row(body.id)).toEqual(before);
+    });
+
+    it("still lets staff settle a needs_review entry", async () => {
+      const { body } = await create(2);
+      await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" })), ctx(body.id));
+      const res = await one.PATCH(patch(body.id, confirmBody({ damage_class: "partial" }), staff), ctx(body.id));
+      expect((await res.json()).status).toBe("confirmed");
+      expect(row(body.id).status).toBe("confirmed");
+    });
+  });
 });

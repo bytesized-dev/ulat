@@ -37,11 +37,21 @@ beforeEach(() => {
 });
 
 let number = 300;
-function newEntry(status: "needs_review" | "confirmed" = "needs_review") {
+function newReport() {
+  const n = number;
+  return db
+    .insert(schema.reports)
+    .values({ code: `T${n}`, source: "family", household_head: "Lopez", barangay: "Sinonoc", status: "assigned", created_at: "2026-10-10T06:00:00.000Z", updated_at: "2026-10-10T06:00:00.000Z" })
+    .returning()
+    .get();
+}
+
+function newEntry(status: "needs_review" | "confirmed" = "needs_review", reportId: string | null = null) {
   return db
     .insert(schema.entries)
     .values({
       number: number++,
+      report_id: reportId,
       responder_id: responderId,
       barangay: "Sinonoc",
       damage_class: "total",
@@ -87,6 +97,28 @@ describe("PATCH /api/entries/[id] with x-ulat-expect-status", () => {
     expect(saved(id).damage_class).toBe("partial");
     expect(history(id)).toHaveLength(rows);
     expect(history(id).filter((e) => e.type === "entry.confirmed")).toHaveLength(1);
+    expect(published).toEqual([]);
+  });
+
+  it("writes nothing on a 409: no field rows, no visited row, no emit, the report untouched", async () => {
+    const report = newReport();
+    const id = newEntry("needs_review", report.id);
+    expect((await patch(id, body("partial"), expectReview)).status).toBe(200);
+    published.length = 0;
+    const entryRows = history(id).length;
+    const reportRows = () => db.select().from(schema.events).where(eq(schema.events.entity_id, report.id)).all().length;
+    const reportBefore = reportRows();
+
+    // The stale tab also carries different people and hurt values from its old render.
+    const stale = await patch(id, { ...body("total"), people: 9, hurt: 3, needs: ["water"] }, expectReview);
+    expect(stale.status).toBe(409);
+
+    const row = saved(id);
+    expect(row).toMatchObject({ damage_class: "partial", people: 4, hurt: 0, status: "confirmed" });
+    expect(history(id)).toHaveLength(entryRows);
+    expect(history(id).filter((e) => e.type === "entry.field_changed" && (e.data as { to?: unknown })?.to === 9)).toEqual([]);
+    expect(reportRows()).toBe(reportBefore);
+    expect(db.select().from(schema.reports).where(eq(schema.reports.id, report.id)).get()?.status).toBe("visited");
     expect(published).toEqual([]);
   });
 

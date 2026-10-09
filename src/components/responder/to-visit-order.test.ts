@@ -30,9 +30,14 @@ describe("distance", () => {
 
   it("formats metres and kilometres", () => {
     expect(formatDistance(347)).toBe("350 m");
-    expect(formatDistance(999)).toBe("1000 m");
+    expect(formatDistance(990)).toBe("990 m");
     expect(formatDistance(1234)).toBe("1.2 km");
     expect(formatDistance(2000)).toBe("2.0 km");
+  });
+
+  it("never shows 1000 m, it switches to km where the rounding reaches 1000", () => {
+    for (const meters of [995, 996, 999, 999.9, 1000]) expect(formatDistance(meters)).toBe("1.0 km");
+    expect(formatDistance(994)).toBe("990 m");
   });
 });
 

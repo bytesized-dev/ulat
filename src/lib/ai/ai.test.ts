@@ -67,12 +67,25 @@ describe("chatJson", () => {
       stream: false,
       format: z.toJSONSchema(schemaUnderTest),
       keep_alive: expect.any(String),
+      think: false,
+      options: { num_predict: 1536 },
       messages: [
         { role: "system", content: "sys" },
         { role: "user", content: "usr", images: [Buffer.from("abc").toString("base64")] },
       ],
     });
     expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("merges caller options over the num_predict cap and lets a call turn thinking back on", async () => {
+    fetchMock.mockImplementation(async () => reply('{"n":3}'));
+    await chatJson({ schema: schemaUnderTest, system: "sys", user: "usr", options: { temperature: 0 }, think: true });
+    await chatJson({ schema: schemaUnderTest, system: "sys", user: "usr", options: { num_predict: 4096 } });
+
+    const first = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(first.think).toBe(true);
+    expect(first.options).toEqual({ num_predict: 1536, temperature: 0 });
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).options).toEqual({ num_predict: 4096 });
   });
 
   it("throws invalid_output with the raw text when the reply is not JSON", async () => {
@@ -133,7 +146,13 @@ describe("chatJson without structured output", () => {
     expect(bodyOf(0).format).toEqual(z.toJSONSchema(schemaUnderTest));
     const retry = bodyOf(1);
     expect(retry).not.toHaveProperty("format");
-    expect(retry).toMatchObject({ model: "gemma4:e4b", stream: false, keep_alive: expect.any(String) });
+    expect(retry).toMatchObject({
+      model: "gemma4:e4b",
+      stream: false,
+      keep_alive: expect.any(String),
+      think: false,
+      options: { num_predict: 1536 },
+    });
     expect(retry.messages[0]).toEqual({ role: "system", content: "sys" });
     expect(retry.messages[1].images).toEqual([Buffer.from("abc").toString("base64")]);
     expect(retry.messages[1].content).toContain("usr");
@@ -242,7 +261,8 @@ describe("voice, text and photo when Ollama answers format with a 501", () => {
     await expect(draftPhoto({ photos: [{ data: Buffer.from("img"), mime: "image/jpeg", label: "Front" }] })).resolves.toEqual(photo);
 
     expect(bodyOf(1)).not.toHaveProperty("format");
-    expect(bodyOf(1).options).toEqual({ temperature: 0 });
+    expect(bodyOf(1).options).toEqual({ num_predict: 1536, temperature: 0 });
+    expect(bodyOf(1).think).toBe(false);
     expect(bodyOf(1).messages[1].content).toContain("Use null for need_more when damage_class is not unclear.");
     expect(bodyOf(1).messages[1].content).toContain('"need_more"');
   });

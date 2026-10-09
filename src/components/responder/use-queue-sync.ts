@@ -39,6 +39,16 @@ async function refresh() {
   update({ items: await browserStore.all().catch(() => []) });
 }
 
+/**
+ * One send at a time across every tab and every page load. A hard navigation can
+ * leave the old page and the new one both holding the same entry, and each would
+ * post it. Browsers only offer the lock on a secure origin, so over plain HTTP
+ * on the local network the send runs without it.
+ */
+function exclusively<T>(work: () => Promise<T>): Promise<T> {
+  return navigator.locks ? navigator.locks.request("ulat-responder-queue", work) : work();
+}
+
 let running = false;
 
 /** Reads the queue and, when the hub answers, sends what waits. */
@@ -51,7 +61,7 @@ async function check() {
     update({ inRange });
     if (inRange && state.items?.some((item) => !item.failure)) {
       update({ busy: true });
-      const result = await flushQueue();
+      const result = await exclusively(() => flushQueue());
       update({ signedOut: result.signedOut });
       await refresh();
     }

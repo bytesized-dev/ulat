@@ -55,7 +55,7 @@ export default async function ToVisitPage() {
         <Link
           href={routes.responder.newHouse}
           aria-label="New house"
-          className={cn(buttonVariants({ variant: "secondary", size: "icon" }), "absolute right-gutter bottom-full mb-4 size-14 [&_svg]:size-6")}
+          className={cn(buttonVariants({ variant: "secondary", size: "icon" }), "absolute right-gutter bottom-full mb-4 size-14 text-primary [&_svg]:size-6")}
         >
           <PlusIcon aria-hidden="true" />
         </Link>

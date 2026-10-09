@@ -30,9 +30,15 @@ describe("offline map package", () => {
     }
   });
 
-  it("styles the map only with colors that exist as design tokens", () => {
-    const tokens = readFileSync("design/tokens.css", "utf8");
-    for (const name of Object.values(mapTokens)) expect(tokens).toContain(`--color-${name}:`);
+  it("styles the map only with colors that exist as tokens, in the design file and in the app", () => {
+    // The app renders from globals.css, so a token only in design/tokens.css still shows the old color.
+    const value = (css: string, name: string) => css.match(new RegExp(`--color-${name}: ([^;]+);`))?.[1];
+    const design = readFileSync("design/tokens.css", "utf8");
+    const app = readFileSync("src/app/globals.css", "utf8");
+    for (const name of Object.values(mapTokens)) {
+      expect(value(app, name), name).toBeDefined();
+      expect(value(app, name), name).toBe(value(design, name));
+    }
   });
 
   it("has all 50 Dapitan City barangays, each named, with closed outlines", () => {

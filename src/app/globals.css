@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-/* Ulat tokens until BYT-7 merges design/tokens.css into this file. Added in BYT-4 for the map, agreed with Platform. */
-@import "../../design/tokens.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -100,10 +98,13 @@
   --color-danger: #cf202f;
   --color-success: #05b169;
   --color-warning: #f4b000;
-  --color-map-land: #f2f3f5;
-  --color-map-sea: #e1e7ef;
-  --color-map-river: #c5d3e6;
-  --color-map-casing: #e2e5ea;
+  --color-map-land: #cef5dc;
+  --color-map-urban: #f2f0f0;
+  --color-map-park: #a0e5b9;
+  --color-map-sea: #83d5ea;
+  --color-map-river: #83d5ea;
+  --color-map-road: #7e9bb6;
+  --color-map-road-minor: #c7d3dd;
   --color-map-boundary: #b4b9c1;
   --color-map-shade-1: #f6cfd2;
   --color-map-shade-2: #fae2e4;

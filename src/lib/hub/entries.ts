@@ -3,7 +3,6 @@ import { z } from "zod";
 import type { Db } from "../../db/client";
 import { entries, events, photos, reports, responders } from "../../db/schema";
 import { ConfirmedDamageClass } from "../contracts/schemas";
-import { likePattern } from "./safe";
 
 // docs/SPEC.md sections 3 and 4. What the hub entries pages read: a paged,
 // filtered list and one entry with its photos, AI draft comparison and history.

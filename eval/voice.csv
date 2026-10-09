@@ -1,1 +1,3 @@
 file,language,household_head,people,hurt,missing,needs
+voice/bisaya-01.wav,ceb,Ramon Dela Cruz,5,2,1,water;food;tarp
+voice/tagalog-01.wav,tl,Liza Santos,6,1,2,water;medicine;baby_needs

@@ -1,17 +1,33 @@
-import * as React from "react"
-import { cn } from "cn"
+import * as React from "react";
+import { cva } from "class-variance-authority";
+import { cn } from "@/lib/utils";
+import { fieldVariants, type FieldSize } from "@/components/ui/input";
 
-function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
+// A textarea shares the field look and grows with its text. Its minimum is a
+// few lines, not one, so the box reads as a place to write.
+const textareaVariants = cva("field-sizing-content py-3", {
+  variants: {
+    size: {
+      phone: "min-h-24",
+      hub: "min-h-20",
+    },
+  },
+});
+
+type TextareaProps = React.ComponentProps<"textarea"> & {
+  size?: FieldSize;
+};
+
+function Textarea({ className, size = "phone", ...props }: TextareaProps) {
   return (
     <textarea
       data-slot="textarea"
-      className={cn(
-        "flex field-sizing-content min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
-        className
-      )}
+      data-size={size}
+      className={cn(fieldVariants({ size }), "h-auto", textareaVariants({ size }), className)}
       {...props}
     />
-  )
+  );
 }
 
-export { Textarea }
+export { Textarea };
+export type { TextareaProps };

@@ -20,7 +20,11 @@ type Bucket = { failures: number; inFlight: number; lastFailure: number; blocked
 const globalForLimiter = globalThis as unknown as { ulatAuthBuckets?: Map<string, Bucket> };
 const buckets = (globalForLimiter.ulatAuthBuckets ??= new Map<string, Bucket>());
 
-/** The caller's address. Caddy sets x-forwarded-for, and its last entry is the one Caddy added. */
+/**
+ * The caller's address. Caddy sets x-forwarded-for and its last entry is the
+ * one Caddy added. That holds only while the app listens on 127.0.0.1, see
+ * infra/README.md. Requests with no header come from the hub itself.
+ */
 export function clientKey(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
   return forwarded || "direct";

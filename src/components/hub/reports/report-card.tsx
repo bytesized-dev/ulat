@@ -112,8 +112,9 @@ export function ReportCard({ number, createdAt, town, snapshot, hazards }: Repor
 
       <section aria-labelledby="hazards" className="flex flex-col gap-2">
         <h3 id="hazards" className={sectionTitle}>
-          Hazards
+          Hazards now
         </h3>
+        <p className="text-caption text-muted-text">Read when you open this page. Not saved with the report.</p>
         <p className="text-body-sm text-body">{hazards.length === 0 ? "None listed." : hazards.map((h) => (h.endsWith(".") ? h : `${h}.`)).join(" ")}</p>
       </section>
     </article>

@@ -122,12 +122,13 @@ describe("reading reports", () => {
 });
 
 describe("getHazardLines", () => {
+  const place = { lat: 1, lng: 2, created_at: THREE_PM };
+
   it("is empty when nothing is listed", () => {
     expect(lib.getHazardLines(db)).toEqual([]);
   });
 
-  it("lists visible hazard places, then entry hazards no place names, once each", () => {
-    const place = { lat: 1, lng: 2, created_at: THREE_PM };
+  it("lists visible hazard places, then entry hazards with where they are", () => {
     db.insert(schema.places)
       .values([
         { ...place, type: "hazard", name: "Landslide", details: "upper Sinonoc road" },
@@ -138,8 +139,7 @@ describe("getHazardLines", () => {
       .run();
     db.insert(schema.entries)
       .values([
-        entry(6, { hazards: ["fallen power line", "Leaning post"], purok: "Purok 5" }),
-        entry(7, { hazards: ["Leaning post", "  "], barangay: "Dawo (Pob.)" }),
+        entry(6, { hazards: ["Leaning post", "  "], purok: "Purok 5" }),
         entry(8, { status: "needs_review", hazards: ["Not counted"] }),
       ])
       .run();
@@ -150,20 +150,67 @@ describe("getHazardLines", () => {
     ]);
   });
 
-  it("writes a place with no details as its name", () => {
+  it("shows a hazard once when a place covers it, even with different case and spacing", () => {
+    db.insert(schema.entries).values(entry(9, { hazards: ["  fallen  POWER line"], purok: "purok 3" })).run();
+    expect(lib.getHazardLines(db).filter((l) => /power line/i.test(l))).toEqual(["Fallen power line, Purok 3"]);
+  });
+
+  it("keeps an entry's hazard when the place of the same name is in another purok", () => {
+    db.insert(schema.entries).values(entry(10, { hazards: ["Fallen power line"], purok: "Purok 5" })).run();
+    expect(lib.getHazardLines(db).filter((l) => /power line/i.test(l))).toEqual([
+      "Fallen power line, Purok 3",
+      "Fallen power line, Purok 5, Sinonoc",
+    ]);
+  });
+
+  it("does not take Purok 3 for Purok 30, or a place in another barangay for this one", () => {
     db.insert(schema.places)
-      .values({ lat: 1, lng: 2, created_at: "2026-10-10T08:00:00.000Z", type: "hazard", name: "Bridge out", details: " " })
+      .values([
+        { ...place, type: "hazard", name: "Open drain", details: "Purok 30" },
+        { ...place, type: "hazard", name: "Sinkhole", details: "Purok 3, Dawo (Pob.)" },
+      ])
       .run();
-    expect(lib.getHazardLines(db)).toContain("Bridge out");
+    db.insert(schema.entries)
+      .values([
+        entry(11, { hazards: ["Open drain"], purok: "Purok 3" }),
+        entry(12, { hazards: ["Sinkhole"], purok: "Purok 3" }),
+        entry(13, { hazards: ["Sinkhole"], purok: "Purok 3", barangay: "Dawo (Pob.)" }),
+      ])
+      .run();
+    const lines = lib.getHazardLines(db);
+    expect(lines).toContain("Open drain, Purok 3, Sinonoc");
+    expect(lines).toContain("Sinkhole, Purok 3, Sinonoc");
+    // The Dawo entry is the place's own spot, so only the place line remains for Dawo.
+    expect(lines.filter((l) => l.startsWith("Sinkhole"))).toEqual(["Sinkhole, Purok 3, Dawo (Pob.)", "Sinkhole, Purok 3, Sinonoc"]);
+  });
+
+  it("shows the same hazard twice for the same purok name in two barangays, and once for two entries at one spot", () => {
+    db.insert(schema.entries)
+      .values([
+        entry(14, { hazards: ["Leaning post"], purok: "Purok 5", barangay: "Dawo (Pob.)" }),
+        entry(15, { hazards: ["leaning post"], purok: "Purok 5" }),
+      ])
+      .run();
+    expect(lib.getHazardLines(db).filter((l) => /leaning post/i.test(l))).toEqual([
+      "Leaning post, Purok 5, Sinonoc",
+      "Leaning post, Purok 5, Dawo (Pob.)",
+    ]);
+  });
+
+  it("writes a place with no details as its name, and it covers no entry hazard", () => {
+    db.insert(schema.places)
+      .values({ ...place, created_at: "2026-10-10T08:00:00.000Z", type: "hazard", name: "Bridge out", details: " " })
+      .run();
+    db.insert(schema.entries).values(entry(16, { hazards: ["Bridge out"], purok: "Purok 2" })).run();
+    const lines = lib.getHazardLines(db);
+    expect(lines).toContain("Bridge out");
+    expect(lines).toContain("Bridge out, Purok 2, Sinonoc");
   });
 });
 
-describe("smsTimeLabel and smsCounts", () => {
+describe("smsTimeLabel", () => {
   it("writes the hour without minutes and keeps real minutes", () => {
     expect(lib.smsTimeLabel(at(THREE_PM))).toBe("3PM");
     expect(lib.smsTimeLabel(at("2026-10-10T09:05:00.000Z"))).toBe("5:05PM");
-  });
-  it("counts characters and texts", () => {
-    expect(lib.smsCounts("a".repeat(161))).toEqual({ characters: 161, texts: 2 });
   });
 });

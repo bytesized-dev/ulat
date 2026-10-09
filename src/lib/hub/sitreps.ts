@@ -2,7 +2,7 @@ import { and, asc, desc, eq, lt, max } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import { entries, places, settings, sitreps } from "../../db/schema";
 import { HubSummary } from "../contracts/schemas";
-import { buildSms, smsSegments, type SmsSnapshot } from "../sms";
+import { buildSms, type SmsSnapshot } from "../sms";
 import { formatTime } from "../time";
 import { getHubSummary } from "./summary";
 
@@ -101,22 +101,46 @@ export function listEarlierSitreps(db: Db, before: number): { number: number; cr
     .all();
 }
 
-/** How many characters and how many texts an SMS takes. */
-export function smsCounts(text: string): { characters: number; texts: number } {
-  return { characters: text.length, texts: smsSegments(text) };
-}
 
 const upperFirst = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Lowercase, trimmed, one space between words, so "Purok  3 " and "purok 3" compare equal. */
+const normalize = (text: string | null | undefined) => (text ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Whether `area` appears in `text` as whole words, so "purok 3" does not match "purok 30". */
+function mentions(text: string, area: string): boolean {
+  const escaped = area.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`).test(text);
+}
+
+type HazardEntry = { text: string; barangay: string; purok: string | null };
+type HazardPlace = { name: string; details: string | null };
+
+/**
+ * A hazard place covers an entry's hazard only when it is the same hazard at
+ * the same spot: the names match, the place's details name the entry's purok
+ * (or its barangay when the entry has no purok), and the details name no other
+ * barangay. A place with no details cannot be placed, so it covers nothing.
+ */
+function placeCovers(place: HazardPlace, entry: HazardEntry, barangays: string[]): boolean {
+  if (normalize(place.name) !== normalize(entry.text)) return false;
+  const details = normalize(place.details);
+  const area = normalize(entry.purok) || normalize(entry.barangay);
+  if (!details || !area || !mentions(details, area)) return false;
+  const own = normalize(entry.barangay);
+  return !barangays.some((b) => normalize(b) !== own && mentions(details, normalize(b)));
+}
 
 /**
  * Hazard lines for the report, as people wrote them. HubSummary has no hazards,
  * so these are read live and not frozen in the snapshot. First the visible
- * hazard places as "name, details". Then hazards typed on confirmed entries
- * that no place already names, with the barangay so the line says where.
+ * hazard places as "name, details". Then hazards typed on confirmed entries,
+ * with the purok and barangay so the line says where. The same hazard in two
+ * puroks or barangays shows twice. It shows once when two entries share the
+ * spot or a place already covers it.
  */
 export function getHazardLines(db: Db): string[] {
   const lines: string[] = [];
-  const seen = new Set<string>();
 
   const placeRows = db
     .select({ name: places.name, details: places.details })
@@ -124,10 +148,11 @@ export function getHazardLines(db: Db): string[] {
     .where(and(eq(places.type, "hazard"), eq(places.visible, true)))
     .orderBy(asc(places.created_at), asc(places.name))
     .all();
+  const listed: HazardPlace[] = [];
   for (const { name, details } of placeRows) {
     const line = [name, details].map((t) => t?.trim()).filter(Boolean).join(", ");
     if (!line) continue;
-    seen.add(name.trim().toLowerCase());
+    listed.push({ name, details });
     lines.push(upperFirst(line));
   }
 
@@ -137,13 +162,16 @@ export function getHazardLines(db: Db): string[] {
     .where(eq(entries.status, "confirmed"))
     .orderBy(asc(entries.number))
     .all();
+  const barangays = [...new Set(entryRows.map((r) => r.barangay))];
+  const seen = new Set<string>();
   for (const { hazards, barangay, purok } of entryRows) {
     for (const raw of hazards) {
-      const text = raw.trim();
-      const key = text.toLowerCase();
-      if (!text || seen.has(key)) continue;
+      const entry = { text: raw.trim(), barangay, purok };
+      if (!entry.text) continue;
+      const key = [entry.text, barangay, purok].map(normalize).join("|");
+      if (seen.has(key) || listed.some((p) => placeCovers(p, entry, barangays))) continue;
       seen.add(key);
-      lines.push(`${upperFirst(text)}, ${[purok?.trim(), barangay].filter(Boolean).join(", ")}`);
+      lines.push(`${upperFirst(entry.text)}, ${[purok?.trim(), barangay].filter(Boolean).join(", ")}`);
     }
   }
   return lines;

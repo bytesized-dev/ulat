@@ -14,18 +14,20 @@ export function SmsPanel({ sms }: { sms: string }) {
   const id = useId();
   const field = useRef<HTMLTextAreaElement>(null);
   const [text, setText] = useState(sms);
-  const [copied, setCopied] = useState(false);
+  const [copy, setCopy] = useState<"idle" | "copied" | "failed">("idle");
   const texts = smsSegments(text);
 
-  async function copy() {
+  async function copyText() {
+    let done = false;
     try {
       await navigator.clipboard.writeText(text);
+      done = true;
     } catch {
       // No clipboard permission, so select the text and use the older copy command.
       field.current?.select();
-      document.execCommand("copy");
+      done = document.execCommand("copy");
     }
-    setCopied(true);
+    setCopy(done ? "copied" : "failed");
   }
 
   return (
@@ -50,18 +52,23 @@ export function SmsPanel({ sms }: { sms: string }) {
         value={text}
         onChange={(event) => {
           setText(event.target.value);
-          setCopied(false);
+          setCopy("idle");
         }}
         className="resize-y text-body-sm"
       />
       <p className="text-body-sm text-body" aria-live="polite">
         {`${text.length} characters, ${texts} ${texts === 1 ? "text" : "texts"}`}
       </p>
-      <div>
-        <Button variant="secondary" size="hub" onClick={copy}>
+      <div className="flex flex-col items-start gap-2">
+        <Button variant="secondary" size="hub" onClick={copyText}>
           <CopyIcon aria-hidden="true" />
-          {copied ? "Copied" : "Copy"}
+          {copy === "copied" ? "Copied" : "Copy"}
         </Button>
+        {copy === "failed" ? (
+          <p role="alert" className="text-body-sm text-danger">
+            Could not copy. The text is selected, press Ctrl C.
+          </p>
+        ) : null}
       </div>
     </section>
   );

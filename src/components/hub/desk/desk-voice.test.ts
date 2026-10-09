@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { formatTimer, micFailure, pickMimeType, readVoiceNote } from "./desk-voice";
 
 const extract = {
@@ -44,9 +44,11 @@ describe("micFailure", () => {
   });
 });
 
+const wav = async () => new Blob([new Uint8Array(2000)], { type: "audio/wav" });
+
 describe("readVoiceNote", () => {
   it("returns the extract from a valid reply", async () => {
-    const result = await readVoiceNote(note(), reply(200, extract));
+    const result = await readVoiceNote(note(), reply(200, extract), wav);
     expect(result).toMatchObject({ ok: true, extract: { people: 4 } });
   });
 
@@ -56,15 +58,26 @@ describe("readVoiceNote", () => {
       seen = { url: String(url), body: init?.body };
       return new Response(JSON.stringify(extract));
     }) as typeof fetch;
-    await readVoiceNote(note(), spy);
+    await readVoiceNote(note(), spy, wav);
     expect(seen!.url).toBe("/api/ai/voice");
-    expect((seen!.body as FormData).get("audio")).toBeInstanceOf(File);
+    const sent = (seen!.body as FormData).get("audio") as File;
+    expect(sent.name).toBe("note.wav");
+    expect(sent.type).toBe("audio/wav");
+  });
+
+  it("fails when the recording cannot be converted, and sends nothing", async () => {
+    const send = vi.fn();
+    const broken = async () => {
+      throw new Error("cannot decode");
+    };
+    expect(await readVoiceNote(note(), send as unknown as typeof fetch, broken)).toEqual({ ok: false });
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("fails on a tap that recorded nothing, a bad reply, an empty transcript and an error", async () => {
-    expect(await readVoiceNote(note(10), reply(200, extract))).toEqual({ ok: false });
-    expect(await readVoiceNote(note(), reply(200, { people: "four" }))).toEqual({ ok: false });
-    expect(await readVoiceNote(note(), reply(200, { ...extract, transcript: "  " }))).toEqual({ ok: false });
-    expect(await readVoiceNote(note(), reply(503, { error: "unavailable", retry: true }))).toEqual({ ok: false });
+    expect(await readVoiceNote(note(10), reply(200, extract), wav)).toEqual({ ok: false });
+    expect(await readVoiceNote(note(), reply(200, { people: "four" }), wav)).toEqual({ ok: false });
+    expect(await readVoiceNote(note(), reply(200, { ...extract, transcript: "  " }), wav)).toEqual({ ok: false });
+    expect(await readVoiceNote(note(), reply(503, { error: "unavailable", retry: true }), wav)).toEqual({ ok: false });
   });
 });

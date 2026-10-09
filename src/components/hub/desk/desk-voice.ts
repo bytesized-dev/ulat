@@ -1,3 +1,4 @@
+import { toWav } from "@/lib/audio/to-wav";
 import { AiVoiceExtract } from "@/lib/contracts";
 
 // Pure parts of the desk voice note: the limits, the timer text, the request
@@ -38,12 +39,13 @@ export type VoiceResult = { ok: true; extract: AiVoiceExtract } | { ok: false };
  * Sends the recording to the hub and checks what comes back. Never throws.
  * A failed request, a reply that is not an AiVoiceExtract and an empty
  * transcript all give the same answer: record it again.
+ * The model only reads WAV, so the recording is converted first.
  */
-export async function readVoiceNote(audio: Blob, send: typeof fetch = fetch): Promise<VoiceResult> {
+export async function readVoiceNote(audio: Blob, send: typeof fetch = fetch, convert: (recording: Blob) => Promise<Blob> = toWav): Promise<VoiceResult> {
   if (audio.size < MIN_AUDIO_BYTES) return { ok: false };
   try {
     const body = new FormData();
-    body.set("audio", audio, audio.type.includes("mp4") ? "note.m4a" : "note.webm");
+    body.set("audio", await convert(audio), "note.wav");
     const res = await send("/api/ai/voice", { method: "POST", body, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     if (!res.ok) return { ok: false };
     const extract = AiVoiceExtract.safeParse(await res.json().catch(() => null));

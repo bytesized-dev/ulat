@@ -36,10 +36,13 @@ describe("microphone failures", () => {
   });
 });
 
+const wav = async () => new Blob([new Uint8Array(2000)], { type: "audio/wav" });
+
 describe("reading the note", () => {
   it("posts the audio and returns the extract", async () => {
     const send = reply(fixtures.voice);
-    const result = await readVoiceNote(note, send as unknown as typeof fetch);
+    const convert = vi.fn(wav);
+    const result = await readVoiceNote(note, send as unknown as typeof fetch, convert);
     expect(result.ok && result.extract.transcript).toBe(fixtures.voice.transcript);
     const [url, init] = send.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("/api/ai/voice");
@@ -48,15 +51,15 @@ describe("reading the note", () => {
   });
 
   it("is a retry when the hub fails, the reply is not an extract or the transcript is empty", async () => {
-    expect(await readVoiceNote(note, reply({ error: "timeout", retry: true }, 504) as unknown as typeof fetch)).toEqual({ ok: false });
-    expect(await readVoiceNote(note, reply({ hello: "world" }) as unknown as typeof fetch)).toEqual({ ok: false });
-    expect(await readVoiceNote(note, reply({ ...fixtures.voice, transcript: "  " }) as unknown as typeof fetch)).toEqual({ ok: false });
-    expect(await readVoiceNote(note, vi.fn().mockRejectedValue(new TypeError("offline")) as unknown as typeof fetch)).toEqual({ ok: false });
+    expect(await readVoiceNote(note, reply({ error: "timeout", retry: true }, 504) as unknown as typeof fetch, wav)).toEqual({ ok: false });
+    expect(await readVoiceNote(note, reply({ hello: "world" }) as unknown as typeof fetch, wav)).toEqual({ ok: false });
+    expect(await readVoiceNote(note, reply({ ...fixtures.voice, transcript: "  " }) as unknown as typeof fetch, wav)).toEqual({ ok: false });
+    expect(await readVoiceNote(note, vi.fn().mockRejectedValue(new TypeError("offline")) as unknown as typeof fetch, wav)).toEqual({ ok: false });
   });
 
   it("does not send a recording that is only a tap", async () => {
     const send = reply(fixtures.voice);
-    expect(await readVoiceNote(new Blob([new Uint8Array(10)], { type: "audio/webm" }), send as unknown as typeof fetch)).toEqual({ ok: false });
+    expect(await readVoiceNote(new Blob([new Uint8Array(10)], { type: "audio/webm" }), send as unknown as typeof fetch, wav)).toEqual({ ok: false });
     expect(send).not.toHaveBeenCalled();
   });
 });

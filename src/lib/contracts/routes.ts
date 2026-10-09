@@ -3,6 +3,7 @@ export const routes = {
   family: {
     home: "/",
     report: "/report",
+    reportFamily: "/report?for=family",
     reportNeighbor: "/report?for=neighbor",
     voice: "/report/voice",
     type: "/report/type",

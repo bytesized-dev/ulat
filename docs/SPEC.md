@@ -19,7 +19,6 @@
 - SQLite file at `data/ulat.db`. Photos and audio at `data/uploads/<yyyy-mm-dd>/<uuid>.<ext>`. Family voice notes are kept apart, at `data/uploads/voice/<yyyy-mm-dd>/<voice_id>.<ext>`, and family report photos at `data/uploads/photo/<yyyy-mm-dd>/<photo_id>.<ext>`.
 - Ollama on `localhost:11434` with `gemma4:e4b`.
 - Live updates over one server-sent events endpoint.
-- `MOCK_AI=1` replaces every AI call with fixtures from `seed/ai-fixtures.json`, so teammates without the model can build everything.
 
 ### Roles and access
 
@@ -222,7 +221,7 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 ## 10. Simulation mode
 
 - A setting, on during the drill. Every hub page shows the Simulation pill.
-- `pnpm db:seed` loads `seed/simulation.json`, which matches the canvas. Positions in the seed are percentages of the map area, converted to latitude and longitude using the `map_bbox` setting, so the same seed works for any town: 46 checked houses (14 totally, 23 partially, 9 none), 58 families, 241 people, 6 hurt, 1 missing and 17 reports waiting, across 6 barangays.
+- `pnpm db:seed` loads `seed/config.json`: the town, its barangays, the `map_bbox`, the staff PIN and the responder accounts. It upserts them and never adds or deletes reports, entries or any other record.
 - "Clear data" on Kit setup wipes reports, entries, photos, updates, places, check-ins, sitreps, the `events` audit trail and the `duplicates` flags, and empties the uploads folder of photos and audio, family voice notes and family report photos included. It keeps settings and responders. The rows go in one transaction. The files go after it commits.
 
 ## 11. Eval
@@ -240,7 +239,6 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 4. The report appears at the top of the responder's To visit list when someone is hurt or missing.
 5. Two photos and a note produce an AI draft with a class and a reason. Confirming it turns the pin solid, updates the hub totals, and changes the family status to the confirmed class.
 6. The hub situation report shows the new totals, and the SMS text fits in 2 texts.
-7. Everything above works with `MOCK_AI=1` on a machine without Ollama.
 
 ## 13. Not doing this weekend
 

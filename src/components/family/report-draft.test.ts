@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AiVoiceExtract } from "@/lib/contracts";
-import fixtures from "../../../seed/ai-fixtures.json";
-import { DRAFT_KEY, applyExtract, clearDraft, emptyDraft, loadDraft, draftFromReport, markChecked, saveDraft, toNewReport } from "./report-draft";
+import { DRAFT_KEY, clearDraft, emptyDraft, loadDraft, draftFromReport, markChecked, saveDraft, toNewReport } from "./report-draft";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const items = new Map(Object.entries(initial));
@@ -11,8 +9,6 @@ function memoryStorage(initial: Record<string, string> = {}) {
     removeItem: (key: string) => void items.delete(key),
   };
 }
-
-const voice = AiVoiceExtract.parse(fixtures.voice);
 
 describe("report draft", () => {
   it("starts empty when nothing is stored, on the server or after bad data", () => {
@@ -45,43 +41,9 @@ describe("report draft", () => {
     expect(() => clearDraft(blocked)).not.toThrow();
   });
 
-  it("fills the draft from the voice note and keeps what the model left empty", () => {
-    const start = { ...emptyDraft(), barangay: "San Isidro", household_head: "Typed name", people: 3 };
-    const filled = applyExtract(start, { ...voice, household_head: null, people: null, needs: [] });
-    expect(filled).toMatchObject({ barangay: "San Isidro", household_head: "Typed name", people: 3, needs: [] });
-    expect(filled.transcript).toBe(voice.transcript);
-    expect(filled.uncertain_fields).toEqual(voice.uncertain_fields);
-
-    const full = applyExtract(start, voice);
-    expect(full.needs).toEqual(voice.needs.length > 0 ? voice.needs : []);
-  });
-
-  it("keeps a head of household the family typed, and fills it from the note only when empty", () => {
-    const named = { ...voice, household_head: "Spoken name", uncertain_fields: ["household_head", "people"] as AiVoiceExtract["uncertain_fields"] };
-
-    const typed = applyExtract({ ...emptyDraft(), household_head: "Typed name" }, named);
-    expect(typed.household_head).toBe("Typed name");
-    // The doubt was about the spoken name, which the family's own replaces.
-    expect(typed.uncertain_fields).toEqual(["people"]);
-
-    const blank = applyExtract({ ...emptyDraft(), household_head: "   " }, named);
-    expect(blank.household_head).toBe("Spoken name");
-    expect(blank.uncertain_fields).toEqual(["household_head", "people"]);
-
-    expect(applyExtract(emptyDraft(), { ...named, household_head: null }).household_head).toBe("");
-  });
-
   it("drops the Please check marker once a field is edited", () => {
     const draft = { ...emptyDraft(), uncertain_fields: ["people", "hurt"] as const };
     expect(markChecked({ ...draft, uncertain_fields: [...draft.uncertain_fields] }, "people").uncertain_fields).toEqual(["hurt"]);
-  });
-
-  it("builds a NewReport with consent, and blanks become null", () => {
-    const draft = { ...applyExtract(emptyDraft(), voice), household_head: "Dela Cruz", barangay: "San Isidro", purok: "  " };
-    const result = toNewReport(draft);
-    expect(result.success).toBe(true);
-    if (!result.success) return;
-    expect(result.data).toMatchObject({ source: "family", consent: true, purok: null, reporter_name: null, reporter_where: null });
   });
 
   it("carries the reporter only for a neighbor's report", () => {

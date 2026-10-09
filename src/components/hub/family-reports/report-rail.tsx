@@ -38,7 +38,17 @@ function ReportRail({ report, responders }: ReportRailProps) {
       </div>
 
       <div className="flex flex-col gap-2 rounded-lg bg-surface-soft p-4">
-        <p className="text-caption text-muted-text">{report.transcript ? "Voice note" : "Note"}</p>
+        <p className="text-caption text-muted-text">{report.has_voice || report.transcript ? "Voice note" : "Note"}</p>
+        {report.has_voice ? (
+          <audio
+            key={report.id}
+            controls
+            preload="none"
+            aria-label={`Voice note from ${report.household_head}`}
+            src={`/api/files/${report.id}`}
+            className="w-full"
+          />
+        ) : null}
         <p className="text-body-sm text-ink">{said ?? "No voice note."}</p>
       </div>
 

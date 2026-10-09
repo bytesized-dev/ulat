@@ -61,6 +61,20 @@ describe("family reports list", () => {
     expect(getFamilyReport(db, waiting.code)).toEqual(waiting);
   });
 
+  it("says whether the family's recording is stored, without exposing its path", () => {
+    const target = listFamilyReports(db)[0];
+    const set = (voice_path: string | null) => db.update(schema.reports).set({ voice_path }).where(eq(schema.reports.code, target.code)).run();
+    try {
+      set("2026-10-09/7d5c1e2a-3b4f-4a6d-9c8e-0f1a2b3c4d5e.webm");
+      const row = getFamilyReport(db, target.code)!;
+      expect(row).toMatchObject({ id: expect.any(String), has_voice: true });
+      expect(row).not.toHaveProperty("voice_path");
+    } finally {
+      set(null);
+    }
+    expect(getFamilyReport(db, target.code)!.has_voice).toBe(false);
+  });
+
   it("does not find desk, merged or unknown codes", () => {
     const hidden = db
       .select({ code: schema.reports.code })

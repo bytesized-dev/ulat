@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 
 // Photos and audio live under data/uploads. The extension comes from the mime
@@ -19,6 +19,9 @@ const AUDIO_TYPES: Record<string, string> = {
   "audio/mp4": "m4a",
   "audio/mpeg": "mp3",
   "audio/wav": "wav",
+  // The same WAV the voice route accepts under other names.
+  "audio/x-wav": "wav",
+  "audio/wave": "wav",
 };
 
 export const MAX_PHOTOS = 3;
@@ -27,23 +30,47 @@ const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
 
 export type Stored = { path: string; mime: string; data: Buffer };
 
+type StoreOptions = {
+  /** The file name, without the extension. A random UUID when left out. */
+  id?: string;
+  /** A tighter size cap than the default for this kind. */
+  maxBytes?: number;
+};
+
 /** Returns an error code, or the stored file. */
-export async function storeUpload(file: File, kind: "photo" | "audio"): Promise<Stored | { error: string }> {
+export async function storeUpload(file: File, kind: "photo" | "audio", options: StoreOptions = {}): Promise<Stored | { error: string }> {
   const types = kind === "photo" ? PHOTO_TYPES : AUDIO_TYPES;
   // "audio/webm;codecs=opus" is what MediaRecorder sends.
   const mime = file.type.split(";")[0].trim().toLowerCase();
   const ext = types[mime];
   if (!ext) return { error: `${kind}_type_not_allowed` };
-  if (file.size === 0 || file.size > (kind === "photo" ? MAX_PHOTO_BYTES : MAX_AUDIO_BYTES)) {
+  const cap = options.maxBytes ?? (kind === "photo" ? MAX_PHOTO_BYTES : MAX_AUDIO_BYTES);
+  if (file.size === 0 || file.size > cap) {
     return { error: `${kind}_size_not_allowed` };
   }
   const data = Buffer.from(await file.arrayBuffer());
   // SPEC section 1: data/uploads/<yyyy-mm-dd>/<uuid>.<ext>. The database keeps the part after data/uploads.
   const day = new Date().toISOString().slice(0, 10);
-  const path = `${day}/${randomUUID()}.${ext}`;
+  const path = `${day}/${options.id ?? randomUUID()}.${ext}`;
   await mkdir(join(uploadDir, day), { recursive: true });
   await writeFile(join(uploadDir, path), data);
   return { path, mime, data };
+}
+
+/**
+ * The relative path of a file stored under this id, on any day, or null. Only
+ * files made with an `id` option can be found this way. The id is checked as a
+ * UUID first, so it can never walk out of the upload folder.
+ */
+export async function findUpload(id: string): Promise<string | null> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null;
+  const days = await readdir(uploadDir).catch(() => [] as string[]);
+  for (const day of days.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort().reverse()) {
+    const names = await readdir(join(uploadDir, day)).catch(() => [] as string[]);
+    const name = names.find((n) => n.startsWith(`${id}.`));
+    if (name) return `${day}/${name}`;
+  }
+  return null;
 }
 
 /** Deletes files stored for a request that did not become an entry. Never throws. */

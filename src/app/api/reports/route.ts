@@ -5,6 +5,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { reports } from "@/db/schema";
 import { NewReport, ReportStatus } from "@/lib/contracts";
+import { findUpload } from "../entries/_lib/uploads";
 import { audit, emit } from "./_lib/audit";
 import { readJsonCapped } from "./_lib/body";
 import { deny, getActor } from "./_lib/auth";
@@ -13,6 +14,12 @@ import { isUrgent, urgentSql } from "./_lib/view";
 
 // POST takes a NewReport from a family phone or the help desk and returns the
 // code. GET lists reports for responders and staff, urgent first.
+//
+// A voice_id names a recording the phone sent to POST /api/reports/voice. It
+// becomes the report's voice_path when the file exists and no other report has
+// it. Otherwise the report is saved without audio and the audit row says why:
+// a disaster report must not be lost over an attachment, and answering the same
+// 201 either way gives nobody a way to test which voice_ids exist.
 
 export async function POST(req: Request) {
   const read = await readJsonCapped(req);
@@ -29,11 +36,20 @@ export async function POST(req: Request) {
     actor = "staff";
   }
 
+  const stored = body.voice_id ? await findUpload(body.voice_id) : null;
   const id = randomUUID();
   const now = new Date().toISOString();
   const urgent = isUrgent(body);
   const { code, created } = db.transaction((tx) => {
     const fresh = freshCode(tx);
+    // Checked in the same transaction as the insert, so two reports cannot take one recording.
+    const voice = !body.voice_id
+      ? null
+      : !stored
+        ? ("unknown" as const)
+        : tx.select({ id: reports.id }).from(reports).where(eq(reports.voice_path, stored)).get()
+          ? ("used" as const)
+          : ("attached" as const);
     // A phone sends the same client_id again after a lost reply. The unique
     // index decides, so two parallel requests cannot both insert.
     const inserted = tx
@@ -55,6 +71,7 @@ export async function POST(req: Request) {
         missing: body.missing,
         what_happened: body.what_happened,
         needs: body.needs,
+        voice_path: voice === "attached" ? stored : null,
         transcript: body.transcript,
         transcript_en: body.english,
         language: body.language,
@@ -68,8 +85,13 @@ export async function POST(req: Request) {
       const existing = tx.select({ code: reports.code }).from(reports).where(eq(reports.client_id, body.client_id)).get();
       if (existing) return { code: existing.code, created: false };
     }
-    // voice_id is kept here until the voice route says where the audio lives.
-    audit(tx, id, "report.created", actor, { code: fresh, source: body.source, urgent, voice_id: body.voice_id });
+    audit(tx, id, "report.created", actor, {
+      code: fresh,
+      source: body.source,
+      urgent,
+      voice_id: body.voice_id,
+      ...(voice ? { voice } : {}),
+    });
     return { code: fresh, created: true };
   });
 

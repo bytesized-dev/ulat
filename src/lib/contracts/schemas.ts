@@ -95,6 +95,18 @@ export const NewReport = z.object({
 });
 export type NewReport = z.infer<typeof NewReport>;
 
+/**
+ * The fields next to the audio file in POST /api/reports/voice. The phone makes
+ * the id, as it does the client_id, so sending the same recording twice stores
+ * one file. NewReport.voice_id names it afterwards.
+ */
+export const NewVoiceMeta = z.object({ voice_id: z.string().uuid() });
+export type NewVoiceMeta = z.infer<typeof NewVoiceMeta>;
+
+/** The answer to a voice upload. No URL: only a responder or staff can read the audio, by report. */
+export const VoiceStored = z.object({ voice_id: z.string().uuid() });
+export type VoiceStored = z.infer<typeof VoiceStored>;
+
 export const CantAssess = z.object({
   reason: CantAssessReason,
   note: z.string().max(240).nullable(),

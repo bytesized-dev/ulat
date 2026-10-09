@@ -10,6 +10,7 @@ import { ProgressSteps } from "@/components/ui/progress-steps";
 import { TopBar } from "@/components/ui/top-bar";
 import { cn } from "@/lib/utils";
 import { routes } from "@/lib/contracts";
+import { newClientId } from "./client-id";
 import { applyExtract, loadDraft } from "./report-draft";
 import { updateDraft } from "./use-report-draft";
 import { useReducedMotion } from "./use-reduced-motion";
@@ -63,8 +64,10 @@ function VoiceNoteScreen() {
         setPhase("unclear");
         return;
       }
-      // Saved now, so Back from the check screen finds the note again.
-      updateDraft({ ...applyExtract(loadDraft(), result.extract), spoken: true });
+      // Saved now, so Back from the check screen finds the note again. The
+      // voice_id is made here, once per recording: the send screen uploads the
+      // audio under it, and a resend of the same recording stores one file.
+      updateDraft({ ...applyExtract(loadDraft(), result.extract), spoken: true, voice_id: newClientId() });
       setVoiceAudio(audio);
       setTranscript(result.extract.transcript);
     },

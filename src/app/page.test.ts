@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import HomePage from "./page";
@@ -7,7 +8,7 @@ function hrefs(html: string) {
 }
 
 describe("family home", () => {
-  const html = renderToStaticMarkup(<HomePage />);
+  const html = renderToStaticMarkup(createElement(HomePage));
 
   it("shows the center name and the report button", () => {
     expect(html).toMatch(/<h1[^>]*>Poblacion evacuation center<\/h1>/);

@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { entries, events, photos, reports } from "@/db/schema";
 import { EntryConfirm } from "@/lib/contracts";
@@ -46,8 +46,17 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   // Staff settle a needs_review entry from the review screen, so their save
   // confirms it. A responder's save goes through the SPEC section 5 rules.
+  const hasNewPhoto =
+    db
+      .select({ id: events.id })
+      .from(events)
+      .where(and(eq(events.entity_id, id), eq(events.type, "entry.photo_added")))
+      .limit(1)
+      .get() !== undefined;
   const reasons =
-    actor.role === "staff" ? [] : reviewReasons({ aiClass: entry.ai_class, confirm, reportHurt: report?.hurt ?? null });
+    actor.role === "staff"
+      ? []
+      : reviewReasons({ aiClass: entry.ai_class, confirm, hasNewPhoto, reportHurt: report?.hurt ?? null });
   const status = reasons.length > 0 ? "needs_review" : "confirmed";
   const now = new Date().toISOString();
 

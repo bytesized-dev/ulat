@@ -8,8 +8,7 @@ next-env.d.ts
 *.tsbuildinfo
 
 # local data
-data/*.db
-data/*.db-*
+data/
 eval/results.json
 
 # env and certs

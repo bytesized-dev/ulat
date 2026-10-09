@@ -117,6 +117,7 @@ Required by the hackathon rules. This list is complete.
 | zod | MIT | Validation of every input and AI output |
 | maplibre-gl | BSD 3-Clause | Offline map |
 | pmtiles | BSD 3-Clause | Reads the local tile file |
+| @protomaps/basemaps | BSD 3-Clause | Map style layers |
 | radix-ui, class-variance-authority | MIT, Apache-2.0 | Component primitives |
 | lucide-react | ISC | Icons |
 | tailwindcss | MIT | Styling |

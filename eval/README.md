@@ -2,6 +2,10 @@
 
 Run `pnpm eval`. It writes `results.json`, which the AI check page reads. Never edit the numbers by hand.
 
+## When we test
+
+The photo, voice and power tests below run during testing of the whole app, once every screen and API is wired and the system works end to end. Until then, no number here is final. The BYT-5 risk check only confirmed the model runs: 10 photos, 7 matching the labels, and no voice recordings. The BYT-5 Linear issue has those results.
+
 ## Photos
 
 - 40 to 60 photos of typhoon, flood or earthquake damage to houses, openly licensed. Wikimedia Commons is a good source. Record each in `SOURCES.md`.

@@ -15,12 +15,12 @@ The scripts were drafted by an AI. A native speaker should check the wording bef
 
 ## Bisaya (`bisaya-01`)
 
-> Maayong gabii. Ako si Ramon Dela Cruz, taga Purok Tres. Lima mi sa balay. Duha ang nasamdan, si Nanay ug ang akong anak nga lalaki. Usa ang nawawala, ang akong igsoon nga si Jun, wala pa mi kabalo kung asa siya. Nawala ang atop sa among balay ug natumba ang usa ka bungbong. Nanginahanglan mi og tubig, pagkaon, ug tarpaulin.
+> Maayong gabii. Ako si Ramon Dela Cruz, taga Purok Tres. Ako ang tag-iya sa balay. Lima mi sa balay. Duha ang nasamdan, si Nanay ug ang akong anak nga lalaki. Usa ang nawala, ang akong igsoon nga si Jun, wala pa mi kabalo kung asa siya. Nawala ang atop sa among balay ug natumba ang usa ka bungbong. Nanginahanglan mi og tubig, pagkaon, ug tarpaulin.
 
-Expected: household head Ramon Dela Cruz, 5 people, 2 hurt, 1 missing, roof gone and one wall fell, needs water, food and tarp.
+Expected: household head Ramon Dela Cruz, 5 people, 2 hurt, 1 missing, what happened "The roof is gone and one wall fell.", needs water, food and tarp.
 
 ## Tagalog (`tagalog-01`)
 
-> Magandang gabi po. Ako po si Liza Santos, nasa Barangay San Isidro. Anim po kami sa bahay. Isa po ang nasugatan, ang tatay ko. Dalawa po ang hindi pa namin makita, ang mga pamangkin ko. Nawala po ang bubong namin at bumagsak ang likod na pader. Kailangan po namin ng tubig, gamot, at gamit para sa sanggol.
+> Magandang gabi po. Ako po si Liza Santos, nasa Barangay San Isidro. Ako po ang may-ari ng bahay. Anim po kami sa bahay. Isa po ang nasugatan, ang tatay ko. Dalawa po ang hindi pa namin makita, ang mga pamangkin ko. Nawala po ang bubong namin at bumagsak ang likod na pader. Kailangan po namin ng tubig, gamot, at gamit para sa sanggol.
 
-Expected: household head Liza Santos, 6 people, 1 hurt, 2 missing, roof gone and back wall fell, needs water, medicine and baby needs.
+Expected: household head Liza Santos, 6 people, 1 hurt, 2 missing, what happened "The roof is gone and the back wall fell.", needs water, medicine and baby needs.

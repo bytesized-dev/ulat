@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { HouseIcon } from "lucide-react";
 import { AppTopBar } from "@/components/ui/app-top-bar";
@@ -11,14 +11,13 @@ import { routes } from "@/lib/contracts";
 import {
   filterToVisit,
   formatDistance,
-  nextPosition,
   orderToVisit,
   withDistance,
-  type Point,
   type ToVisitItem,
   type ToVisitReport,
   type ToVisitSort,
 } from "./to-visit-order";
+import { useOwnPosition } from "./use-position";
 
 type ToVisitListProps = { responderName: string; reports: ToVisitReport[] };
 
@@ -59,26 +58,8 @@ function ToVisitRow({ item }: { item: ToVisitItem }) {
   );
 }
 
-// The responder's position stays on the phone. Without permission the list
-// still works, ordered by urgency and then by how long the report has waited.
-// A timeout under a roof keeps the last good position. Only a refusal clears it,
-// and small moves are ignored so rows do not shift while the responder walks.
-function useOwnPosition(): Point | null {
-  const [position, setPosition] = useState<Point | null>(null);
-  useEffect(() => {
-    if (!("geolocation" in navigator)) return;
-    const watch = navigator.geolocation.watchPosition(
-      (p) => setPosition((current) => nextPosition(current, { lat: p.coords.latitude, lng: p.coords.longitude })),
-      (error) => {
-        if (error.code === error.PERMISSION_DENIED) setPosition(null);
-      },
-      { maximumAge: 30_000, timeout: 20_000 },
-    );
-    return () => navigator.geolocation.clearWatch(watch);
-  }, []);
-  return position;
-}
-
+// Without permission the list still works, ordered by urgency and then by how
+// long the report has waited.
 function ToVisitList({ responderName, reports }: ToVisitListProps) {
   const [sort, setSort] = useState<ToVisitSort>("urgent");
   const [query, setQuery] = useState("");

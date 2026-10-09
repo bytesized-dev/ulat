@@ -58,16 +58,16 @@ describe("canSee", () => {
 });
 
 describe("viewerFromRequest", () => {
-  it("reads a valid code, accepts no code, and rejects a malformed one", () => {
-    expect(viewerFromRequest(new Request("http://hub/api/events?code=A2S3"))).toEqual({
+  it("reads a valid code, accepts no code, and rejects a malformed one", async () => {
+    expect(await viewerFromRequest(new Request("http://hub/api/events?code=A2S3"))).toEqual({
       ok: true,
       viewer: { role: "family", code: "A2S3" },
     });
-    expect(viewerFromRequest(new Request("http://hub/api/events"))).toEqual({
+    expect(await viewerFromRequest(new Request("http://hub/api/events"))).toEqual({
       ok: true,
       viewer: { role: "family", code: null },
     });
-    expect(viewerFromRequest(new Request("http://hub/api/events?code=bad")).ok).toBe(false);
+    expect((await viewerFromRequest(new Request("http://hub/api/events?code=bad"))).ok).toBe(false);
   });
 });
 

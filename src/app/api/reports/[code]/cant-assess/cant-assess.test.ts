@@ -44,7 +44,7 @@ describe("POST /api/reports/[code]/cant-assess", () => {
       );
   };
 
-  const make = async (code: string, status: "waiting" | "visited" = "waiting") => {
+  const make = async (status: "waiting" | "visited" = "waiting") => {
     const res = await (await import("../../route")).POST(
       new Request("http://hub/api/reports", {
         method: "POST",
@@ -73,7 +73,6 @@ describe("POST /api/reports/[code]/cant-assess", () => {
     );
     const made = ((await res.json()) as { code: string }).code;
     if (status !== "waiting") db.update(schema.reports).set({ status }).where(eq(schema.reports.code, made)).run();
-    void code;
     return made;
   };
   const row = (c: string) => db.select().from(schema.reports).where(eq(schema.reports.code, c)).get()!;
@@ -98,7 +97,7 @@ describe("POST /api/reports/[code]/cant-assess", () => {
   });
 
   it("keeps it behind the responder PIN", async () => {
-    const c = await make("a");
+    const c = await make();
     expect((await route.POST(post({ reason: "cant_find", note: null }), ctx(c))).status).toBe(401);
     await signIn("staff");
     expect((await route.POST(post({ reason: "cant_find", note: null }), ctx(c))).status).toBe(403);
@@ -106,7 +105,7 @@ describe("POST /api/reports/[code]/cant-assess", () => {
   });
 
   it("validates the body and the code", async () => {
-    const c = await make("b");
+    const c = await make();
     await signIn("responder");
     expect((await route.POST(post("{nope"), ctx(c))).status).toBe(400);
     expect((await route.POST(post({ reason: "bored", note: null }), ctx(c))).status).toBe(400);
@@ -116,7 +115,7 @@ describe("POST /api/reports/[code]/cant-assess", () => {
   });
 
   it("marks the report, writes the reason to the audit trail and tells the hub", async () => {
-    const c = await make("c");
+    const c = await make();
     await signIn("responder");
     const res = await route.POST(post({ reason: "road_blocked", note: "  Bridge is out  " }), ctx(c));
     expect(res.status).toBe(200);
@@ -129,7 +128,7 @@ describe("POST /api/reports/[code]/cant-assess", () => {
   });
 
   it("does not reopen a closed report", async () => {
-    const c = await make("d", "visited");
+    const c = await make("visited");
     await signIn("responder");
     expect((await route.POST(post({ reason: "other", note: null }), ctx(c))).status).toBe(409);
     expect(row(c).status).toBe("visited");

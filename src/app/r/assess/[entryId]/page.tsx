@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
-import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 import { AssessForm } from "@/components/responder/assess-form";
 import { db } from "@/db/client";
 import { reports } from "@/db/schema";
-import { ReportCode } from "@/lib/contracts";
+import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
+import { ReportCode, routes } from "@/lib/contracts";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,11 @@ type AssessPageProps = {
 // capture. The house comes from ?code=, the family report it answers, or from
 // ?barangay=, ?purok= and ?head= for a house with no report.
 export default async function AssessPage({ searchParams }: AssessPageProps) {
+  // The proxy only checks the cookie signature, so a responder who was switched
+  // off is turned away here.
+  const token = (await cookies()).get(SESSION_COOKIE.responder)?.value;
+  if (!(await readActiveResponder(token))) redirect(routes.responder.signIn);
+
   const q = await searchParams;
 
   if (q.code) {

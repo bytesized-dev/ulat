@@ -27,6 +27,9 @@ const CLOSED_NOTE: Partial<Record<typeof reports.$inferSelect.status, string>> =
   merged: "Merged into another report",
 };
 
+// Past this length the pill wraps to several lines, so it trades the full capsule for a rounded block.
+const WRAP_AT = 28;
+
 function Count({ value, label, danger }: { value: number; label: string; danger?: boolean }) {
   return (
     <div>
@@ -51,6 +54,7 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
   const place = report.purok ? `${report.barangay}, ${report.purok}` : report.barangay;
   const home = report.lat !== null && report.lng !== null ? { lat: report.lat, lng: report.lng } : null;
   const closedNote = CLOSED_NOTE[report.status];
+  const whatHappened = report.what_happened?.trim() || null;
   const hasNote = report.voice_path !== null || report.transcript !== null || report.transcript_en !== null;
 
   return (
@@ -72,13 +76,21 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
           <Count value={report.missing} label="Missing" danger={report.missing > 0} />
         </div>
 
-        {report.needs.length > 0 ? (
-          <ul aria-label="Needs" className="mt-6 flex flex-wrap gap-2">
+        {report.needs.length > 0 || whatHappened ? (
+          <ul aria-label="Needs and what happened" className="mt-6 flex flex-wrap gap-2">
             {report.needs.map((need) => (
               <li key={need}>
                 <Pill>{needLabel(need)}</Pill>
               </li>
             ))}
+            {whatHappened ? (
+              <li className="max-w-full">
+                {/* Free text up to 200 characters: it wraps inside the row instead of running off the screen. */}
+                <Pill className={cn("h-auto min-h-6.5 max-w-full whitespace-normal py-1", whatHappened.length > WRAP_AT && "rounded-xl")}>
+                  {whatHappened}
+                </Pill>
+              </li>
+            ) : null}
           </ul>
         ) : null}
 

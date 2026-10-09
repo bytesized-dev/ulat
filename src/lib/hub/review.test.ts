@@ -215,7 +215,7 @@ describe("ask for photos", () => {
 
   it("writes one staff event for the entry and keeps it in review", () => {
     const entry = byNumber(239);
-    const now = new Date("2026-09-04T06:55:00.000Z");
+    const now = new Date("2026-10-10T06:59:00.000Z");
     expect(askForPhotos(db, entry.id, now)).toEqual({ ok: true, already: false });
     const rows = events().filter((e) => e.entity_id === entry.id);
     expect(rows).toHaveLength(1);
@@ -226,14 +226,14 @@ describe("ask for photos", () => {
   it("carries what the AI wanted to see", () => {
     const entry = byNumber(241);
     db.update(schema.entries).set({ ai_need_more: "Roof from the side" }).where(eq(schema.entries.id, entry.id)).run();
-    askForPhotos(db, entry.id);
+    askForPhotos(db, entry.id, new Date("2026-10-10T06:59:00.000Z"));
     const row = events().find((e) => e.entity_id === entry.id);
     expect(row?.data).toEqual({ need_more: "Roof from the side" });
   });
 
   it("shows when staff asked, and writes nothing on a second ask", () => {
     const entry = byNumber(239);
-    expect(entry.photos_asked_at).toBe("2026-09-04T06:55:00.000Z");
+    expect(entry.photos_asked_at).toBe("2026-10-10T06:59:00.000Z");
     expect(askForPhotos(db, entry.id)).toEqual({ ok: true, already: true });
     expect(events().filter((e) => e.entity_id === entry.id)).toHaveLength(1);
   });

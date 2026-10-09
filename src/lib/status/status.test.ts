@@ -127,6 +127,14 @@ describe("GET /api/health", () => {
     expect(phoneCount()).toBe(2);
   });
 
+  it("does not count the hub laptop, which sends the staff cookie", () => {
+    const laptop = new Request("http://hub/api/health", {
+      headers: { "x-forwarded-for": "192.168.8.10", cookie: "theme=dark; ulat_staff=anything" },
+    });
+    health(laptop);
+    expect(phoneCount()).toBe(0);
+  });
+
   it("forgets a phone after two minutes", () => {
     const now = 1_700_000_000_000;
     markSeen(new Request("http://hub/", { headers: { "x-forwarded-for": "192.168.1.20" } }), now);

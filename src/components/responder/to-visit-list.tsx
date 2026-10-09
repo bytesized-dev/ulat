@@ -54,8 +54,8 @@ function ToVisitRow({ item, responderId }: { item: ToVisitItem; responderId: str
         <span className="truncate text-body-md font-medium text-ink">{item.household_head}</span>
         <span className="truncate text-body-sm text-body">{place(item)}</span>
         {assignment ? (
-          <Pill dot={assignment.kind === "mine" ? "primary" : undefined} className="mt-1 max-w-full self-start truncate">
-            {assignmentTag(assignment)}
+          <Pill dot={assignment.kind === "mine" ? "primary" : undefined} className="mt-1 max-w-full self-start">
+            <span className="truncate">{assignmentTag(assignment)}</span>
           </Pill>
         ) : null}
       </span>

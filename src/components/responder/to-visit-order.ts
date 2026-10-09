@@ -40,13 +40,15 @@ export function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+const OTHER_RESPONDER = "Another responder";
+
 export type Assignment = { kind: "mine" } | { kind: "other"; name: string };
 
 /** Whether the report is assigned to this responder, to someone else, or to nobody. */
 export function assignmentOf(report: Pick<ToVisitReport, "assigned_to" | "assignee_name">, responderId: string): Assignment | null {
   if (!report.assigned_to) return null;
   if (report.assigned_to === responderId) return { kind: "mine" };
-  return { kind: "other", name: report.assignee_name ?? "another responder" };
+  return { kind: "other", name: report.assignee_name ?? OTHER_RESPONDER };
 }
 
 /** "Yours" on a row, or the name of whoever has it. */
@@ -56,7 +58,7 @@ export function assignmentTag(assignment: Assignment): string {
 
 /** "Assigned to you" or "Assigned to Carlo Mendoza", for the report page. */
 export function assignmentLabel(assignment: Assignment): string {
-  return assignment.kind === "mine" ? "Assigned to you" : `Assigned to ${assignment.name}`;
+  return assignment.kind === "mine" ? "Assigned to you" : `Assigned to ${assignment.name === OTHER_RESPONDER ? "another responder" : assignment.name}`;
 }
 
 export function isUrgent(report: Pick<ToVisitReport, "hurt" | "missing">): boolean {

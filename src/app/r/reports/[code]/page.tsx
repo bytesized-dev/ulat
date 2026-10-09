@@ -5,6 +5,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CantAssessSheet } from "@/components/responder/cant-assess-sheet";
 import { FamilyVoiceNote } from "@/components/responder/family-voice-note";
+import { LiveRefresh } from "@/components/responder/live-refresh";
 import { concernText, needLabel } from "@/components/responder/report-detail-labels";
 import { ReportDistance } from "@/components/responder/report-distance";
 import { assignmentLabel, assignmentOf } from "@/components/responder/to-visit-order";
@@ -128,6 +129,7 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
           </div>
         )}
       </footer>
+      <LiveRefresh />
     </div>
   );
 }

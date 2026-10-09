@@ -133,7 +133,7 @@ describe("assignment", () => {
     expect(assignmentOf({}, "r1")).toBeNull();
     expect(assignmentOf({ assigned_to: "r1", assignee_name: "Carlo Mendoza" }, "r1")).toEqual({ kind: "mine" });
     expect(assignmentOf({ assigned_to: "r2", assignee_name: "Mae Santos" }, "r1")).toEqual({ kind: "other", name: "Mae Santos" });
-    expect(assignmentOf({ assigned_to: "r2", assignee_name: null }, "r1")).toEqual({ kind: "other", name: "another responder" });
+    expect(assignmentOf({ assigned_to: "r2", assignee_name: null }, "r1")).toEqual({ kind: "other", name: "Another responder" });
   });
 
   it("words the row tag and the report page line", () => {
@@ -141,6 +141,8 @@ describe("assignment", () => {
     expect(assignmentTag({ kind: "other", name: "Mae Santos" })).toBe("Mae Santos");
     expect(assignmentLabel({ kind: "mine" })).toBe("Assigned to you");
     expect(assignmentLabel({ kind: "other", name: "Mae Santos" })).toBe("Assigned to Mae Santos");
+    expect(assignmentTag({ kind: "other", name: "Another responder" })).toBe("Another responder");
+    expect(assignmentLabel({ kind: "other", name: "Another responder" })).toBe("Assigned to another responder");
   });
 
   const reports = [

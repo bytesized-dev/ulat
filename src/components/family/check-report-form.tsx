@@ -12,7 +12,7 @@ import { ProgressSteps } from "@/components/ui/progress-steps";
 import { Row } from "@/components/ui/row";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TopBar } from "@/components/ui/top-bar";
-import { householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, setCount, setNeed, whatHappened } from "./check-report";
+import { checkBackHref, householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, setCount, setNeed, whatHappened } from "./check-report";
 import { EditFieldSheet, type EditableField } from "./edit-field-sheet";
 import type { ReportDraft } from "./report-draft";
 import { updateDraft, useReportDraft } from "./use-report-draft";
@@ -68,7 +68,7 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
-      <TopBar as="p" title="New report" leading={{ kind: "back", href: routes.family.report }} />
+      <TopBar as="p" title="New report" leading={{ kind: "back", href: checkBackHref(draft) }} />
       <ProgressSteps step={3} className="px-gutter pb-1.5" />
 
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">

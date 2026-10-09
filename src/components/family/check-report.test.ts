@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyDraft, type ReportDraft } from "./report-draft";
-import { EDIT_LIMITS, householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, setCount, setHead, setNeed, setPlace, setWhatHappened, whatHappened } from "./check-report";
+import { checkBackHref, EDIT_LIMITS, householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, setCount, setHead, setNeed, setPlace, setWhatHappened, whatHappened } from "./check-report";
 
 const draft: ReportDraft = {
   ...emptyDraft(),
@@ -113,5 +113,20 @@ describe("isBlankDraft", () => {
 describe("NEED_OPTIONS", () => {
   it("lists the six needs with their labels", () => {
     expect(NEED_OPTIONS.map((n) => n.label)).toEqual(["Water", "Food", "Tarp", "Medicine", "Hygiene kit", "Baby needs"]);
+  });
+});
+
+describe("checkBackHref", () => {
+  it("goes back to the voice note when the draft was spoken", () => {
+    expect(checkBackHref({ ...draft, spoken: true, transcript: "Wala na ang atop." })).toBe("/report/voice");
+  });
+
+  it("goes back to the typed note when the draft came from typing", () => {
+    expect(checkBackHref({ ...draft, spoken: false, transcript: "The roof is gone." })).toBe("/report/type");
+  });
+
+  it("keeps the start of the report for a blank draft and for one with no note", () => {
+    expect(checkBackHref(emptyDraft())).toBe("/report");
+    expect(checkBackHref({ ...draft, transcript: " " })).toBe("/report");
   });
 });

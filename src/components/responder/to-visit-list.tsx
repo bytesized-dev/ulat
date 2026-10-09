@@ -87,7 +87,7 @@ function ToVisitList({ responderId, responderName, team, reports }: ToVisitListP
           <h1 className="text-title-page text-ink">To visit</h1>
           <span className="font-mono text-mono-sm text-muted-text">{shown.length}</span>
         </div>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <Chip pressed={sort === "urgent"} onPressedChange={() => setSort("urgent")}>
             Urgent first
           </Chip>

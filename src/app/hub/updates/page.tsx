@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { db } from "@/db/client";
 import { routes } from "@/lib/contracts/routes";
 import { listUpdates } from "@/lib/hub/updates";
-import { HubShell } from "@/components/ui/hub-shell";
-import { hubNav, hubStaff } from "@/components/hub/nav";
+import { HubPage } from "@/components/hub/hub-page";
 import { PostedList } from "@/components/hub/updates/posted-list";
 import { UpdateForm } from "@/components/hub/updates/update-form";
 
@@ -14,8 +13,8 @@ export const dynamic = "force-dynamic";
 export default function UpdatesPage() {
   const posted = listUpdates(db).map(({ id, type, headline, posted_at, seen_count }) => ({ id, type, headline, posted_at, seen_count }));
   return (
-    <HubShell title="Updates" nav={hubNav} activeHref={routes.hub.updates} {...hubStaff} rail={<PostedList items={posted} />}>
+    <HubPage title="Updates" active={routes.hub.updates} rail={<PostedList items={posted} />}>
       <UpdateForm />
-    </HubShell>
+    </HubPage>
   );
 }

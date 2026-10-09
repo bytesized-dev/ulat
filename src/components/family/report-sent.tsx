@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Timeline } from "@/components/ui/timeline";
 import { TopBar } from "@/components/ui/top-bar";
 import { clearDraft } from "./report-draft";
-import { parseSentReport, readSentRaw } from "./sent-report";
+import { parseSentReport, readSentRaw, takeSentFromDraft } from "./sent-report";
 
 const subscribeNever = () => () => {};
 
@@ -49,9 +49,11 @@ function ReportSent() {
 
   useEffect(() => {
     if (!mounted) return;
-    // The report is sent, so the draft has done its job.
-    if (sent) clearDraft();
-    else router.replace(routes.family.home);
+    // Only the report just sent from the draft spends it. An older code opened by
+    // its address must not wipe a draft the family is still filling in.
+    if (sent) {
+      if (takeSentFromDraft(sent.code)) clearDraft();
+    } else router.replace(routes.family.home);
   }, [mounted, sent, router]);
 
   useEffect(() => {

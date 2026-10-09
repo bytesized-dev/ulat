@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SENT_KEY, clearSentReport, parseSentReport, readSentRaw, saveSentReport } from "./sent-report";
+import { SENT_KEY, clearSentReport, markSentFromDraft, parseSentReport, readSentRaw, saveSentReport, takeSentFromDraft } from "./sent-report";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const items = new Map(Object.entries(initial));
@@ -46,5 +46,20 @@ describe("sent report", () => {
     expect(parseSentReport(readSentRaw(blocked))).toMatchObject({ code: "K7P4" });
     expect(() => clearSentReport(blocked)).not.toThrow();
     expect(readSentRaw(null)).toBeNull();
+  });
+});
+
+describe("sent from this draft", () => {
+  it("lets the draft go once, for the report that was just sent", () => {
+    expect(takeSentFromDraft("K7P4")).toBe(false);
+    markSentFromDraft("K7P4");
+    expect(takeSentFromDraft("K7P4")).toBe(true);
+    expect(takeSentFromDraft("K7P4")).toBe(false);
+  });
+
+  it("keeps the draft when an older report is opened by its address", () => {
+    markSentFromDraft("K7P4");
+    expect(takeSentFromDraft("M3Q8")).toBe(false);
+    expect(takeSentFromDraft("K7P4")).toBe(true);
   });
 });

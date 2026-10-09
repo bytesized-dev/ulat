@@ -242,6 +242,11 @@ export function needsLabel(needs: readonly z.infer<typeof Need>[]): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** "K9D2, family, Purok 3": what tells two sides with the same name apart. The purok is left out when there is none. */
+export function sideLine(side: Pick<DuplicateSide, "label" | "sent_by" | "purok">): string {
+  return [side.label, side.sent_by, side.purok?.trim()].filter(Boolean).join(", ");
+}
+
 /** "30 m apart", or "No GPS" when a side has no position to measure from. */
 export function distanceLabel(distance: number | null): string {
   return distance === null ? "No GPS" : `${Math.round(distance)} m apart`;

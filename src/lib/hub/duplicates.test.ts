@@ -252,6 +252,15 @@ describe("listing", () => {
   it("labels distances", () => {
     expect(lib.distanceLabel(29.6)).toBe("30 m apart");
     expect(lib.distanceLabel(null)).toBe("No GPS");
+  });
+
+  it("tells two sides with the same name apart by code, source and purok", () => {
+    expect(lib.sideLine({ label: "K9D2", sent_by: "family", purok: "Purok 3" })).toBe("K9D2, family, Purok 3");
+    expect(lib.sideLine({ label: "K9F5", sent_by: "desk", purok: null })).toBe("K9F5, desk");
+    expect(lib.sideLine({ label: "0238", sent_by: "responder", purok: " " })).toBe("0238, responder");
+  });
+
+  it("labels needs", () => {
     expect(lib.needsLabel([])).toBe("None");
   });
 });

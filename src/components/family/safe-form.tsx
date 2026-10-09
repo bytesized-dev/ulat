@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchPill } from "@/components/ui/search-pill";
+import { SearchSelect } from "@/components/ui/search-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TopBar } from "@/components/ui/top-bar";
@@ -46,7 +47,11 @@ const fieldLabel = "text-body-sm font-semibold text-ink";
 export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [barangay, setBarangay] = useState(barangays[0] ?? "");
+  // Nothing is picked for the family: the barangay stays empty until they choose one.
+  const [barangay, setBarangay] = useState("");
+  // A new object on each failed send, so focus moves again if the field is still empty.
+  const [barangayError, setBarangayError] = useState<{ message: string } | null>(null);
+  const barangayField = useRef<HTMLButtonElement>(null);
   const [stayingAt, setStayingAt] = useState(stayingOptions[0] ?? "");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,8 +87,14 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
   const people = answer?.people ?? null;
   const searchFailed = answer !== null && answer.people === null;
 
+  // Focus follows the message, once it is on screen.
+  useEffect(() => {
+    if (barangayError) barangayField.current?.focus();
+  }, [barangayError]);
+
   async function submit() {
     if (busy) return;
+    if (!barangays.includes(barangay)) return setBarangayError({ message: "Choose a barangay" });
     setBusy(true);
     setError(null);
     const result = await sendCheckin({ name, barangay, staying_at: stayingAt, message });
@@ -119,7 +130,25 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
             <Label htmlFor="safe-barangay" className={fieldLabel}>
               Barangay
             </Label>
-            <ListSelect id="safe-barangay" value={barangay} options={barangays} onChange={setBarangay} />
+            <SearchSelect
+              id="safe-barangay"
+              ref={barangayField}
+              title="Barangay"
+              placeholder="Choose barangay"
+              options={barangays}
+              value={barangay}
+              onValueChange={(value) => {
+                setBarangay(value);
+                setBarangayError(null);
+              }}
+              aria-invalid={barangayError ? true : undefined}
+              aria-describedby={barangayError ? "safe-barangay-error" : undefined}
+            />
+            {barangayError ? (
+              <p id="safe-barangay-error" className="text-body-sm text-danger">
+                {barangayError.message}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="safe-staying" className={fieldLabel}>

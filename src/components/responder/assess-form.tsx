@@ -7,9 +7,14 @@ import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
+import { announceQueueChange } from "./use-queue-sync";
+
+const fieldLabel = "text-body-sm font-semibold text-ink";
 
 type Photo = { file: File; label: string; url: string };
 
@@ -86,6 +91,8 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
       // The hub is out of reach: keep the entry on the phone. It sends from the Queue tab.
       try {
         await enqueue(meta.data, photos.map((p) => p.file), note);
+        // The layout tries to send at once, in case only this request failed.
+        announceQueueChange();
         // Stay locked while the Queue tab loads, as after a send.
         router.push(routes.responder.queue);
         return;
@@ -112,30 +119,32 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
         {newHouse ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <label htmlFor="nb" className="text-body-sm font-semibold text-ink">
+              <Label htmlFor="nb" className={fieldLabel}>
                 Barangay
-              </label>
-              <select
-                id="nb"
-                value={fields.barangay}
-                onChange={(e) => setFields((f) => ({ ...f, barangay: e.target.value }))}
-                className="h-13 w-full rounded-md border border-hairline bg-canvas px-4 text-body-md text-ink outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary"
-              >
-                {barangays.map((b) => (
-                  <option key={b}>{b}</option>
-                ))}
-              </select>
+              </Label>
+              <Select value={fields.barangay} onValueChange={(barangay) => setFields((f) => ({ ...f, barangay }))}>
+                <SelectTrigger id="nb">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {barangays.map((b) => (
+                    <SelectItem key={b} value={b}>
+                      {b}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="np" className="text-body-sm font-semibold text-ink">
+              <Label htmlFor="np" className={fieldLabel}>
                 Purok
-              </label>
+              </Label>
               <Input id="np" value={fields.purok} maxLength={60} onChange={(e) => setFields((f) => ({ ...f, purok: e.target.value }))} />
             </div>
             <div className="flex flex-col gap-2">
-              <label htmlFor="nh" className="text-body-sm font-semibold text-ink">
+              <Label htmlFor="nh" className={fieldLabel}>
                 Head of household
-              </label>
+              </Label>
               <Input id="nh" value={fields.head} maxLength={120} onChange={(e) => setFields((f) => ({ ...f, head: e.target.value }))} />
             </div>
           </div>
@@ -198,10 +207,9 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
             }}
           />
         </section>
-        <section className="flex flex-col gap-3" aria-labelledby="note-h">
-          <h2 id="note-h" className="text-title-md text-ink">
-            Note
-          </h2>
+        <section className="flex flex-col gap-3" aria-label="Note">
+          {/* The design names the section only once there is a note to play back. Before that the row says what to do. */}
+          {note ? <h2 className="text-title-md text-ink">Note</h2> : null}
           <NoteRecorder
             note={note}
             seconds={seconds}

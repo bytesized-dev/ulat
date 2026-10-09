@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MicIcon, PauseIcon, PlayIcon, SquareIcon } from "lucide-react";
+import { ChevronRightIcon, MicIcon, PauseIcon, PlayIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { formatDuration, MAX_NOTE_SECONDS } from "./capture";
 
 type NoteRecorderProps = {
@@ -120,12 +121,16 @@ function NoteRecorder({ note, seconds, onChange }: NoteRecorderProps) {
 
   if (!note) {
     return (
-      <div className="flex flex-col gap-2">
-        <Button type="button" variant="secondary" onClick={recording ? stop : start}>
-          {recording ? <SquareIcon aria-hidden="true" /> : <MicIcon aria-hidden="true" />}
-          {recording ? `Stop, ${formatDuration(elapsed)}` : "Record a note"}
-        </Button>
-        <p className="text-body-sm text-body">Up to {MAX_NOTE_SECONDS} seconds.</p>
+      <div className="flex flex-col">
+        <button
+          type="button"
+          onClick={recording ? stop : start}
+          className="flex min-h-16 w-full items-center gap-4 rounded-md py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <IconPlate className="bg-primary text-primary-foreground">{recording ? <SquareIcon /> : <MicIcon />}</IconPlate>
+          <span className="min-w-0 flex-1 text-body-md font-medium text-ink">{recording ? `Stop, ${formatDuration(elapsed)}` : "Record a note"}</span>
+          {recording ? null : <ChevronRightIcon aria-hidden="true" className="size-5 shrink-0 text-muted-soft" />}
+        </button>
         <p role="alert" className="text-body-sm text-danger">
           {error}
         </p>

@@ -5,12 +5,26 @@ import { requireResponder, requireStaff } from "@/lib/auth/session";
 
 export type Actor = { role: "responder"; id: string } | { role: "staff"; id: "staff" };
 
-export async function getActor(): Promise<Actor | null> {
-  // Staff first, so a laptop that also holds a responder cookie can still file desk reports.
-  const staff = await requireStaff();
-  if (!(staff instanceof Response)) return { role: "staff", id: "staff" };
+async function asStaff(): Promise<Actor | null> {
+  return (await requireStaff()) instanceof Response ? null : { role: "staff", id: "staff" };
+}
+
+async function asResponder(): Promise<Actor | null> {
   const responder = await requireResponder();
-  if (!(responder instanceof Response)) return { role: "responder", id: responder.responder_id };
+  return responder instanceof Response ? null : { role: "responder", id: responder.responder_id };
+}
+
+/**
+ * A laptop can hold both cookies. Staff win by default, so it can still file desk
+ * reports. A route only a responder may call passes "responder" to be answered by
+ * that session instead of getting a 403 for the staff one.
+ */
+export async function getActor(prefer: Actor["role"] = "staff"): Promise<Actor | null> {
+  const order = prefer === "staff" ? [asStaff, asResponder] : [asResponder, asStaff];
+  for (const find of order) {
+    const actor = await find();
+    if (actor) return actor;
+  }
   return null;
 }
 

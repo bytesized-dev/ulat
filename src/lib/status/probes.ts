@@ -90,14 +90,29 @@ export async function readModelLoaded(): Promise<boolean> {
 
 /* ---------- Storage ---------- */
 
+// The statfs that is still waiting on the disk. within() stops waiting for it
+// after 1.5 s, but it cannot cancel it, and it keeps a libuv thread until the
+// filesystem answers. Without this, every beat of the ticker and every staff
+// request would start another one, and four stuck calls block every other fs
+// call and dns.lookup in the process.
+const globalForStorage = globalThis as unknown as { ulatStatfsPending?: Promise<unknown> };
+
 /**
- * Free space, in GB, on the disk that holds the database file. statfs waits as
- * long as the filesystem does, so a database on a USB drive or a network mount
- * that went away would hang the status read without the timeout.
+ * Free space, in GB, on the disk that holds the database file. A database on a
+ * USB drive or a network mount that went away would hang statfs, so this waits
+ * 1.5 s at most. While an earlier call is still stuck it returns null at once
+ * and starts no new one, so at most one thread can hang.
  */
 export async function readStorageFreeGb(): Promise<number | null> {
+  if (globalForStorage.ulatStatfsPending) return null;
   try {
-    const stats = await within(statfs(dirname(resolve(databasePath))), PROBE_TIMEOUT_MS);
+    const call = statfs(dirname(resolve(databasePath)));
+    const forget = () => {
+      if (globalForStorage.ulatStatfsPending === call) delete globalForStorage.ulatStatfsPending;
+    };
+    globalForStorage.ulatStatfsPending = call;
+    call.then(forget, forget);
+    const stats = await within(call, PROBE_TIMEOUT_MS);
     const gb = (stats.bavail * stats.bsize) / 1e9;
     return Number.isFinite(gb) ? Math.round(gb * 10) / 10 : null;
   } catch {

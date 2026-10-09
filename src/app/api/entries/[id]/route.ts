@@ -67,16 +67,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const now = new Date().toISOString();
 
   const settled = db.transaction((tx) => {
-    // Read again inside the transaction, so a save in another tab cannot slip in between.
-    if (expected && tx.select({ status: entries.status }).from(entries).where(eq(entries.id, id)).get()?.status !== expected.data) return false;
-    for (const field of FIELDS) {
-      const from = entry[field];
-      const to = confirm[field];
-      if (JSON.stringify(from) !== JSON.stringify(to)) {
-        audit(tx, id, "entry.field_changed", actor.id, { field, from, to });
-      }
-    }
-    tx.update(entries)
+    // The update goes first, and with the header it only matches an entry that is
+    // still in the status the caller saw. No row changed means another save got there
+    // first, so nothing has been written and the audit rows below never are.
+    const result = tx
+      .update(entries)
       .set({
         damage_class: confirm.damage_class,
         material: confirm.material,
@@ -91,8 +86,17 @@ export async function PATCH(req: Request, { params }: Ctx) {
         confirmed_by: status === "confirmed" ? actor.id : null,
         confirmed_at: status === "confirmed" ? now : null,
       })
-      .where(eq(entries.id, id))
+      .where(expected?.success ? and(eq(entries.id, id), eq(entries.status, expected.data)) : eq(entries.id, id))
       .run();
+    if (expected && result.changes !== 1) return false;
+
+    for (const field of FIELDS) {
+      const from = entry[field];
+      const to = confirm[field];
+      if (JSON.stringify(from) !== JSON.stringify(to)) {
+        audit(tx, id, "entry.field_changed", actor.id, { field, from, to });
+      }
+    }
 
     if (status === "confirmed") {
       audit(tx, id, "entry.confirmed", actor.id, { class: confirm.damage_class });

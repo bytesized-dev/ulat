@@ -35,7 +35,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ code: string }
   if (CLOSED.has(report.status)) return Response.json({ error: "already_closed", status: report.status }, { status: 409 });
 
   const note = body.data.note?.trim() || null;
-  const event = db.transaction((tx) => setStatus(tx, report, "cant_assess", actor.id, {}, { reason: body.data.reason, note }));
+  const event = db.transaction((tx) => setStatus(tx, report, "cant_assess", actor.id, { cant_reason: body.data.reason, cant_note: note }, { reason: body.data.reason, note }));
   emit(event);
   return Response.json({ ok: true, status: "cant_assess" });
 }

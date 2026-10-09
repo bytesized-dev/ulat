@@ -7,16 +7,16 @@ import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { Input } from "@/components/ui/input";
-import { buildForm, buildMeta, BARANGAYS, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
+import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS, sendError } from "./capture";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
 
 type Photo = { file: File; label: string; url: string };
 
 // With newHouse, the responder types the house in, because no family report named it.
-type AssessFormProps = { house: House; newHouse?: boolean };
+type AssessFormProps = { house: House; newHouse?: boolean; barangays?: string[] };
 
-function AssessForm({ house: given, newHouse = false }: AssessFormProps) {
+function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFormProps) {
   const [fields, setFields] = useState({ barangay: given.barangay, purok: given.purok ?? "", head: given.household_head ?? "" });
   const house: House = newHouse
     ? { report_code: null, barangay: fields.barangay, purok: fields.purok.trim() || null, household_head: fields.head.trim() || null }
@@ -121,7 +121,7 @@ function AssessForm({ house: given, newHouse = false }: AssessFormProps) {
                 onChange={(e) => setFields((f) => ({ ...f, barangay: e.target.value }))}
                 className="h-13 w-full rounded-md border border-hairline bg-canvas px-4 text-body-md text-ink outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary"
               >
-                {BARANGAYS.map((b) => (
+                {barangays.map((b) => (
                   <option key={b}>{b}</option>
                 ))}
               </select>

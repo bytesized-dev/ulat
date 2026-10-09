@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { CantAssessSheet } from "@/components/responder/cant-assess-sheet";
 import { FamilyVoiceNote } from "@/components/responder/family-voice-note";
 import { concernText, needLabel } from "@/components/responder/report-detail-labels";
 import { ReportDistance } from "@/components/responder/report-distance";
@@ -97,9 +98,12 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
           <p className="py-4 text-center text-body-md text-muted-text">{closedNote}</p>
         ) : (
           // The capture screen creates the entry when the responder sends it.
-          <Link href={`${routes.responder.assess(randomUUID())}?code=${report.code}`} prefetch={false} className={cn(buttonVariants(), "w-full")}>
-            Start assessment
-          </Link>
+          <div className="flex flex-col gap-1">
+            <Link href={`${routes.responder.assess(randomUUID())}?code=${report.code}`} prefetch={false} className={cn(buttonVariants(), "w-full")}>
+              Start assessment
+            </Link>
+            <CantAssessSheet code={report.code} />
+          </div>
         )}
       </footer>
     </div>

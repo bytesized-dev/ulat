@@ -67,6 +67,27 @@ export function zoomBbox(bbox: Bbox, factor: number): Bbox {
   return [a.lng, b.lat, b.lng, a.lat];
 }
 
+/** The middle of the bbox, in Mercator terms so it matches what MapLibre calls the center. */
+export function bboxCenter(bbox: Bbox): LngLat {
+  const [west, south, east, north] = bbox;
+  const nw = toWorld({ lng: west, lat: north });
+  const se = toWorld({ lng: east, lat: south });
+  return fromWorld({ x: (nw.x + se.x) / 2, y: (nw.y + se.y) / 2 });
+}
+
+/** The same bbox slid so `center` is its middle. Panning the tile-less map. */
+export function moveBbox(bbox: Bbox, center: LngLat): Bbox {
+  const [west, south, east, north] = bbox;
+  const nw = toWorld({ lng: west, lat: north });
+  const se = toWorld({ lng: east, lat: south });
+  const c = toWorld(center);
+  const hw = (se.x - nw.x) / 2;
+  const hh = (se.y - nw.y) / 2;
+  const a = fromWorld({ x: c.x - hw, y: c.y - hh });
+  const b = fromWorld({ x: c.x + hw, y: c.y + hh });
+  return [a.lng, b.lat, b.lng, a.lat];
+}
+
 /**
  * Grows the bbox around its center so it has the frame's shape, width over
  * height, keeping all of it in view. Like fitBounds in MapLibre.

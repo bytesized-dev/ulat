@@ -66,11 +66,12 @@
   --color-success: #05b169;
   --color-warning: #f4b000;
   --color-map-land: #cef5dc;
-  --color-map-urban: #f2f0f0;
+  --color-map-urban: #f6f3f2;
   --color-map-park: #a0e5b9;
   --color-map-sea: #83d5ea;
   --color-map-river: #83d5ea;
-  --color-map-road: #7e9bb6;
+  --color-map-road: #97aec3;
+  --color-map-road-casing: #718ca9;
   --color-map-road-minor: #c7d3dd;
   --color-map-boundary: #b4b9c1;
   --color-map-shade-1: #f6cfd2;

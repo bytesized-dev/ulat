@@ -49,11 +49,12 @@ A familiar street map palette, so people read the town at a glance: green land, 
 | Token | Value | Use |
 |---|---|---|
 | `map-land` | #CEF5DC | Natural land and vegetation |
-| `map-urban` | #F2F0F0 | Built-up areas |
+| `map-urban` | #F6F3F2 | Built-up areas |
 | `map-park` | #A0E5B9 | Parks, cemeteries, sports grounds |
 | `map-sea` | #83D5EA | Sea |
 | `map-river` | #83D5EA | Rivers and lakes |
-| `map-road` | #7E9BB6 | Main roads, no casing |
+| `map-road` | #97AEC3 | Main roads |
+| `map-road-casing` | #718CA9 | Thin outline on main roads, so they read against built-up areas |
 | `map-road-minor` | #C7D3DD | Streets and paths |
 | `map-boundary` | #B4B9C1, dashed | Barangay lines |
 | `map-shade-1` to `map-shade-3` | #F6CFD2, #FAE2E4, #FDF1F2 for most to least totally damaged | Drawn under roads and labels, so shaded barangays keep their streets |

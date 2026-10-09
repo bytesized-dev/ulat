@@ -26,6 +26,7 @@ export const mapTokens = {
   sea: "map-sea",
   river: "map-river",
   road: "map-road",
+  roadCasing: "map-road-casing",
   roadMinor: "map-road-minor",
   boundary: "map-boundary",
   shade1: "map-shade-1",

@@ -145,10 +145,14 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
           <h2 id="safe-find" className="text-title-md text-ink">
             Find someone
           </h2>
-          <SearchPill aria-label="Search by name" value={query} onChange={(e) => {
+          <SearchPill
+            aria-label="Search by name"
+            value={query}
+            onChange={(e) => {
               setQuery(e.target.value);
-              // A new search starts clean, so the last answer or error does not show for it.
-              setFound(null);
+              // Clear the answer or error only when the search itself changes. The URL is
+              // built from the trimmed query, so a trailing space keeps the current results.
+              if (searchUrl(e.target.value) !== url) setFound(null);
             }}
           />
           {/* Mounted from the start, so a screen reader announces the first results or the error. */}

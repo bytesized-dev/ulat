@@ -12,8 +12,7 @@ export const locale = {
 } as const;
 
 export const theme = {
-  // The browser chrome colour cannot read a CSS variable, so these hex values
-  // live here rather than in a component. They are --page in each scheme.
-  light: "#f5f5f7",
-  dark: "#0a0a0a",
+  // The browser chrome colour cannot read a CSS variable, so this hex value
+  // lives here rather than in a component. It is canvas, the page background.
+  light: "#ffffff",
 } as const;

@@ -1,8 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { locale, product, theme } from "@/config";
 import "./globals.css";
+
+// next/font downloads both families at build time and serves them from
+// /_next/static/media, so nothing reaches Google at runtime.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  weight: "500",
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -13,10 +25,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: theme.light },
-    { media: "(prefers-color-scheme: dark)", color: theme.dark },
-  ],
+  themeColor: theme.light,
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -24,8 +33,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={locale.lang} className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="min-h-dvh bg-page text-text">{children}</body>
+    <html lang={locale.lang} className={`${inter.variable} ${jetbrainsMono.variable}`}>
+      <body className="min-h-dvh bg-canvas text-ink">{children}</body>
     </html>
   );
 }

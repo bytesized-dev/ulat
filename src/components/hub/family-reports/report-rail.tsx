@@ -31,7 +31,7 @@ function ReportRail({ report, responders }: ReportRailProps) {
       </section>
 
       <div className="flex items-baseline justify-between gap-4 text-body-sm text-body">
-        <span>{report.purok ? `${report.purok}, ${report.barangay}` : report.barangay}</span>
+        <span>{report.barangay}</span>
         <time dateTime={report.created_at} className="font-mono text-mono-sm text-ink">
           {formatTime(report.created_at)}
         </time>

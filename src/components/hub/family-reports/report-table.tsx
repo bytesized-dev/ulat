@@ -16,7 +16,7 @@ type ReportTableProps = {
 const clock = (iso: string) => formatTime(iso).replace(/ [AP]M$/, "");
 
 const head = "h-auto px-0 pb-3 text-caption text-muted-text";
-const cell = "px-0 py-4 pr-4 text-body-sm";
+const cell = "px-0 py-3.5 pr-4 text-body-sm";
 
 // One row per family report. The household is the link that opens the rail,
 // stretched over the whole row so any part of it can be clicked.

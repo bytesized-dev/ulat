@@ -7,12 +7,13 @@ import { CantAssessSheet } from "@/components/responder/cant-assess-sheet";
 import { FamilyVoiceNote } from "@/components/responder/family-voice-note";
 import { concernText, needLabel } from "@/components/responder/report-detail-labels";
 import { ReportDistance } from "@/components/responder/report-distance";
+import { assignmentLabel, assignmentOf } from "@/components/responder/to-visit-order";
 import { buttonVariants } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TopBar } from "@/components/ui/top-bar";
 import { db } from "@/db/client";
-import { reports } from "@/db/schema";
+import { reports, responders } from "@/db/schema";
 import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
 import { ReportCode, routes } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,10 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
   if (!parsed.success) notFound();
   const report = db.select().from(reports).where(eq(reports.code, parsed.data)).get();
   if (!report) notFound();
+  const assignee = report.assigned_to
+    ? db.select({ name: responders.name }).from(responders).where(eq(responders.id, report.assigned_to)).get()
+    : undefined;
+  const assignment = assignmentOf({ assigned_to: report.assigned_to, assignee_name: assignee?.name }, session.responder_id);
 
   const concern = concernText(report.hurt, report.missing);
   const place = report.purok ? `${report.barangay}, ${report.purok}` : report.barangay;
@@ -65,6 +70,11 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
         ) : null}
         <h1 className="mt-2 text-title-page text-ink">{report.household_head}</h1>
         <ReportDistance place={place} home={home} />
+        {assignment ? (
+          <Pill dot={assignment.kind === "mine" ? "primary" : undefined} className="mt-3">
+            {assignmentLabel(assignment)}
+          </Pill>
+        ) : null}
 
         <div className="mt-6 grid grid-cols-3">
           <Count value={report.people} label="People" />

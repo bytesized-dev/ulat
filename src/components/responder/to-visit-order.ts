@@ -10,6 +10,9 @@ export type ToVisitReport = {
   hurt: number;
   missing: number;
   created_at: string;
+  /** Who the hub assigned this report to. Left out where the list does not need it. */
+  assigned_to?: string | null;
+  assignee_name?: string | null;
 };
 
 export type ToVisitItem = ToVisitReport & {
@@ -37,6 +40,25 @@ export function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
+export type Assignment = { kind: "mine" } | { kind: "other"; name: string };
+
+/** Whether the report is assigned to this responder, to someone else, or to nobody. */
+export function assignmentOf(report: Pick<ToVisitReport, "assigned_to" | "assignee_name">, responderId: string): Assignment | null {
+  if (!report.assigned_to) return null;
+  if (report.assigned_to === responderId) return { kind: "mine" };
+  return { kind: "other", name: report.assignee_name ?? "another responder" };
+}
+
+/** "Yours" on a row, or the name of whoever has it. */
+export function assignmentTag(assignment: Assignment): string {
+  return assignment.kind === "mine" ? "Yours" : assignment.name;
+}
+
+/** "Assigned to you" or "Assigned to Carlo Mendoza", for the report page. */
+export function assignmentLabel(assignment: Assignment): string {
+  return assignment.kind === "mine" ? "Assigned to you" : `Assigned to ${assignment.name}`;
+}
+
 export function isUrgent(report: Pick<ToVisitReport, "hurt" | "missing">): boolean {
   return report.hurt > 0 || report.missing > 0;
 }
@@ -56,12 +78,18 @@ export function withDistance(reports: ToVisitReport[], from: Point | null): ToVi
   }));
 }
 
-/** Urgent first puts hurt or missing on top, then sorts each group by distance. */
-export function orderToVisit(items: ToVisitItem[], sort: ToVisitSort): ToVisitItem[] {
+/**
+ * Urgent first puts hurt or missing on top, then this responder's own reports,
+ * then sorts each group by distance. Nearest ignores both.
+ */
+export function orderToVisit(items: ToVisitItem[], sort: ToVisitSort, responderId?: string): ToVisitItem[] {
+  const mine = (item: ToVisitItem) => responderId !== undefined && item.assigned_to === responderId;
   return [...items].sort((a, b) => {
     if (sort === "urgent") {
       const urgent = Number(isUrgent(b)) - Number(isUrgent(a));
       if (urgent !== 0) return urgent;
+      const own = Number(mine(b)) - Number(mine(a));
+      if (own !== 0) return own;
     }
     return byDistance(a, b);
   });

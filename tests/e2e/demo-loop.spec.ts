@@ -24,7 +24,19 @@ const action = (page: Page, name: string | RegExp) =>
     page.getByRole("button", { name, exact: typeof name === "string" }),
   );
 
+/** Steps a counter on the check screen to the target from wherever it starts. */
+async function setCounter(page: Page, label: string, target: number) {
+  const value = page.getByRole("group", { name: label, exact: true }).locator("output");
+  for (let guard = 0; guard < 100; guard++) {
+    const now = Number(await value.innerText());
+    if (now === target) return;
+    await page.getByRole("button", { name: `${now < target ? "More" : "Fewer"}, ${label}`, exact: true }).click();
+  }
+  throw new Error(`${label} never reached ${target}`);
+}
+
 const houseCount = (page: Page) => page.getByText(/^\s*\d+\s*houses checked\s*$/);
+const totallyCount = (page: Page) => page.getByText(/^\s*\d+\s*totally\s*$/);
 const numberIn = async (text: string | null) => Number((text ?? "").replace(/\D/g, ""));
 
 test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser }, testInfo) => {
@@ -35,6 +47,16 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
   const staff = await staffContext.newPage();
 
   let code = "";
+
+  await test.step("0. Staff sign in, and the hub starts on the seed totals", async () => {
+    await staff.goto("/hub");
+    await expect(staff).toHaveURL(/\/hub\/lock/);
+    await staff.getByLabel("Staff PIN").fill(seed.settings.staff_pin);
+    await action(staff, "Unlock").click();
+    await expect(staff.getByRole("heading", { name: "Overview" })).toBeVisible();
+    await expect(houseCount(staff)).toHaveText(new RegExp(`^\\s*${before.houses}\\s*houses checked\\s*$`));
+    await expect(totallyCount(staff)).toHaveText(new RegExp(`^\\s*${before.totally}\\s*totally\\s*$`));
+  });
 
   await test.step("1. Family sends a report and gets a 4 character code", async () => {
     await family.goto("/");
@@ -99,7 +121,8 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(responder.getByText("2/3")).toBeVisible();
     // The note is a recording. Chromium runs with a fake microphone, see playwright.config.ts.
     await responder.getByRole("button", { name: "Record a note" }).click();
-    await responder.waitForTimeout(1500);
+    // The Stop button shows the elapsed time, so wait for the first second to pass.
+    await expect(responder.getByRole("button", { name: /^Stop, 0:0[1-9]/ })).toBeVisible();
     await responder.getByRole("button", { name: /^Stop/ }).click();
     await expect(responder.getByRole("button", { name: "Play your note" })).toBeVisible();
     await action(responder, "Send to hub").click();
@@ -114,8 +137,9 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(responder.getByRole("radio", { name: "Totally damaged" })).toBeChecked();
     // The photos say nothing about who lives there, so the responder counts. A hurt
     // count that differs from the family report sends the entry to review and out of the totals.
-    for (let i = 0; i < 5; i++) await responder.getByRole("button", { name: "More, People" }).click();
-    await responder.getByRole("button", { name: "More, Hurt" }).click();
+    // They are set to the report's numbers from any starting value, 0 now or prefilled later.
+    await setCounter(responder, "People", 5);
+    await setCounter(responder, "Hurt", 1);
     await expect(responder.getByText("Matches report")).toBeVisible();
     await action(responder, "Confirm entry").click();
 
@@ -123,17 +147,15 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
   });
 
   await test.step("4. The hub totals change on the hub overview after staff sign in", async () => {
-    await staff.goto("/hub");
-    await expect(staff).toHaveURL(/\/hub\/lock/);
-    await staff.getByLabel("Staff PIN").fill(seed.settings.staff_pin);
-    await action(staff, "Unlock").click();
+    await staff.reload();
     await expect(staff.getByRole("heading", { name: "Overview" })).toBeVisible();
-    await expect(houseCount(staff)).toBeVisible();
     // Only the confirmed entry counts, the family report on its own did not.
     await expect
       .poll(async () => numberIn(await houseCount(staff).textContent()), { message: "houses checked" })
       .toBe(before.houses + 1);
-    await expect(staff.getByText(/^\s*\d+\s*totally\s*$/)).toContainText(String(before.totally + 1));
+    await expect
+      .poll(async () => numberIn(await totallyCount(staff).textContent()), { message: "totally damaged" })
+      .toBe(before.totally + 1);
   });
 
   await test.step("5. The family status by code shows the confirmed class", async () => {

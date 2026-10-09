@@ -163,7 +163,7 @@ One `GET /api/events` stream. Each message is a `HubEvent` from the contracts: `
 
 ### Models
 
-- `gemma4:e4b` through Ollama for photos, voice and translation. Keep it loaded with `keep_alive`.
+- `gemma4:e4b` through Ollama for photos, voice and translation. Keep it loaded with `keep_alive`. Every call sends `think: false` and caps its output with `num_predict`.
 - If Gemma's audio input through Ollama fails the risk check, transcribe with whisper.cpp and send the text to Gemma.
 - If photo accuracy on the first ten eval photos is poor, try `gemma4:26b` for photos only. Do not load both models at once.
 

@@ -448,8 +448,8 @@ Hours per person: Artkin 20, CJ 20, James 17, Sean 24.
 **Acceptance criteria**
 
 - [ ] Shows counts, needs, voice note with transcript and English
-- [ ] Start assessment creates a draft entry and opens capture
-- [ ] Can't assess opens the sheet from BYT-53, or links to it if not built yet
+- [ ] Start assessment opens capture for this report. The entry is created when the responder sends it (BYT-50)
+- [ ] Can't assess opens the sheet from BYT-53, or is hidden until then
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
 
 ---

@@ -17,6 +17,6 @@ describe("family home", () => {
   });
 
   it("links every row to its route", () => {
-    expect(hrefs(html)).toEqual(["/report", "/report?for=neighbor", "/status", "/map", "/safe"]);
+    expect(hrefs(html)).toEqual(["/report?for=family", "/report?for=neighbor", "/status", "/map", "/safe"]);
   });
 });

@@ -21,7 +21,7 @@ export default function HomePage() {
     <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
       <DarkHero as="h1" eyebrow="You're at" title={centerName} className="rounded-none px-gutter pt-9 pb-7">
         <Button asChild className="mt-7 w-full">
-          <Link href={routes.family.report}>Report my household</Link>
+          <Link href={routes.family.reportFamily}>Report my household</Link>
         </Button>
       </DarkHero>
       <main className="flex flex-col gap-6 px-gutter pt-5 pb-7">

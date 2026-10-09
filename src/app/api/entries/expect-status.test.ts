@@ -151,8 +151,17 @@ describe("PATCH /api/entries/[id] without the header", () => {
     expect(saved(id)).toMatchObject({ status: "confirmed", damage_class: "none" });
   });
 
-  it.each(["confirmed", "draft"] as const)("refuses staff on a %s entry: 409 not_in_review, nothing written", async (status) => {
-    const id = newEntry(status);
+  it("a confirmed entry can be edited again, as a field edit with no new confirmation", async () => {
+    const id = newEntry("confirmed");
+    const res = await patch(id, body("none"));
+    expect(res.status).toBe(200);
+    expect(saved(id)).toMatchObject({ status: "confirmed", damage_class: "none" });
+    expect(history(id).filter((e) => e.type === "entry.confirmed")).toHaveLength(0);
+    expect(history(id).filter((e) => e.type === "entry.field_changed").length).toBeGreaterThan(0);
+  });
+
+  it("refuses staff on a draft entry: 409 not_in_review, nothing written", async () => {
+    const id = newEntry("draft");
     const before = saved(id);
     const res = await patch(id, body("none"));
     expect(res.status).toBe(409);

@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Segmented } from "@/components/ui/segmented";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { BarangayCollection } from "@/components/map";
+import type { Bbox } from "@/lib/hub/map-projection";
 import { cn } from "@/lib/utils";
 import { useDesk, type DeskMode } from "./desk-context";
 import { NEED_OPTIONS } from "./desk-report";
+import { PickOnMap } from "./pick-on-map";
 
 const MODES = [
   { value: "household", label: "Household report" },
@@ -127,10 +130,16 @@ function SafeFields({ barangays, staying }: { barangays: string[]; staying: stri
   );
 }
 
-type DeskFormProps = { barangays: string[]; staying: string[] };
+type DeskFormProps = {
+  barangays: string[];
+  staying: string[];
+  /** The town and its outlines, for the map Pick on map opens. */
+  bbox: Bbox;
+  outlines: BarangayCollection | undefined;
+};
 
 /** The main column: the mode switch, the form for that mode and the save button. */
-export function DeskForm({ barangays, staying }: DeskFormProps) {
+export function DeskForm({ barangays, staying, bbox, outlines }: DeskFormProps) {
   const { mode, setMode, save, saving, notice } = useDesk();
   return (
     <form
@@ -149,6 +158,7 @@ export function DeskForm({ barangays, staying }: DeskFormProps) {
             {mode === "household" ? <PrinterIcon aria-hidden="true" /> : <ShieldCheckIcon aria-hidden="true" />}
             {saving ? "Saving" : mode === "household" ? "Save and print slip" : "Add to safe list"}
           </Button>
+          {mode === "household" ? <PickOnMap bbox={bbox} barangays={outlines} /> : null}
           {notice ? (
             <p role={notice.tone === "error" ? "alert" : "status"} className={cn("text-body-sm", notice.tone === "error" ? "text-danger" : "text-body")}>
               {notice.text}

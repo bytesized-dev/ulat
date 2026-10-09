@@ -16,6 +16,7 @@ import {
   validateHousehold,
   validateSafe,
   type HeardNote,
+  type Spot,
   type HouseholdErrors,
   type HouseholdForm,
   type SafeErrors,
@@ -41,6 +42,8 @@ type DeskState = {
   saving: boolean;
   notice: Notice | null;
   slip: { code: string; name: string } | null;
+  /** Where staff picked the house on the map. Goes in the report as its location. */
+  spot: Spot | null;
   voice: { phase: VoicePhase; transcript: string; unsure: string[]; elapsedMs: number };
 };
 
@@ -49,6 +52,7 @@ type DeskActions = {
   editHousehold: (patch: Partial<HouseholdForm>) => void;
   toggleNeed: (need: z.infer<typeof Need>) => void;
   editSafe: (patch: Partial<SafeForm>) => void;
+  setSpot: (spot: Spot | null) => void;
   save: () => Promise<void>;
   startNote: () => Promise<void>;
   stopNote: () => void;
@@ -81,6 +85,7 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [slip, setSlip] = useState<DeskState["slip"]>(null);
+  const [spot, setSpot] = useState<Spot | null>(null);
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [heard, setHeard] = useState<HeardNote | null>(null);
   const [transcript, setTranscript] = useState("");
@@ -154,12 +159,13 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
       if (failed.length > 0) return focusFirst(failed.map((key) => FIELD_IDS[key]));
 
       setSaving(true);
-      const result = await saveReport(toNewReport(household, heard));
+      const result = await saveReport(toNewReport(household, heard, spot));
       setSaving(false);
       if (!result.ok) return setNotice({ tone: "error", text: result.message });
 
       setSlip({ code: result.code, name: household.name });
       setHousehold(emptyHousehold());
+      setSpot(null);
       setHeard(null);
       setPhase("idle");
       printSlip(result.code, household.name);
@@ -180,7 +186,7 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
     setNotice({ tone: "ok", text: `${safe.name.trim()} is on the safe list` });
     setSafe(emptySafe());
     router.refresh();
-  }, [saving, mode, household, heard, safe, router]);
+  }, [saving, mode, household, heard, spot, safe, router]);
 
   const startNote = useCallback(async () => {
     const result = await start();
@@ -207,18 +213,20 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
       saving,
       notice,
       slip,
+      spot,
       voice: { phase, transcript, unsure, elapsedMs },
       setMode,
       editHousehold,
       toggleNeed,
       editSafe,
+      setSpot,
       save,
       startNote,
       stopNote: stop,
       cancelNote,
       printAgain,
     }),
-    [mode, household, householdErrors, safe, safeErrors, saving, notice, slip, phase, transcript, unsure, elapsedMs, stop, setMode, editHousehold, toggleNeed, editSafe, save, startNote, cancelNote, printAgain],
+    [mode, household, householdErrors, safe, safeErrors, saving, notice, slip, spot, phase, transcript, unsure, elapsedMs, stop, setMode, editHousehold, toggleNeed, editSafe, save, startNote, cancelNote, printAgain],
   );
 
   return <DeskContext.Provider value={value}>{children}</DeskContext.Provider>;

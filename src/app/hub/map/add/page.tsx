@@ -1,7 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { Metadata } from "next";
-import type { BarangayCollection, MapPin } from "@/components/map";
+import type { MapPin } from "@/components/map";
 import { HubPage } from "@/components/hub/hub-page";
 import { AddPointMap, AddPointProvider, AddPointRail } from "@/components/hub/map/add-point-view";
 import { parseBbox } from "@/components/responder/map-sheet";
@@ -10,18 +8,10 @@ import { db } from "@/db/client";
 import { places } from "@/db/schema";
 import { readSetting } from "@/lib/auth/settings";
 import { routes } from "@/lib/contracts/routes";
-import { mapAssets } from "@/lib/hub/map-assets";
+import { loadBarangays } from "@/lib/hub/barangay-geojson";
 
 export const metadata: Metadata = { title: "Add a point" };
 export const dynamic = "force-dynamic";
-
-function loadBarangays(): BarangayCollection | undefined {
-  try {
-    return JSON.parse(readFileSync(join(process.cwd(), "public", mapAssets.barangays), "utf8"));
-  } catch {
-    return undefined;
-  }
-}
 
 // src/proxy.ts keeps this page behind the staff PIN.
 export default function AddPointPage() {

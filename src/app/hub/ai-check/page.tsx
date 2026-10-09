@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AiCheckEmpty, AiCheckHero, AiCheckRail, DamageClassTable, VoiceNotesTable } from "@/components/hub/kit/ai-check-sections";
 import { HubPage } from "@/components/hub/hub-page";
+import { RunTestDialog } from "@/components/hub/kit/run-test-dialog";
 import { routes } from "@/lib/contracts/routes";
 import { readEvalResults } from "@/lib/hub/ai-check";
 import { requireStaffPage } from "@/lib/hub/staff-page";
@@ -15,7 +16,7 @@ export default async function AiCheckPage() {
   await requireStaffPage();
   const reading = await readEvalResults();
   return (
-    <HubPage title="AI check" active={routes.hub.aiCheck} rail={<AiCheckRail reading={reading} />}>
+    <HubPage title="AI check" active={routes.hub.aiCheck} rail={<AiCheckRail reading={reading} />} actions={<RunTestDialog />}>
       {reading.status === "ok" ? (
         <div className="flex flex-col gap-9">
           <AiCheckHero results={reading.results} />

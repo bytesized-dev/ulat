@@ -71,9 +71,16 @@ export async function PATCH(req: Request, { params }: Ctx) {
       : reviewReasons({ aiClass: entry.ai_class, confirm, hasNewPhoto, reportHurt: report?.hurt ?? null });
   const status = reasons.length > 0 ? "needs_review" : "confirmed";
   const now = new Date().toISOString();
+  // Staff editing an entry that is already confirmed change fields only. It is not
+  // a new confirmation, so the status, who confirmed and when, and the report stay.
+  // A caller that sends the header is settling a review and keeps the path below.
+  const editing = actor.role === "staff" && entry.status === "confirmed" && expected === null;
+  const changed = FIELDS.filter((field) => JSON.stringify(entry[field]) !== JSON.stringify(confirm[field]));
+  if (editing && changed.length === 0) return Response.json({ entry, status: entry.status, reasons: [] });
+
   // A responder saves their own draft. Staff settle an entry that waits for review,
-  // and nothing else: the hub review screen is the only staff caller.
-  const required = actor.role === "responder" ? "draft" : "needs_review";
+  // or edit one that is confirmed. The update below holds each path to its own status.
+  const required = actor.role === "responder" ? "draft" : editing ? "confirmed" : "needs_review";
   let visited: HubEvent | null = null;
 
   const settled = db.transaction((tx) => {
@@ -92,10 +99,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
         hurt: confirm.hurt,
         missing: confirm.missing,
         needs: confirm.needs,
-        status,
-        review_reason: reasons.length > 0 ? reasons.map((r) => REVIEW_REASONS[r]).join(" ") : null,
-        confirmed_by: status === "confirmed" ? actor.id : null,
-        confirmed_at: status === "confirmed" ? now : null,
+        ...(editing
+          ? {}
+          : {
+              status,
+              review_reason: reasons.length > 0 ? reasons.map((r) => REVIEW_REASONS[r]).join(" ") : null,
+              confirmed_by: status === "confirmed" ? actor.id : null,
+              confirmed_at: status === "confirmed" ? now : null,
+            }),
       })
       .where(
         and(
@@ -108,13 +119,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
       .run();
     if (result.changes !== 1) return false;
 
-    for (const field of FIELDS) {
-      const from = entry[field];
-      const to = confirm[field];
-      if (JSON.stringify(from) !== JSON.stringify(to)) {
-        audit(tx, id, "entry.field_changed", actor.id, { field, from, to });
-      }
+    for (const field of changed) {
+      audit(tx, id, "entry.field_changed", actor.id, { field, from: entry[field], to: confirm[field] });
     }
+
+    if (editing) return true;
 
     if (status === "confirmed") {
       audit(tx, id, "entry.confirmed", actor.id, { class: confirm.damage_class });
@@ -127,6 +136,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!settled) return Response.json({ error: actor.role === "responder" ? "not_a_draft" : "not_in_review" }, { status: 409 });
 
   if (status === "confirmed") {
+    // For an edit this is only the refresh signal, so the hub totals refetch.
     emit({ type: "entry.confirmed", entry_id: id, report_code: report?.code ?? null });
     if (visited) emit(visited);
   } else {

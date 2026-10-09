@@ -8,7 +8,9 @@ import { DeskForm } from "@/components/hub/desk/desk-form";
 import { DeskRail } from "@/components/hub/desk/desk-rail";
 import { readSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts/routes";
+import { loadBarangays } from "@/lib/hub/barangay-geojson";
 import { readBarangays, recentDesk, stayingOptions } from "@/lib/hub/desk";
+import { getMapBbox } from "@/lib/hub/map-pins";
 
 export const metadata: Metadata = { title: "Help desk" };
 
@@ -24,7 +26,7 @@ export default async function HelpDeskPage() {
   return (
     <DeskProvider>
       <HubPage title="Help desk" active={routes.hub.desk} rail={<DeskRail recent={recentDesk(db)} />}>
-        <DeskForm barangays={readBarangays(db)} staying={stayingOptions(db)} />
+        <DeskForm barangays={readBarangays(db)} staying={stayingOptions(db)} bbox={getMapBbox(db)} outlines={loadBarangays()} />
       </HubPage>
     </DeskProvider>
   );

@@ -34,7 +34,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Searc
   return (
     <HubPage title="Review" active={routes.hub.review} rail={<ReviewRail entries={entries} selected={selected?.id ?? null} />}>
       <div className="flex flex-col gap-9">
-        <ReviewTabs active="second_look" counts={counts} className="self-stretch" />
+        <ReviewTabs active="second_look" counts={counts} />
         {params[SETTLED_PARAM] === "1" ? (
           <p role="status" className="rounded-lg bg-surface-soft p-4 text-body-sm font-semibold text-ink">
             Already settled in another tab.

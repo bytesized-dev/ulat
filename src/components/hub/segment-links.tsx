@@ -14,7 +14,7 @@ type SegmentLinksProps = {
 // choice is a real link that works with the back button and without script.
 function SegmentLinks({ links, className, ...props }: SegmentLinksProps) {
   return (
-    <nav className={cn("inline-flex max-w-full gap-1 overflow-x-auto rounded-pill bg-surface-strong p-1", className)} {...props}>
+    <nav className={cn("inline-flex max-w-full self-start gap-1 overflow-x-auto rounded-pill bg-surface-strong p-1", className)} {...props}>
       {links.map((link) => (
         <Link
           key={link.href}

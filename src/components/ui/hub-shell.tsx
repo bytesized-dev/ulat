@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { initialsOf } from "@/components/ui/app-top-bar";
 import { HubMenu } from "@/components/ui/hub-menu";
 import { Logo } from "@/components/ui/logo";
+import { CollapsibleSidebar } from "@/components/ui/collapsible-sidebar";
 import { Pill } from "@/components/ui/pill";
 import { SearchPill } from "@/components/ui/search-pill";
 
@@ -58,7 +59,7 @@ type HubShellProps = {
   className?: string;
 };
 
-const navLink = "flex h-11 items-center gap-3 rounded-pill px-3.5 text-body-md font-medium text-ink outline-none transition-colors hover:bg-surface-soft";
+const navLink = "flex h-11 items-center gap-3 rounded-pill px-3.5 text-body-md font-medium text-ink outline-none transition-colors hover:bg-surface-soft group-data-collapsed/sidebar:justify-center group-data-collapsed/sidebar:px-0";
 
 // The frame every hub page sits in. It is layout only: the sections, the
 // counts and the status data come in as props. The one thing it reads itself
@@ -74,15 +75,15 @@ async function HubShell({ title, nav, activeHref, status, simulation, searchLabe
     <nav aria-label="Hub" className="flex flex-col">
       {nav.map((section, index) => (
         <div key={section.heading ?? index} className="flex flex-col gap-1">
-          {section.heading ? <p className="px-3.5 pt-5 pb-1.5 text-caption-strong text-muted-text">{section.heading}</p> : null}
+          {section.heading ? <p className="px-3.5 pt-5 pb-1.5 text-caption-strong text-muted-text group-data-collapsed/sidebar:sr-only">{section.heading}</p> : null}
           {section.items.map((item) => {
             const active = item.href === activeHref;
             return (
               <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn(navLink, active && "bg-surface-strong text-primary hover:bg-surface-strong")}>
                 {item.icon ? <span aria-hidden="true" className="flex shrink-0 [&_svg]:size-5">{item.icon}</span> : null}
-                {item.label}
+                <span className="group-data-collapsed/sidebar:sr-only">{item.label}</span>
                 {item.count !== undefined ? (
-                  <span className="ml-auto rounded-pill bg-primary px-2 text-caption-strong text-primary-foreground">
+                  <span className="ml-auto rounded-pill bg-primary px-2 text-caption-strong text-primary-foreground group-data-collapsed/sidebar:sr-only">
                     {item.count}
                     {item.countLabel ? <span className="sr-only">{` ${item.countLabel}`}</span> : null}
                   </span>
@@ -95,16 +96,17 @@ async function HubShell({ title, nav, activeHref, status, simulation, searchLabe
     </nav>
   );
   const brand = (
-    <div className="flex justify-center px-3.5 py-5">
-      <Logo priority className="w-16" />
+    <div className="flex items-center gap-3 px-3.5 py-4 group-data-collapsed/sidebar:justify-center group-data-collapsed/sidebar:px-0">
+      <Logo priority className="w-10 shrink-0 group-data-collapsed/sidebar:w-14" />
+      <span className="text-title-md text-ink group-data-collapsed/sidebar:sr-only">Admin hub</span>
     </div>
   );
   const footer = (
     <div className="mt-auto flex flex-col gap-1 pt-6">
-      {status ? <div className="mb-4 rounded-lg bg-surface-soft p-4 text-body-sm">{status}</div> : null}
+      {status ? <div className="mb-4 rounded-lg bg-surface-soft p-4 text-body-sm group-data-collapsed/sidebar:sr-only">{status}</div> : null}
       <Link href={lockHref} className={navLink}>
         <LockIcon aria-hidden="true" className="size-5 shrink-0" />
-        Lock hub
+        <span className="group-data-collapsed/sidebar:sr-only">Lock hub</span>
       </Link>
     </div>
   );
@@ -113,11 +115,11 @@ async function HubShell({ title, nav, activeHref, status, simulation, searchLabe
   // the page. The sidebar comes in at lg and the rail moves beside the page at xl.
   return (
     <div data-slot="hub-shell" className={cn("flex min-h-dvh bg-canvas text-ink", className)}>
-      <aside className="sticky top-0 hidden h-dvh w-sidebar shrink-0 flex-col overflow-y-auto border-r border-hairline p-3 lg:flex">
+      <CollapsibleSidebar className="sticky top-0 hidden h-dvh shrink-0 border-r border-hairline lg:block">
         {brand}
         {navLinks}
         {footer}
-      </aside>
+      </CollapsibleSidebar>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-hairline px-4 py-3 lg:h-18 lg:flex-nowrap lg:gap-4 lg:px-8 lg:py-0">

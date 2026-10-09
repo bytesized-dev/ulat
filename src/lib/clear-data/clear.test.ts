@@ -47,17 +47,17 @@ function seed() {
 
   const parent = db
     .insert(schema.reports)
-    .values({ code: "A2S3", source: "family", household_head: "Dela Cruz", barangay: "Mabini", created_at: at, updated_at: at })
+    .values({ code: "A2S3", source: "family", household_head: "Dela Cruz", barangay: "Potol (Pob.)", created_at: at, updated_at: at })
     .returning()
     .get();
   const merged = db
     .insert(schema.reports)
-    .values({ code: "B3N6", source: "neighbor", household_head: "Dela Cruz", barangay: "Mabini", status: "merged", merged_into: parent.id, assigned_to: responder.id, created_at: at, updated_at: at })
+    .values({ code: "B3N6", source: "neighbor", household_head: "Dela Cruz", barangay: "Potol (Pob.)", status: "merged", merged_into: parent.id, assigned_to: responder.id, created_at: at, updated_at: at })
     .returning()
     .get();
   const entry = db
     .insert(schema.entries)
-    .values({ number: 231, report_id: parent.id, responder_id: responder.id, barangay: "Mabini", created_at: at })
+    .values({ number: 231, report_id: parent.id, responder_id: responder.id, barangay: "Potol (Pob.)", created_at: at })
     .returning()
     .get();
 
@@ -73,7 +73,7 @@ function seed() {
 
   const place = db.insert(schema.places).values({ type: "relief", name: "Covered court", lat: 10.3, lng: 123.9, created_at: at }).returning().get();
   db.insert(schema.updates).values({ type: "notice", headline: "Water", message: "At the court", place_id: place.id, posted_at: at }).run();
-  db.insert(schema.safe_checkins).values({ name: "Ana", barangay: "Mabini", staying_at: "Relatives", source: "phone", at }).run();
+  db.insert(schema.safe_checkins).values({ name: "Ana", barangay: "Potol (Pob.)", staying_at: "Relatives", source: "phone", at }).run();
   db.insert(schema.sitreps).values({ number: 1, created_at: at, snapshot: {} as never, sms: "SITREP 1" }).run();
   db.insert(schema.duplicates).values({ a_type: "report", a_id: parent.id, b_type: "report", b_id: merged.id }).run();
   db.insert(schema.events).values([

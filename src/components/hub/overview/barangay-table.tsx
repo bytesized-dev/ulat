@@ -36,7 +36,7 @@ export function BarangayTable({ rows }: { rows: BarangayRow[] }) {
         <TableBody>
           {rows.map((r) => (
             <TableRow key={r.barangay} className={`${row} h-14`}>
-              <TableCell className="px-0 font-medium text-ink">{r.barangay}</TableCell>
+              <TableCell className="px-0 font-semibold text-ink">{r.barangay}</TableCell>
               {NUMBERS.map(({ key }) => (
                 <TableCell key={key} className="px-0 text-right font-mono text-mono-sm text-ink">
                   {r[key]}

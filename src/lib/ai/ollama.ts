@@ -13,8 +13,10 @@ const KEEP_ALIVE = "30m";
 export type OllamaFailure =
   /** No reply within 60 seconds. */
   | "timeout"
-  /** Ollama is down, or answered with an HTTP error. */
+  /** Ollama is down, or answered with a 5xx, 408 or 429. */
   | "unavailable"
+  /** Ollama refused the request with another 4xx. Sending it again cannot work. */
+  | "rejected"
   /** The reply was not JSON, or did not match the schema. */
   | "invalid_output";
 
@@ -67,7 +69,9 @@ export async function chatJson<S extends z.ZodType>(
       signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),
     });
     if (!response.ok) {
-      throw new OllamaError("unavailable", `Ollama answered ${response.status}`, await response.text());
+      // A 4xx means Ollama refused this input. 408 and 429 are about timing, so they can pass later.
+      const refused = response.status >= 400 && response.status < 500 && response.status !== 408 && response.status !== 429;
+      throw new OllamaError(refused ? "rejected" : "unavailable", `Ollama answered ${response.status}`, await response.text());
     }
     const body = (await response.json()) as { message?: { content?: unknown } };
     content = typeof body.message?.content === "string" ? body.message.content : "";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AiVoiceExtract } from "@/lib/contracts";
 import fixtures from "../../../seed/ai-fixtures.json";
-import { DRAFT_KEY, applyExtract, clearDraft, emptyDraft, loadDraft, markChecked, saveDraft, toNewReport } from "./report-draft";
+import { DRAFT_KEY, applyExtract, clearDraft, emptyDraft, loadDraft, draftFromReport, markChecked, saveDraft, toNewReport } from "./report-draft";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const items = new Map(Object.entries(initial));
@@ -81,5 +81,30 @@ describe("report draft", () => {
   it("refuses to build a report without a household head or barangay", () => {
     expect(toNewReport(emptyDraft()).success).toBe(false);
     expect(toNewReport({ ...emptyDraft(), household_head: "Reyes" }).success).toBe(false);
+  });
+});
+
+describe("draftFromReport", () => {
+  it("gives back the draft a report was made from, so a refused report can be fixed", () => {
+    const draft = {
+      ...emptyDraft(),
+      source: "neighbor" as const,
+      household_head: "Dela Cruz",
+      barangay: "San Isidro",
+      purok: "Purok 3",
+      reporter_name: "Ana",
+      reporter_where: "Chapel",
+      people: 5,
+      hurt: 1,
+      what_happened: "Roof gone",
+      needs: ["water" as const],
+      transcript: "Nawala ang atop",
+      english: "The roof is gone",
+      language: "ceb" as const,
+    };
+    const body = toNewReport(draft);
+    if (!body.success) throw new Error("fixture draft is not a valid report");
+    expect(draftFromReport(body.data)).toEqual(draft);
+    expect(draftFromReport({ ...body.data, source: "desk" }).source).toBe("family");
   });
 });

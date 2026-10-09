@@ -129,6 +129,35 @@ export function markChecked(draft: ReportDraft, field: z.infer<typeof VoiceField
   return { ...draft, uncertain_fields: draft.uncertain_fields.filter((f) => f !== field) };
 }
 
+/**
+ * The draft a refused queued report becomes again, so the family can fix it on
+ * the check screen. The inverse of toNewReport: null text turns back into an
+ * empty string. A report from the help desk cannot come from a phone, so it
+ * falls back to a family report.
+ */
+export function draftFromReport(report: NewReport): ReportDraft {
+  return {
+    ...emptyDraft(),
+    source: report.source === "neighbor" ? "neighbor" : "family",
+    barangay: report.barangay,
+    purok: report.purok ?? "",
+    household_head: report.household_head,
+    reporter_name: report.reporter_name ?? "",
+    reporter_where: report.reporter_where ?? "",
+    lat: report.lat,
+    lng: report.lng,
+    people: report.people,
+    hurt: report.hurt,
+    missing: report.missing,
+    what_happened: report.what_happened ?? "",
+    needs: report.needs,
+    voice_id: report.voice_id,
+    transcript: report.transcript ?? "",
+    english: report.english ?? "",
+    language: report.language,
+  };
+}
+
 const orNull = (text: string) => (text.trim() === "" ? null : text.trim());
 
 /**

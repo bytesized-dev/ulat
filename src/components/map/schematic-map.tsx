@@ -127,7 +127,7 @@ export function SchematicMap({
             key={`${name}-${i}`}
             ref={placeAt(at)}
             aria-hidden
-            className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-caption font-semibold whitespace-nowrap text-body"
+            className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 text-caption font-semibold whitespace-nowrap text-muted-foreground"
           >
             {name}
           </span>

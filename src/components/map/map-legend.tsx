@@ -15,7 +15,7 @@ export function MapLegend({ items, placement }: { items: readonly LegendItem[]; 
         "text-caption text-ink",
         placement === "card"
           ? "absolute top-3 left-3 flex flex-col gap-1.5 rounded-lg bg-canvas px-3 py-2.5 shadow-float"
-          : "flex flex-wrap items-center gap-x-5 gap-y-2 text-body",
+          : "flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground",
       )}
     >
       {items.map((item) => (

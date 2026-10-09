@@ -16,6 +16,7 @@ import { enqueue } from "./offline-queue";
 import { queueStore } from "./queue-db";
 import { clearDraft, toNewReport } from "./report-draft";
 import { reportPhotoBlob, setReportPhoto } from "./report-photo";
+import { loadReportPhoto } from "./report-photo-store";
 import { canSend, photoFileName, sendReport, summarizeDraft } from "./send-report";
 import { markSentFromDraft, saveSentReport } from "./sent-report";
 import { setVoiceAudio, voiceAudioBlob, voiceFileName } from "./voice-audio";
@@ -53,6 +54,8 @@ function BeforeYouSendForm() {
     // Either way the report goes without audio.
     const audio = draft.voice_id ? voiceAudioBlob() : null;
     // The photo_id is made once per tap too, so a resend never makes a second file.
+    // After a reload the photo is still in IndexedDB, so read it before asking for it.
+    await loadReportPhoto();
     const picked = reportPhotoBlob();
     const photo = picked ? { blob: picked, id: newClientId() } : null;
     const result = await sendReport(draft, fetch, clientId, audio, photo);

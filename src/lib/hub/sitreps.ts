@@ -85,6 +85,17 @@ export function getSitrep(db: Db, number: number): Sitrep | null {
   return row ? parse(row) : null;
 }
 
+/**
+ * Whether the report was made during a drill. The snapshot has no flag, so this
+ * reads the saved SMS, which buildSms starts with SIMULATION for a drill. It
+ * never reads the live simulation setting, so turning the switch off later does
+ * not change an old report. A town whose own name starts with "Simulation" would
+ * read as a drill.
+ */
+export function isSimulationSitrep(sitrep: Pick<Sitrep, "sms">): boolean {
+  return sitrep.sms.startsWith("SIMULATION ");
+}
+
 /** The newest report, or null before the first one. */
 export function getLatestSitrep(db: Db): Sitrep | null {
   const row = db.select().from(sitreps).orderBy(desc(sitreps.number)).limit(1).get();

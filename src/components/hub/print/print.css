@@ -1,0 +1,27 @@
+/* BYTE-43. One A4 sheet. The page margin is 0 and the sheet pads itself, so the
+   browser adds no header or footer line. */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+.print-sheet {
+  width: 210mm;
+  min-height: 297mm;
+}
+
+@media print {
+  html,
+  body {
+    background: none;
+  }
+
+  .print-sheet {
+    height: 297mm;
+    min-height: 0;
+    overflow: hidden;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

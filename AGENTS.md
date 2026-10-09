@@ -12,7 +12,7 @@ The canvas is private to its owner's claude.ai account, so agents cannot open it
 2. `docs/SPEC.md` for what to build. Read the section your issue points to.
 3. `DESIGN.md` for tokens and components. Required for any UI work.
 4. `docs/ISSUES.md` for your issue's acceptance criteria and `docs/PLAN.md` for order.
-5. The screen itself: `design/screens/<app>/<screen>.html` and `design/png/<app>/<screen>.png`. `design/README.md` maps every screen to its route and issue.
+5. The screen itself. Run `node scripts/screen-outline.mjs design/screens/<app>/<screen>.html` for its structure and copy, and look at `design/png/<app>/<screen>.png` for the layout. The raw HTML is mostly mockup CSS, so skip it. `design/README.md` maps every screen to its route and issue.
 
 ## Hard rules
 

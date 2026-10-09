@@ -17,7 +17,8 @@ type ProgressStepsProps = Omit<React.ComponentProps<"div">, "children"> & {
   step: Step;
 };
 
-// A 4px track filled to step/4, then the four labels. The track is decoration.
+// A 4px track filled to step/4, then the four labels, each centered under its
+// quarter of the track. The track is decoration.
 // The list says where you are: the current label is aria-current="step" and a
 // hidden line gives "Step 3 of 4".
 function ProgressSteps({ step, className, ...props }: ProgressStepsProps) {
@@ -27,7 +28,7 @@ function ProgressSteps({ step, className, ...props }: ProgressStepsProps) {
         <div className={cn("h-full rounded-pill bg-primary", fill[step])} />
       </div>
       <p className="sr-only">{`Step ${step} of ${steps.length}.`}</p>
-      <ol className="grid grid-cols-4 text-caption-strong">
+      <ol className="grid grid-cols-4 text-center text-caption-strong">
         {steps.map((label, index) => {
           const position = index + 1;
           const current = position === step;

@@ -6,9 +6,12 @@ import { HouseIcon } from "lucide-react";
 import { AppTopBar } from "@/components/ui/app-top-bar";
 import { Chip } from "@/components/ui/chip";
 import { IconPlate } from "@/components/ui/icon-plate";
+import { Pill } from "@/components/ui/pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { routes } from "@/lib/contracts";
 import {
+  assignmentOf,
+  assignmentTag,
   filterToVisit,
   formatDistance,
   orderToVisit,
@@ -19,7 +22,7 @@ import {
 } from "./to-visit-order";
 import { useOwnPosition } from "./use-position";
 
-type ToVisitListProps = { responderName: string; reports: ToVisitReport[] };
+type ToVisitListProps = { responderId: string; responderName: string; reports: ToVisitReport[] };
 
 function place(item: ToVisitItem): string {
   return item.purok ? `${item.barangay}, ${item.purok}` : item.barangay;
@@ -40,7 +43,8 @@ function Concern({ item }: { item: ToVisitItem }) {
   );
 }
 
-function ToVisitRow({ item }: { item: ToVisitItem }) {
+function ToVisitRow({ item, responderId }: { item: ToVisitItem; responderId: string }) {
+  const assignment = assignmentOf(item, responderId);
   return (
     <Link href={routes.responder.report(item.code)} className="flex min-h-16 items-center gap-4 border-b border-hairline-soft py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
       <IconPlate>
@@ -49,6 +53,11 @@ function ToVisitRow({ item }: { item: ToVisitItem }) {
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body-md font-medium text-ink">{item.household_head}</span>
         <span className="truncate text-body-sm text-body">{place(item)}</span>
+        {assignment ? (
+          <Pill dot={assignment.kind === "mine" ? "primary" : undefined} className="mt-1 max-w-full self-start">
+            <span className="truncate">{assignmentTag(assignment)}</span>
+          </Pill>
+        ) : null}
       </span>
       <span className="flex shrink-0 flex-col items-end gap-0.5">
         {item.distance_m !== null ? <span className="font-mono text-mono-sm text-ink">{formatDistance(item.distance_m)}</span> : null}
@@ -60,11 +69,11 @@ function ToVisitRow({ item }: { item: ToVisitItem }) {
 
 // Without permission the list still works, ordered by urgency and then by how
 // long the report has waited.
-function ToVisitList({ responderName, reports }: ToVisitListProps) {
+function ToVisitList({ responderId, responderName, reports }: ToVisitListProps) {
   const [sort, setSort] = useState<ToVisitSort>("urgent");
   const [query, setQuery] = useState("");
   const position = useOwnPosition();
-  const items = useMemo(() => orderToVisit(filterToVisit(withDistance(reports, position), query), sort), [reports, position, query, sort]);
+  const items = useMemo(() => orderToVisit(filterToVisit(withDistance(reports, position), query), sort, responderId), [reports, position, query, sort, responderId]);
 
   return (
     <>
@@ -84,7 +93,7 @@ function ToVisitList({ responderName, reports }: ToVisitListProps) {
         </div>
         <div className="mt-4 flex flex-col">
           {items.map((item) => (
-            <ToVisitRow key={item.code} item={item} />
+            <ToVisitRow key={item.code} item={item} responderId={responderId} />
           ))}
         </div>
         {items.length === 0 ? <p className="py-8 text-center text-body-md text-body">No reports match your search</p> : null}

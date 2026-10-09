@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { PlusIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { ToVisitList } from "@/components/responder/to-visit-list";
 import { buttonVariants } from "@/components/ui/button";
 import { TabBar } from "@/components/ui/tab-bar";
 import { db } from "@/db/client";
-import { reports } from "@/db/schema";
+import { reports, responders } from "@/db/schema";
 import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ export default async function ToVisitPage() {
   const session = await readActiveResponder(token);
   if (!session) redirect(routes.responder.signIn);
 
-  // Only what the list shows. Phone numbers, notes and transcripts stay in the database.
+  // Only what the list shows, and who each report is assigned to. Phone numbers, notes and transcripts stay in the database.
   const open = db
     .select({
       code: reports.code,
@@ -37,14 +37,17 @@ export default async function ToVisitPage() {
       hurt: reports.hurt,
       missing: reports.missing,
       created_at: reports.created_at,
+      assigned_to: reports.assigned_to,
+      assignee_name: responders.name,
     })
     .from(reports)
+    .leftJoin(responders, eq(responders.id, reports.assigned_to))
     .where(inArray(reports.status, OPEN_STATUSES))
     .all();
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <ToVisitList responderName={session.name} reports={open} />
+      <ToVisitList responderId={session.responder_id} responderName={session.name} reports={open} />
       <div className="sticky bottom-0 bg-canvas">
         <footer className="px-gutter pb-7 pt-3">
           <Link href={routes.responder.newHouse} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>

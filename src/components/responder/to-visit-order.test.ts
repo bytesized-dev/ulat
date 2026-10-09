@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { distanceMeters, filterToVisit, formatDistance, nextPosition, orderToVisit, withDistance, type ToVisitReport } from "./to-visit-order";
+import { assignmentLabel, assignmentOf, assignmentTag, distanceMeters, filterToVisit, formatDistance, nextPosition, orderToVisit, withDistance, type ToVisitReport } from "./to-visit-order";
 
 const here = { lat: 10.0, lng: 124.0 };
 
@@ -124,5 +124,44 @@ describe("next position", () => {
   it("keeps the old position for a move under 25 m and takes it from 25 m", () => {
     expect(nextPosition(here, at(10))).toEqual(here);
     expect(nextPosition(here, at(30))).toEqual(at(30));
+  });
+});
+
+describe("assignment", () => {
+  it("tells yours from someone else's from nobody's", () => {
+    expect(assignmentOf({ assigned_to: null, assignee_name: null }, "r1")).toBeNull();
+    expect(assignmentOf({}, "r1")).toBeNull();
+    expect(assignmentOf({ assigned_to: "r1", assignee_name: "Carlo Mendoza" }, "r1")).toEqual({ kind: "mine" });
+    expect(assignmentOf({ assigned_to: "r2", assignee_name: "Mae Santos" }, "r1")).toEqual({ kind: "other", name: "Mae Santos" });
+    expect(assignmentOf({ assigned_to: "r2", assignee_name: null }, "r1")).toEqual({ kind: "other", name: "Another responder" });
+  });
+
+  it("words the row tag and the report page line", () => {
+    expect(assignmentTag({ kind: "mine" })).toBe("Yours");
+    expect(assignmentTag({ kind: "other", name: "Mae Santos" })).toBe("Mae Santos");
+    expect(assignmentLabel({ kind: "mine" })).toBe("Assigned to you");
+    expect(assignmentLabel({ kind: "other", name: "Mae Santos" })).toBe("Assigned to Mae Santos");
+    expect(assignmentTag({ kind: "other", name: "Another responder" })).toBe("Another responder");
+    expect(assignmentLabel({ kind: "other", name: "Another responder" })).toBe("Assigned to another responder");
+  });
+
+  const reports = [
+    report("NEAR", { ...at(100) }),
+    report("MINE", { ...at(900), assigned_to: "r1" }),
+    report("THEM", { ...at(200), assigned_to: "r2" }),
+    report("HURT", { ...at(2000), hurt: 1 }),
+    report("HMNE", { ...at(1500), hurt: 1, assigned_to: "r1" }),
+  ];
+
+  it("urgent first keeps urgency on top, then puts the responder's own reports first within each group", () => {
+    const order = orderToVisit(withDistance(reports, here), "urgent", "r1").map((r) => r.code);
+    expect(order).toEqual(["HMNE", "HURT", "MINE", "NEAR", "THEM"]);
+  });
+
+  it("does not move own reports without a responder id, and nearest ignores them", () => {
+    const urgent = orderToVisit(withDistance(reports, here), "urgent").map((r) => r.code);
+    expect(urgent).toEqual(["HMNE", "HURT", "NEAR", "THEM", "MINE"]);
+    const nearest = orderToVisit(withDistance(reports, here), "nearest", "r1").map((r) => r.code);
+    expect(nearest).toEqual(["NEAR", "THEM", "MINE", "HMNE", "HURT"]);
   });
 });

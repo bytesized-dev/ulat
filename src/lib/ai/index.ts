@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { AiPhotoDraft, AiTranslation, AiVoiceExtract } from "../contracts";
 import fixtureFile from "../../../seed/ai-fixtures.json";
 import { logAiCall } from "./audit";
@@ -21,9 +22,13 @@ const fixtures = {
 const isMock = () => process.env.MOCK_AI === "1";
 
 /** Call the model, write the raw reply to the audit trail, and pass failures on. */
-async function extract(call: "voice" | "text", request: Omit<ChatJsonInput<typeof AiVoiceExtract>, "schema">) {
+async function extract<S extends z.ZodType>(
+  call: "voice" | "text",
+  schema: S,
+  request: Omit<ChatJsonInput<S>, "schema">,
+): Promise<z.infer<S>> {
   try {
-    const { value, raw } = await chatJson({ ...request, schema: AiVoiceExtract });
+    const { value, raw } = await chatJson({ ...request, schema });
     await logAiCall(call, { raw });
     return value;
   } catch (error) {
@@ -39,13 +44,17 @@ async function extract(call: "voice" | "text", request: Omit<ChatJsonInput<typeo
  */
 export async function readVoice(input: { audio: Buffer; mime: string }): Promise<AiVoiceExtract> {
   if (isMock()) return structuredClone(fixtures.voice);
-  return extract("voice", { system: VOICE_SYSTEM, user: "Read this voice note.", media: [input.audio] });
+  return extract("voice", AiVoiceExtract, { system: VOICE_SYSTEM, user: "Read this voice note.", media: [input.audio] });
 }
+
+// The model never writes a transcript for a typed note. With thinking off it
+// copies the note into the field, which doubles the output and the wait.
+const TextExtract = AiVoiceExtract.omit({ transcript: true });
 
 /** A typed note. The transcript comes back empty. */
 export async function readText(input: { text: string }): Promise<AiVoiceExtract> {
   if (isMock()) return structuredClone(fixtures.text);
-  const value = await extract("text", { system: TEXT_SYSTEM, user: input.text });
+  const value = await extract("text", TextExtract, { system: TEXT_SYSTEM, user: input.text });
   return { ...value, transcript: "" };
 }
 

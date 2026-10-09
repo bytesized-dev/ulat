@@ -41,7 +41,7 @@ Rules:
 Reply with JSON only.`;
 
 export const TEXT_SYSTEM = `${VOICE_SYSTEM}
-This time the family typed the note. Set transcript to an empty string.`;
+This time the family typed the note, so there is no transcript.`;
 
 export const TRANSLATE_SYSTEM = `You translate short public notices from a Philippine municipal disaster office.
 Translate the English headline and message into Bisaya (Cebuano) as ceb and Tagalog as tl.

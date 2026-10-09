@@ -131,6 +131,48 @@ describe("chatJson", () => {
   });
 });
 
+describe("chatJson when the reply hits the token cap", () => {
+  const schemaUnderTest = z.object({ n: z.number() });
+  const cut = '{"n":';
+  const capped = (content: string) =>
+    Response.json({ model: "gemma4:e4b", message: { role: "assistant", content }, done: true, done_reason: "length" });
+  const call = () => chatJson({ schema: schemaUnderTest, system: "sys", user: "usr" });
+
+  it("throws invalid_output that names the cap and keeps the raw text", async () => {
+    fetchMock.mockResolvedValue(capped(cut));
+    const error = await call().catch((e) => e);
+    expect(error).toBeInstanceOf(OllamaError);
+    expect(error).toMatchObject({ kind: "invalid_output", message: "The reply hit the 1536 token cap", raw: cut });
+  });
+
+  it("throws it even when the cut-off text happens to be valid JSON", async () => {
+    fetchMock.mockResolvedValue(capped('{"n":3}'));
+    await expect(call()).rejects.toMatchObject({ kind: "invalid_output", message: "The reply hit the 1536 token cap" });
+  });
+
+  it("throws it on the prompt retry after a 501", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response('{"error":"structured output is unavailable"}', { status: 501 }))
+      .mockResolvedValueOnce(capped(cut));
+    await expect(call()).rejects.toMatchObject({ kind: "invalid_output", message: "The reply hit the 1536 token cap", raw: cut });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("accepts a normal stop", async () => {
+    fetchMock.mockResolvedValue(Response.json({ message: { content: '{"n":3}' }, done: true, done_reason: "stop" }));
+    await expect(call()).resolves.toMatchObject({ value: { n: 3 } });
+  });
+
+  it("is audited as ai.text.failed with the cut-off reply", async () => {
+    fetchMock.mockResolvedValue(capped('{"language":"ceb","english":"The ro'));
+    await expect(readText({ text: "hello" })).rejects.toMatchObject({ kind: "invalid_output" });
+    expect(events()[0]).toMatchObject({
+      type: "ai.text.failed",
+      data: { raw: '{"language":"ceb","english":"The ro', error: { kind: "invalid_output", message: "The reply hit the 1536 token cap" } },
+    });
+  });
+});
+
 describe("chatJson without structured output", () => {
   const schemaUnderTest = z.object({ n: z.number(), note: z.string().nullable() });
   const call = () => chatJson({ schema: schemaUnderTest, system: "sys", user: "usr", media: [Buffer.from("abc")] });
@@ -254,6 +296,8 @@ describe("voice, text and photo when Ollama answers format with a 501", () => {
     fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(JSON.stringify(extract)));
     await expect(readText({ text: "Wala na ang atop" })).resolves.toEqual({ ...extract, transcript: "" });
     expect(bodyOf(1).messages[1].content).toMatch(/^Wala na ang atop\n\n/);
+    expect(bodyOf(1).messages[1].content).not.toContain('"transcript"');
+    expect(bodyOf(1).messages[1].content).toContain('"english"');
   });
 
   it("drafts a photo through the prompt, with the need_more hint and temperature 0", async () => {
@@ -301,6 +345,22 @@ describe("readVoice and readText", () => {
     expect(result).toEqual({ ...extract, transcript: "" });
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).messages[1]).toEqual({ role: "user", content: "Wala na ang atop" });
     expect(events()[0].type).toBe("ai.text");
+  });
+
+  it("leaves transcript out of the schema for a typed note, even if the model writes one", async () => {
+    fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
+    await expect(readText({ text: "Wala na ang atop" })).resolves.toEqual({ ...extract, transcript: "" });
+
+    const { properties, required } = JSON.parse(fetchMock.mock.calls[0][1].body).format;
+    expect(properties).not.toHaveProperty("transcript");
+    expect(required).not.toContain("transcript");
+    expect(properties).toHaveProperty("english");
+  });
+
+  it("keeps transcript in the schema for a voice note", async () => {
+    fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
+    await readVoice({ audio: Buffer.from("x"), mime: "audio/webm" });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).format.properties).toHaveProperty("transcript");
   });
 
   it("logs a schema failure as ai.voice.failed with the raw output and the error", async () => {

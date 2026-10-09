@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { changesReview } from "@/lib/hub/live-refresh";
+import { changesReview } from "@/lib/hub/review-refresh";
 import { useLiveEvents } from "@/lib/live/use-live-events";
 
 // Asks the server for a fresh list when an entry needs review or is confirmed,

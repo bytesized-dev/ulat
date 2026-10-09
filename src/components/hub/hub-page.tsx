@@ -1,6 +1,9 @@
 import { HubShell } from "@/components/ui/hub-shell";
 import { getReviewCount } from "@/lib/hub/review-count";
 import { HubStatusBlock } from "./hub-status-block";
+import { HubStatusProvider } from "./hub-status-provider";
+import { IdleLock } from "./idle-lock";
+import { LowBatteryBanner } from "./low-battery-banner";
 import { hubNav } from "./nav";
 
 type HubPageProps = {
@@ -15,16 +18,20 @@ type HubPageProps = {
 /** Every hub page wraps its content in this. It adds the sidebar, status block and top bar. */
 export function HubPage({ title, active, rail, children }: HubPageProps) {
   return (
-    <HubShell
-      title={title}
-      nav={hubNav(getReviewCount())}
-      activeHref={active}
-      status={<HubStatusBlock />}
-      name="MDRRMO staff"
-      initials="MD"
-      rail={rail}
-    >
-      {children}
-    </HubShell>
+    <HubStatusProvider>
+      <IdleLock />
+      <HubShell
+        title={title}
+        nav={hubNav(getReviewCount())}
+        activeHref={active}
+        status={<HubStatusBlock />}
+        name="MDRRMO staff"
+        initials="MD"
+        rail={rail}
+      >
+        <LowBatteryBanner />
+        {children}
+      </HubShell>
+    </HubStatusProvider>
   );
 }

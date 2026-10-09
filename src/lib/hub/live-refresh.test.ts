@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { changesOverview, changesReview, debounce, newerSummary } from "./live-refresh";
+import { changesMap, changesOverview, debounce, newerSummary } from "./live-refresh";
 
 const id = "6f1c2c1e-6a3b-4f6e-9a55-0d6b2b9d2c11";
 
@@ -23,17 +23,19 @@ describe("which events refresh the overview", () => {
   });
 });
 
-describe("which events refresh the second look list", () => {
-  it("refreshes when an entry needs review or is confirmed", () => {
-    expect(changesReview({ type: "entry.needs_review", entry_id: id })).toBe(true);
-    expect(changesReview({ type: "entry.confirmed", entry_id: id, report_code: null })).toBe(true);
+describe("which events refresh the map", () => {
+  it("refreshes on entry, report and place events that move a pin", () => {
+    expect(changesMap({ type: "report.created", code: "ABCD", urgent: false })).toBe(true);
+    expect(changesMap({ type: "report.updated", code: "ABCD", status: "visited" })).toBe(true);
+    expect(changesMap({ type: "entry.needs_review", entry_id: id })).toBe(true);
+    expect(changesMap({ type: "entry.confirmed", entry_id: id, report_code: null })).toBe(true);
+    expect(changesMap({ type: "place.saved", place_id: id })).toBe(true);
   });
 
-  it("ignores everything else", () => {
-    expect(changesReview(null)).toBe(false);
-    expect(changesReview({ type: "entry.drafted", entry_id: id })).toBe(false);
-    expect(changesReview({ type: "report.created", code: "ABCD", urgent: false })).toBe(false);
-    expect(changesReview({ type: "place.saved", place_id: id })).toBe(false);
+  it("ignores drafts and events the map does not show", () => {
+    expect(changesMap(null)).toBe(false);
+    expect(changesMap({ type: "entry.drafted", entry_id: id })).toBe(false);
+    expect(changesMap({ type: "update.posted", update_id: id })).toBe(false);
   });
 });
 

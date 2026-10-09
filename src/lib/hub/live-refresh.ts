@@ -9,9 +9,13 @@ export function changesOverview(event: HubEvent | null): boolean {
   return event !== null && OVERVIEW_EVENTS.has(event.type);
 }
 
-/** Which live events change the second look list: an entry joins it or leaves it. */
-export function changesReview(event: HubEvent | null): boolean {
-  return event !== null && (event.type === "entry.needs_review" || event.type === "entry.confirmed");
+/**
+ * The hub map moves on the same events as the overview: a house is pinned when
+ * its entry is confirmed, a report when it is created or visited, a place when
+ * it is saved. A draft has no confirmed damage, so it moves nothing.
+ */
+export function changesMap(event: HubEvent | null): boolean {
+  return changesOverview(event);
 }
 
 /** Runs `fn` once, `ms` after the last call, so a burst of events costs one refetch. */

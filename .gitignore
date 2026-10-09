@@ -16,6 +16,10 @@ eval/results.json
 !.env.example
 *.pem
 
+# agent worktrees and scratch output
+.claude/worktrees/
+tmp/
+
 # test output
 coverage/
 playwright-report/

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { map } from "../src/config";
 import { db } from "../src/db/client";
 import {
   duplicates,
@@ -36,10 +37,6 @@ import { hashPin } from "../src/lib/pin";
 // Loads seed/simulation.json, the same data the canvas shows. It wipes every
 // data table and reloads it in one transaction, so running it twice gives the
 // same totals. Settings are upserted, not wiped.
-
-// Placeholder until CJ picks the real town: a box about 4 km across in the
-// Philippines. Positions in the seed are percentages of this box.
-const PLACEHOLDER_BBOX = { west: 123.867, south: 10.2977, east: 123.904, north: 10.3337 };
 
 // Entries in the seed that have no confirmed_at get a time on the drill day.
 // The canvas shows 0238 at 2:51 PM.
@@ -155,7 +152,7 @@ function resolveBBox(seedValue: unknown): BBox {
     // Not JSON, so there is no stored bbox.
   }
   const parsed = BBox.safeParse(stored);
-  return parsed.success ? parsed.data : PLACEHOLDER_BBOX;
+  return parsed.success ? parsed.data : map.placeholderBbox;
 }
 
 const bbox = resolveBBox(seed.settings.map_bbox);

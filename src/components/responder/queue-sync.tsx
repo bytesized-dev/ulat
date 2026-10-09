@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { routes } from "@/lib/contracts";
 import { startQueueSync } from "./use-queue-sync";
 
 /**
@@ -9,7 +11,10 @@ import { startQueueSync } from "./use-queue-sync";
  * The worker stores the Queue shell only, never a page that holds hub data.
  */
 function QueueSync() {
-  useEffect(() => startQueueSync(), []);
+  // Nothing posts from the sign in screen: the phone is signed out there, so every try would be a 401.
+  // Leaving it, after a sign in, starts the sync fresh.
+  const signingIn = usePathname() === routes.responder.signIn;
+  useEffect(() => (signingIn ? undefined : startQueueSync()), [signingIn]);
 
   useEffect(() => {
     // In development the worker would serve stale code, so it is for the built app only.

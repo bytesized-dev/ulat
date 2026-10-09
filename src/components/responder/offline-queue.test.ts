@@ -31,14 +31,14 @@ describe("flushQueue", () => {
     const store = memoryStore();
     await enqueue(meta, [blob()], null, store);
     await enqueue(meta, [blob()], null, store);
-    expect(await flushQueue(store, reply(201))).toEqual({ sent: 2, left: 0, failed: 0, signedOut: false });
+    expect(await flushQueue(store, reply(201))).toMatchObject({ sent: 2, left: 0, failed: 0, signedOut: false, retry: false, retryAfterMs: null });
   });
 
   it("keeps entries when the hub is unreachable", async () => {
     const store = memoryStore();
     await enqueue(meta, [blob()], null, store);
     const down = (async () => { throw new TypeError("network"); }) as unknown as typeof fetch;
-    expect(await flushQueue(store, down)).toEqual({ sent: 0, left: 1, failed: 0, signedOut: false });
+    expect(await flushQueue(store, down)).toMatchObject({ sent: 0, left: 1, failed: 0, signedOut: false, retry: true });
   });
 
   it("keeps entries on a server error, a busy hub or a lost session", async () => {
@@ -49,10 +49,40 @@ describe("flushQueue", () => {
     expect(store.items[0].failure).toBeUndefined();
   });
 
+  it("stops at a 401 without posting the entries behind it", async () => {
+    const store = memoryStore();
+    await enqueue(meta, [blob()], null, store);
+    await enqueue(meta, [blob()], null, store);
+    let posts = 0;
+    const lapsed = (async () => (posts++, new Response("{}", { status: 401 }))) as unknown as typeof fetch;
+    expect(await flushQueue(store, lapsed)).toMatchObject({ sent: 0, left: 2, signedOut: true, retry: false });
+    expect(posts).toBe(1);
+    expect(store.items.every((e) => !e.failure)).toBe(true);
+  });
+
+  it("reads Retry-After on a 429 and a 503, and on nothing else", async () => {
+    const store = memoryStore();
+    await enqueue(meta, [blob()], null, store);
+    const withHeader = (status: number) => (async () => new Response("{}", { status, headers: { "retry-after": "30" } })) as unknown as typeof fetch;
+    expect(await flushQueue(store, withHeader(429))).toMatchObject({ retry: true, retryAfterMs: 30_000 });
+    expect(await flushQueue(store, withHeader(503))).toMatchObject({ retry: true, retryAfterMs: 30_000 });
+    expect(await flushQueue(store, withHeader(500))).toMatchObject({ retry: true, retryAfterMs: null });
+    expect(await flushQueue(store, reply(429))).toMatchObject({ retry: true, retryAfterMs: null });
+  });
+
+  it("gives each post a timeout so a hung one cannot hold the queue", async () => {
+    const store = memoryStore();
+    await enqueue(meta, [blob()], null, store);
+    let signal: AbortSignal | null | undefined;
+    const spy = (async (_url: string, init?: RequestInit) => ((signal = init?.signal), new Response("{}", { status: 201 }))) as unknown as typeof fetch;
+    await flushQueue(store, spy);
+    expect(signal).toBeInstanceOf(AbortSignal);
+  });
+
   it("keeps an entry the hub refuses for good and says why", async () => {
     const store = memoryStore();
     await enqueue(meta, [blob()], null, store);
-    expect(await flushQueue(store, reply(404, '{"error":"report_not_found"}'))).toEqual({ sent: 0, left: 0, failed: 1, signedOut: false });
+    expect(await flushQueue(store, reply(404, '{"error":"report_not_found"}'))).toMatchObject({ sent: 0, left: 0, failed: 1, signedOut: false, retry: false });
     expect(store.items).toHaveLength(1);
     expect(store.items[0].failure).toEqual({ status: 404, message: "That family report was not found." });
     expect(store.items[0].photos).toHaveLength(1);
@@ -75,7 +105,7 @@ describe("flushQueue", () => {
     await enqueue(meta, [blob()], null, store);
     const calls: number[] = [];
     const ok = (async () => (calls.push(1), new Response("{}", { status: 201 }))) as unknown as typeof fetch;
-    expect(await flushQueue(store, ok)).toEqual({ sent: 1, left: 0, failed: 1, signedOut: false });
+    expect(await flushQueue(store, ok)).toMatchObject({ sent: 1, left: 0, failed: 1, signedOut: false });
     expect(calls).toHaveLength(1);
   });
 });

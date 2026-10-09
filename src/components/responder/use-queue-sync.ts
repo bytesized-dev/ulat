@@ -2,8 +2,9 @@
 
 import { useSyncExternalStore } from "react";
 import { browserStore, flushQueue, QUEUE_EVENT, type QueuedEntry } from "./offline-queue";
+import { createBackoff, mayFlush } from "./retry-backoff";
 
-/** How often a phone with waiting entries asks the hub if it is back. */
+/** How often a phone with waiting entries asks the hub if it is back. Posting is spaced out further by the backoff. */
 export const POLL_MS = 5000;
 
 type SyncState = {
@@ -50,19 +51,34 @@ function exclusively<T>(work: () => Promise<T>): Promise<T> {
 }
 
 let running = false;
+const backoff = createBackoff();
 
-/** Reads the queue and, when the hub answers, sends what waits. */
-async function check() {
+/**
+ * Reads the queue and, when the hub answers, sends what waits. The health check
+ * runs every time because it is cheap. The post, which re-uploads photos, waits
+ * out the backoff after a failure and stops for good after a 401. A manual try
+ * from the Queue screen skips both waits once.
+ */
+async function check(manual = false) {
   if (running) return;
   running = true;
   try {
     await refresh();
+    const wasInRange = state.inRange;
     const inRange = await hubAnswers();
+    // The hub answering after it was gone means the wait is over.
+    if (inRange && !wasInRange) backoff.reset();
     update({ inRange });
-    if (inRange && state.items?.some((item) => !item.failure)) {
+    if (manual) backoff.reset();
+    const waiting = state.items?.some((item) => !item.failure) ?? false;
+    if (mayFlush({ inRange, waiting, signedOut: state.signedOut, backoffReady: backoff.ready(), manual })) {
       update({ busy: true });
       const result = await exclusively(() => flushQueue());
-      update({ signedOut: result.signedOut });
+      if (result.signedOut) update({ signedOut: true });
+      else if (!result.retry) update({ signedOut: false });
+      // Entries that went out before the failure count as progress, so the wait starts again from the first step.
+      if (result.sent > 0 || !result.retry) backoff.reset();
+      if (result.retry) backoff.failed(result.retryAfterMs);
       await refresh();
     }
   } finally {
@@ -81,22 +97,33 @@ export function announceQueueChange(): void {
   window.dispatchEvent(new Event(QUEUE_EVENT));
 }
 
-/** Runs from the /r layout. Entries go out from whatever page the responder is on. */
+/**
+ * Runs from the /r layout. Entries go out from whatever page the responder is on,
+ * except the sign in screen. Starting it again, as when the responder leaves sign
+ * in, clears the 401 stop and the backoff.
+ */
 export function startQueueSync(): () => void {
+  update({ signedOut: false });
+  backoff.reset();
   const run = () => void check();
+  const fresh = () => {
+    backoff.reset();
+    run();
+  };
   const first = setTimeout(run, 0);
   // The health check runs while entries wait or the Queue screen is open, never for an idle page.
   const timer = setInterval(() => {
     if (listeners.size > 0 || state.items?.some((item) => !item.failure)) run();
     else void refresh();
   }, POLL_MS);
-  window.addEventListener("online", run);
-  window.addEventListener(QUEUE_EVENT, run);
+  // The network coming back, or a new entry, is a reason to try now rather than at the end of the wait.
+  window.addEventListener("online", fresh);
+  window.addEventListener(QUEUE_EVENT, fresh);
   return () => {
     clearTimeout(first);
     clearInterval(timer);
-    window.removeEventListener("online", run);
-    window.removeEventListener(QUEUE_EVENT, run);
+    window.removeEventListener("online", fresh);
+    window.removeEventListener(QUEUE_EVENT, fresh);
   };
 }
 
@@ -111,6 +138,6 @@ function subscribe(listener: () => void) {
 export function useQueueSync() {
   return {
     ...useSyncExternalStore(subscribe, () => state, () => SERVER_STATE),
-    retry: check,
+    retry: () => check(true),
   };
 }

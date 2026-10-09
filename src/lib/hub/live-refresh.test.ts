@@ -11,11 +11,14 @@ describe("which events refresh the overview", () => {
     expect(changesOverview({ type: "entry.confirmed", entry_id: id, report_code: null })).toBe(true);
   });
 
-  it("ignores drafts, updates, places, check-ins and hub status", () => {
+  it("refreshes when a place is saved, since the map shows places", () => {
+    expect(changesOverview({ type: "place.saved", place_id: id })).toBe(true);
+  });
+
+  it("ignores drafts, updates, check-ins and hub status", () => {
     expect(changesOverview(null)).toBe(false);
     expect(changesOverview({ type: "entry.drafted", entry_id: id })).toBe(false);
     expect(changesOverview({ type: "update.posted", update_id: id })).toBe(false);
-    expect(changesOverview({ type: "place.saved", place_id: id })).toBe(false);
     expect(changesOverview({ type: "safe.checked_in", id })).toBe(false);
   });
 });

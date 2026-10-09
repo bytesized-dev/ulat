@@ -2,7 +2,8 @@ import type { HubEvent } from "../contracts/schemas";
 
 // Which live events change what the hub overview shows. A draft moves nothing:
 // totals count confirmed entries only, and Latest lists reviews and confirmations.
-const OVERVIEW_EVENTS = new Set<HubEvent["type"]>(["report.created", "report.updated", "entry.needs_review", "entry.confirmed"]);
+// A saved place moves a relief, shelter or hazard pin on the map.
+const OVERVIEW_EVENTS = new Set<HubEvent["type"]>(["report.created", "report.updated", "entry.needs_review", "entry.confirmed", "place.saved"]);
 
 export function changesOverview(event: HubEvent | null): boolean {
   return event !== null && OVERVIEW_EVENTS.has(event.type);

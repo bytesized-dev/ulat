@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { HubEvent } from "@/lib/contracts";
+import { HubEvent, ReportCode } from "@/lib/contracts";
 
 // One EventSource per URL per tab, shared by every component that asks for it
 // and closed when the last one unmounts. Read with useSyncExternalStore, like
@@ -102,14 +102,21 @@ function release(channel: Channel) {
   if (channels.size === 0) window.removeEventListener("online", onOnline);
 }
 
+// A code that is not a ReportCode would get a 400, which EventSource cannot tell
+// from a dropped hub, so it would retry forever. Never open a stream for it.
+function streamUrl(code: string | null): string | null {
+  if (code === null) return "/api/events";
+  return ReportCode.safeParse(code).success ? `/api/events?code=${encodeURIComponent(code)}` : null;
+}
+
 export function useLiveEvents(options?: { code?: string | null }): LiveState {
-  const code = options?.code ?? null;
-  const url = code ? `/api/events?code=${encodeURIComponent(code)}` : "/api/events";
+  const url = streamUrl(options?.code ?? null);
 
   // Stable per URL. React resubscribes whenever this changes, and a resubscribe
   // closes and reopens the EventSource.
   const subscribe = useCallback(
     (listener: () => void) => {
+      if (url === null) return () => {};
       const channel = acquire(url);
       channel.listeners.add(listener);
       return () => {
@@ -122,7 +129,7 @@ export function useLiveEvents(options?: { code?: string | null }): LiveState {
 
   return useSyncExternalStore(
     subscribe,
-    () => channels.get(url)?.state ?? OFFLINE,
+    () => (url === null ? OFFLINE : (channels.get(url)?.state ?? OFFLINE)),
     () => OFFLINE,
   );
 }

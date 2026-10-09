@@ -8,7 +8,8 @@
  *   if (s instanceof Response) return s;
  *   // s.role is "staff" here
  *
- * requireResponder() gives { role, responder_id, name, exp }.
+ * requireResponder() gives { role, responder_id, name, exp }, and 401 once the
+ * responder is switched off.
  * requireResponderOrStaff() accepts either cookie, so check s.role after it.
  *
  * The cookie value is base64url(JSON payload) + "." + base64url(HMAC SHA-256).
@@ -137,8 +138,20 @@ function unauthorized() {
   return Response.json({ error: "unauthorized" }, { status: 401 });
 }
 
+/**
+ * The responder session, only while the responder is still active. Sign in
+ * rejects inactive responders, and this ends a session that outlives a switch
+ * off, so it does not wait for the 12 h cookie to run out.
+ */
+async function activeResponderSession() {
+  const session = await currentSession("responder");
+  if (!session) return null;
+  const { isActiveResponder } = await import("./responders");
+  return isActiveResponder(session.responder_id) ? session : null;
+}
+
 export async function requireResponder(): Promise<ResponderSession | Response> {
-  return (await currentSession("responder")) ?? unauthorized();
+  return (await activeResponderSession()) ?? unauthorized();
 }
 
 export async function requireStaff(): Promise<StaffSession | Response> {
@@ -146,5 +159,5 @@ export async function requireStaff(): Promise<StaffSession | Response> {
 }
 
 export async function requireResponderOrStaff(): Promise<ResponderSession | StaffSession | Response> {
-  return (await currentSession("responder")) ?? (await currentSession("staff")) ?? unauthorized();
+  return (await activeResponderSession()) ?? (await currentSession("staff")) ?? unauthorized();
 }

@@ -7,13 +7,14 @@
 Set this up once, in about ten minutes.
 
 - **Team:** ByteSized. Linear gives issues the team's key, written here as `BYT`.
-- **Cycle:** one cycle called "Hackathon", ending at 10:00 AM.
+- **Milestones:** one per phase in `docs/PLAN.md`, from "0 Foundation" to "5 Ship and submit". Filter the board by the current milestone.
+- **Foundation gate:** BYT-59 blocks every tier 1 issue. CJ closes it when main is ready, and that starts parallel work.
 - **Project:** "Ulat", with the canvas link in the project description.
 - **Labels:** `family`, `responder`, `hub`, `platform`, `ai`, `infra`, `demo`.
 - **Priority means tier:** Urgent is tier 1, High is tier 2, Medium is tier 3, Low is anything after the hackathon.
 - **Estimates:** hours, from `docs/ISSUES.md`.
-- **Assignee:** from the owner column in `docs/ISSUES.md`.
-- **Issue body:** paste the issue from `docs/ISSUES.md` as is. It already has the canvas screen, the design file, dependencies and acceptance criteria.
+- **Assignee:** CJ for platform, AI and demo. Artkin for family. James for responder. Sean for hub.
+- **Issue body:** Linear is the source of truth. `docs/ISSUES.md` is the offline fallback and uses the same IDs.
 - **GitHub integration:** connect the repo so a branch name with the issue ID links the PR, and merging moves the issue to Done.
 - **Views:** a board grouped by assignee for checkpoints, and "My issues" for each person.
 
@@ -28,7 +29,7 @@ git worktree add ../ulat-byt-12 -b cj/byt-12-family-home
 cd ../ulat-byt-12 && pnpm install && claude
 ```
 
-- Commits follow Conventional Commits with the issue ID, one plan task per commit, for example `feat(family): voice note recording BYT-12`.
+- Commits follow Conventional Commits with the issue ID, one plan task per commit, for example `feat(family): voice note recording BYT-36`.
 - PRs stay small: one issue, ideally under 400 lines. Rebase on `main` before merging.
 - CJ merges contract, schema and dependency changes. Feature owners merge their own PRs once checks pass.
 
@@ -47,10 +48,10 @@ If you need a new shared component, build it inside your own area first. CJ move
 
 - Every person runs Claude Code in their worktree. `CLAUDE.md` imports `AGENTS.md`, so the rules load every session. Teammates using Codex or Cursor read `AGENTS.md` directly.
 - Use the import, not a symlink. Symlinks need admin rights on Windows.
-- Start each session with the same prompt shape:
+- Start each session with `/issue BYT-<n>`. It fetches the issue from Linear, reads the spec and screens, and plans before editing. Without the skill, use this prompt shape:
 
 ```
-Work on BYT-12 from docs/ISSUES.md.
+Work on BYT-36 from Linear.
 Screen: design/screens/family/voice-note-ready.html and design/png/family/voice-note-ready.png.
 Read DESIGN.md and the SPEC section the issue lists. Plan first, then build. Stay inside src/app/(family) and src/components/family.
 Done means the acceptance criteria pass, pnpm typecheck && pnpm test pass, and the page matches the PNG at 390px.

@@ -8,10 +8,12 @@ Four people, one night, a hard 10:00 AM deadline. The canvas has 54 screens. The
 
 | Person | Area | Owns |
 |---|---|---|
-| CJ | Platform and AI | Repo, database, contracts, UI kit, API, AI pipeline, events, eval, infra, merging |
-| Teammate A | Family app | Every `/` screen, plus the HTTPS risk check in phase 0 |
-| Teammate B | Responder app | Every `/r` screen, plus the eval set in phase 0 |
-| Teammate C | Hub | Every `/hub` screen and the shared map component, plus the offline map in phase 0 |
+| CJ | Platform and AI | Repo, database, contracts, UI kit, events, sessions, hub status, AI pipeline, eval, Ollama risk check, demo and submission, merging |
+| Artkin | Family app | Every `/` screen, the reports API, and the HTTPS risk check in phase 0 |
+| James | Responder app | Every `/r` screen, the entries API, and the eval photos and voice notes in phase 0 |
+| Sean | Hub | Every `/hub` and print screen, the shared map component, summary queries, the updates, places, safe list, sitrep and export APIs, and the offline map in phase 0 |
+
+Linear milestones match the phases below. BYT-59 is the foundation gate: it blocks every tier 1 issue, and closing it starts parallel work.
 
 Everyone uses Claude Code in their own worktree. CJ can run several sessions in parallel for platform issues.
 
@@ -35,39 +37,41 @@ The pitcher sleeps from about 2:00 to 5:00 AM.
 
 CJ, in this order, merging to main as each lands:
 
-1. **BYT-01** Repo from the starter kit, SQLite instead of Neon, Better Auth removed. Push to `bytesized-dev/ulat`, public.
-2. **BYT-02** Tokens from `design/tokens.css` and fonts through `next/font`.
-3. **BYT-04** Drizzle schema from `docs/SPEC.md` section 3, contracts copied from this scaffold, seed loader, `MOCK_AI` fixtures.
-4. **BYT-03** UI kit from `DESIGN.md`: Button, TopBar, AppTopBar, ProgressSteps, Row, IconPlate, Pill, StatusDot, Chip, Segmented, Counter, inputs, Sheet, Timeline, DarkHero, TabBar, HubShell. A `/dev/kit` page shows them all.
-5. **BYT-08** Ollama smoke test on CJ's Mac.
+1. **BYT-1** Repo from the starter kit, SQLite instead of Neon, Better Auth removed. Push to `bytesized-dev/ulat`, public.
+2. **BYT-7** Tokens from `design/tokens.css` and fonts through `next/font`.
+3. **BYT-8** Drizzle schema from `docs/SPEC.md` section 3, contracts copied from this scaffold, seed loader, `MOCK_AI` fixtures.
+4. **BYT-12** UI kit from `DESIGN.md`: Button, TopBar, AppTopBar, ProgressSteps, Row, IconPlate, Pill, StatusDot, Chip, Segmented, Counter, inputs, Sheet, Timeline, DarkHero, TabBar, HubShell. A `/dev/kit` page shows them all.
+5. **BYT-5** Ollama smoke test on CJ's Mac.
 
 At the same time, the others do the risk checks, which need no app code:
 
-- **Teammate A, BYT-05:** router, Caddy, certificate and dnsmasq. Prove that camera, microphone and GPS work over HTTPS on one Android phone and one iPhone with mobile data off.
-- **Teammate B, BYT-06:** collect and double-label the eval photos, record the voice notes.
-- **Teammate C, BYT-07:** extract the town's map tiles, glyphs, sprites and barangay boundaries, and build the MapLibre component in isolation.
+- **Artkin, BYT-2:** router, Caddy, certificate and dnsmasq. Prove that camera, microphone and GPS work over HTTPS on one Android phone and one iPhone with mobile data off.
+- **James, BYT-3:** collect and double-label the eval photos, record the voice notes. First 10 labeled photos to CJ by 6:00 PM for BYT-5.
+- **Sean, BYT-4:** extract the town's map tiles, glyphs, sprites and barangay boundaries, and build the MapLibre component in isolation.
 
-**Gate at 6:30 PM:** main builds, `/dev/kit` renders, `pnpm db:seed` works, and all three risk checks report back. Results change the spec here:
+When your risk check is done, read your first tier 1 screen with `node scripts/screen-outline.mjs` and its PNG, so you start the minute the gate closes.
+
+**Gate at 6:30 PM, BYT-59:** main builds, `/dev/kit` renders, `pnpm db:seed` works, and all four risk checks report back. CJ closes BYT-59 and posts "main is ready, rebase and start". Results change the spec here:
 
 - HTTPS failed: use Caddy's internal certificate on the demo phones and skip family voice on personal phones.
 - Gemma audio failed: switch to whisper.cpp.
 - Photo accuracy below about 7 in 10: try `gemma4:26b` for photos.
 - Bisaya transcription poor: keep typing and the help desk as the fallback.
 
-## Phase 1: tier 1 screens, 6:30 to 9:00 PM
+## Phase 1: tier 1 screens and APIs, 6:30 to 9:00 PM
 
-Each person builds their tier 1 screens from `design/screens` and `design/png` against seed data, with `MOCK_AI=1`. CJ builds the API routes for the loop in parallel.
+Each person builds their tier 1 issues from `design/screens` and `design/png` against seed data, with `MOCK_AI=1`. Ship the GET endpoints first, because other people's screens read them.
 
-| Person | Issues |
+| Person | Issues, in order |
 |---|---|
-| CJ | BYT-40 reports API, BYT-41 entries API, BYT-44 events |
-| A | BYT-10 to BYT-16, the family report flow and status |
-| B | BYT-20 to BYT-24, sign in to entry confirmed |
-| C | BYT-45 summary queries, then BYT-30 to BYT-33, hub shell, overview, map, reports |
+| CJ | BYT-15 live events, BYT-54 sign in and sessions, BYT-55 hub status. Review and merge PRs as they come |
+| Artkin | BYT-13 reports API with `GET /api/reports` first, then BYT-21, BYT-22, BYT-36, BYT-46, BYT-10, BYT-26, BYT-27 |
+| James | BYT-14 entries API, then BYT-23, BYT-38, BYT-47, BYT-50, BYT-52 |
+| Sean | BYT-56 with `GET /api/updates` first, BYT-16 summary queries, then BYT-24, BYT-39, BYT-40, BYT-33 |
 
 ## Phase 2: the real loop, 9:00 to 11:00 PM
 
-- CJ: BYT-42 voice, BYT-43 photos.
+- CJ: BYT-9 voice, BYT-25 photos, BYT-58 e2e smoke test.
 - Everyone swaps fixtures for the real API in their screens and tests on real phones on the hub network.
 
 **Kill rule at 11:00 PM:** if acceptance criteria 1 to 6 don't pass, nobody starts tier 2. Everyone works on the loop until it does.
@@ -76,29 +80,28 @@ Each person builds their tier 1 screens from `design/screens` and `design/png` a
 
 | Person | Issues |
 |---|---|
-| CJ | BYT-46 eval script, BYT-74 simulation mode |
-| A | BYT-50 to BYT-54 |
-| B | BYT-55, BYT-56 |
-| C | BYT-57 to BYT-61 |
+| CJ | BYT-42 eval script, BYT-17 simulation mode, BYT-57 translate |
+| Artkin | BYT-19, BYT-37, BYT-51, BYT-11, BYT-44 |
+| James | BYT-48, BYT-53 |
+| Sean | BYT-30, BYT-28, BYT-31, BYT-20, BYT-29 |
 
 ## Phase 4: tier 3 and eval, 2:30 to 5:30 AM
 
 | Person | Issues |
 |---|---|
-| CJ | Run the real eval and fix what it exposes, BYT-81 demo seed |
-| A | BYT-83 pitch script, then help wherever the loop is weakest |
-| B | BYT-72 setup, checklist, AI check, BYT-73 lock and low battery |
-| C | BYT-70 duplicates, BYT-71 print pages |
+| CJ | Run the real eval and fix what it exposes, BYT-18 demo seed |
+| Sean | BYT-32 duplicates, BYT-43 print pages, BYT-49 setup pages, BYT-41 lock and low battery |
+| Artkin, James | Fix what the e2e test and phone tests expose, then help Sean with tier 3 if he is behind |
 
 Tier 3 is optional. Cut it in this order if time runs out: duplicates, lock, low battery, checklist, print pages.
 
 ## Phase 5 and 6: ship and submit
 
-- BYT-80 README with exact setup steps and complete disclosures. Teammate C drafts it during phase 4.
-- BYT-81 demo seed and a dry run of the 60 second script in `docs/BRIEF.md`.
-- BYT-82 record the video, post it on X or LinkedIn tagging Cognition with #AppBuildersPH.
-- BYT-83 pitch script and Q&A rehearsal.
-- BYT-84 submit on Cerebral Valley by 9:15 AM. The form closes at 10:00 sharp.
+- BYT-6 README with exact setup steps and complete disclosures. Draft during phase 4.
+- BYT-18 demo seed and a dry run of the 60 second script in `docs/BRIEF.md`.
+- BYT-34 record the video, post it on X or LinkedIn tagging Cognition with #AppBuildersPH.
+- BYT-35 pitch script and Q&A rehearsal.
+- BYT-45 submit on Cerebral Valley by 9:15 AM. The form closes at 10:00 sharp.
 
 ## Verification
 

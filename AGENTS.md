@@ -57,17 +57,24 @@ Work only inside your area. Changes to someone else's area go through a PR they 
 
 | Area | Owner | Paths |
 |---|---|---|
-| Platform and AI | CJ | `src/lib/**`, `src/db/**`, `src/app/api/**`, `src/components/ui/**`, `scripts/**`, `infra/**`, `package.json`, `globals.css` |
-| Family app | Teammate A | `src/app/(family)/**`, `src/components/family/**` |
-| Responder app | Teammate B | `src/app/r/**`, `src/components/responder/**` |
-| Hub | Teammate C | `src/app/hub/**`, `src/components/hub/**`, `src/components/map/**`, `src/lib/hub/**` (summary queries) |
+| Platform and AI | CJ | `src/lib/**` except `src/lib/hub`, `src/db/**`, `src/components/ui/**`, `scripts/**`, `infra/**`, `package.json`, `globals.css`. APIs: `src/app/api/ai/**`, `auth/**`, `events/**`, `health/**`, `hub/status/**`, `updates/translate/**` |
+| Family app | Artkin | `src/app/(family)/**`, `src/components/family/**`. APIs: `src/app/api/reports/**` |
+| Responder app | James | `src/app/r/**`, `src/components/responder/**`. APIs: `src/app/api/entries/**`, `src/app/api/files/**` |
+| Hub | Sean | `src/app/hub/**`, `src/components/hub/**`, `src/components/map/**`, `src/lib/hub/**`. APIs: `src/app/api/hub/summary/**`, `updates/**` except translate, `places/**`, `safe/**`, `sitreps/**`, `export/**` |
+
+Each API belongs to the app that writes its data. Route handlers use the schema and contracts from CJ's area and never redefine them.
+
+Known crossings, each named in its Linear issue:
+
+- Sean builds `src/app/api/reports/[code]/assign` in BYT-28 and James builds `src/app/api/reports/[code]/cant-assess` in BYT-53. Artkin reviews both.
+- Artkin writes the HTTPS start script in `infra/` for BYT-2. CJ reviews it.
 
 Only the Platform owner adds dependencies. Ask in the PR or in chat.
 
 ## How work flows
 
 - One Linear issue, one branch, one PR. Use the branch name Linear gives you.
-- Conventional commits with the issue ID, for example `feat(family): home screen BYT-12`.
+- Conventional commits with the issue ID, for example `feat(family): home screen BYT-21`.
 - Small PRs. Rebase on main before merging. Main must always build.
 - **Done means** the acceptance criteria in `docs/ISSUES.md` pass, `pnpm typecheck && pnpm test` pass, the screen matches its PNG at 390px for phones or 1440px for the hub, and you ran it yourself.
 - Evidence before assertions. Put the command output or a screenshot in the PR.

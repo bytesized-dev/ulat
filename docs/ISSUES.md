@@ -2,73 +2,82 @@
 
 **Design canvas:** https://claude.ai/artifact/DazFfmDpKxWhyxodNk9KwH
 
-Paste each issue into Linear as is. Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Linear will give its own IDs. Keep these IDs in the title so cross references still work.
+Linear is the source of truth for owners, scope and order. This file is the original draft, kept as the offline fallback for `/issue`. IDs here match Linear. BYT-54 to BYT-59 exist only in Linear.
+
+Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Milestones are the phases in `docs/PLAN.md`. Nothing in milestone 1 starts until BYT-59, the foundation gate, is closed.
 
 ## Summary
 
-| ID | Title | Owner | Label | Priority | Hours |
-|---|---|---|---|---|---|
-| BYT-01 | Repo from the starter kit with SQLite | CJ | platform | Urgent | 1 |
-| BYT-02 | Design tokens and fonts | CJ | platform | Urgent | 0.5 |
-| BYT-03 | UI kit components | CJ | platform | Urgent | 1.5 |
-| BYT-04 | Database schema, contracts, seed and mock AI | CJ | platform | Urgent | 1 |
-| BYT-05 | Risk check: HTTPS on the local network | Teammate A | infra | Urgent | 1.5 |
-| BYT-06 | Risk check: eval photos and voice notes | Teammate B | ai | Urgent | 1.5 |
-| BYT-07 | Risk check: offline map package and MapView | Teammate C | hub | Urgent | 1.5 |
-| BYT-08 | Risk check: Ollama and Gemma 4 E4B | CJ | ai | Urgent | 0.5 |
-| BYT-10 | Family home | Teammate A | family | Urgent | 1 |
-| BYT-11 | Report start: whose household | Teammate A | family | Urgent | 1 |
-| BYT-12 | Voice note: ready, recording, reading, retry, microphone off | Teammate A | family | Urgent | 2.5 |
-| BYT-13 | Check your report | Teammate A | family | Urgent | 2 |
-| BYT-14 | Set home location | Teammate A | family | Urgent | 1 |
-| BYT-15 | Before you send and report sent | Teammate A | family | Urgent | 1.5 |
-| BYT-16 | Status by code | Teammate A | family | Urgent | 1 |
-| BYT-20 | Responder sign in | Teammate B | responder | Urgent | 1 |
-| BYT-21 | To visit list | Teammate B | responder | Urgent | 1.5 |
-| BYT-22 | Family report detail | Teammate B | responder | Urgent | 1 |
-| BYT-23 | Capture photos and note | Teammate B | responder | Urgent | 2 |
-| BYT-24 | Drafting, check the draft, unclear and confirmed | Teammate B | responder | Urgent | 2.5 |
-| BYT-30 | Hub shell | Teammate C | hub | Urgent | 1 |
-| BYT-31 | Hub overview | Teammate C | hub | Urgent | 2 |
-| BYT-32 | Hub map | Teammate C | hub | Urgent | 1 |
-| BYT-33 | Situation report, SMS and CSV | Teammate C | hub | Urgent | 1.5 |
-| BYT-40 | Reports API | CJ | platform | Urgent | 1.5 |
-| BYT-41 | Entries API and audit trail | CJ | platform | Urgent | 2 |
-| BYT-42 | AI: voice and text to fields | CJ | ai | Urgent | 2 |
-| BYT-43 | AI: photos to damage class | CJ | ai | Urgent | 2 |
-| BYT-44 | Live events | CJ | platform | Urgent | 1 |
-| BYT-45 | Summary queries | Teammate C | hub | Urgent | 1 |
-| BYT-46 | Eval script | CJ | ai | High | 1.5 |
-| BYT-50 | Type instead | Teammate A | family | High | 1 |
-| BYT-51 | Report for a neighbor | Teammate A | family | High | 1 |
-| BYT-52 | Edit sheet and what we heard sheet | Teammate A | family | High | 1 |
-| BYT-53 | Map, updates and safe list | Teammate A | family | High | 2 |
-| BYT-54 | Offline queue and saved on phone | Teammate A | family | High | 2 |
-| BYT-55 | Responder map, done and queue tabs | Teammate B | responder | High | 2 |
-| BYT-56 | House with no report and can't assess | Teammate B | responder | High | 1.5 |
-| BYT-57 | Review, second look | Teammate C | hub | High | 1.5 |
-| BYT-58 | Family reports and assigning | Teammate C | hub | High | 1.5 |
-| BYT-59 | All entries and entry detail | Teammate C | hub | High | 2 |
-| BYT-60 | Updates, translations and map points | Teammate C | hub | High | 2 |
-| BYT-61 | Safe list and help desk | Teammate C | hub | High | 2 |
-| BYT-70 | Possible duplicates | Teammate C | hub | Medium | 1.5 |
-| BYT-71 | Printable situation report and join poster | Teammate C | hub | Medium | 1 |
-| BYT-72 | Kit setup, checklist and AI check pages | Teammate B | hub | Medium | 2 |
-| BYT-73 | Lock screen and low battery | Teammate B | hub | Medium | 1 |
-| BYT-74 | Simulation mode and clear data | CJ | platform | High | 0.5 |
-| BYT-80 | README and disclosures | Teammate C | demo | Urgent | 1 |
-| BYT-81 | Demo seed and dry run | CJ | demo | Urgent | 1 |
-| BYT-82 | Record and post the video | Teammate B | demo | Urgent | 1.5 |
-| BYT-83 | Pitch and Q&A rehearsal | Teammate A | demo | Urgent | 1 |
-| BYT-84 | Submit on Cerebral Valley | CJ | demo | Urgent | 0.5 |
+| ID | Title | Owner | Milestone | Label | Priority | Hours |
+|---|---|---|---|---|---|---|
+| BYT-1 | Repo from the starter kit with SQLite | CJ | 0 Foundation | platform | Urgent | 1 |
+| BYT-2 | Risk check: HTTPS on the local network | Artkin | 0 Foundation | infra | Urgent | 1.5 |
+| BYT-3 | Risk check: eval photos and voice notes | James | 0 Foundation | ai | Urgent | 1.5 |
+| BYT-4 | Risk check: offline map package and MapView | Sean | 0 Foundation | hub | Urgent | 1.5 |
+| BYT-5 | Risk check: Ollama and Gemma 4 E4B | CJ | 0 Foundation | ai | Urgent | 0.5 |
+| BYT-7 | Design tokens and fonts | CJ | 0 Foundation | platform | Urgent | 0.5 |
+| BYT-8 | Database schema, contracts, seed and mock AI | CJ | 0 Foundation | platform | Urgent | 1 |
+| BYT-12 | UI kit components | CJ | 0 Foundation | platform | Urgent | 1.5 |
+| BYT-59 | Foundation gate: start parallel work | CJ | 0 Foundation | platform | Urgent | 0 |
+| BYT-10 | Set home location | Artkin | 1 Tier 1 | family | Urgent | 1 |
+| BYT-13 | Reports API | Artkin | 1 Tier 1 | family | Urgent | 1.5 |
+| BYT-14 | Entries API and audit trail | James | 1 Tier 1 | responder | Urgent | 2.5 |
+| BYT-15 | Live events | CJ | 1 Tier 1 | platform | Urgent | 1 |
+| BYT-16 | Summary queries | Sean | 1 Tier 1 | hub | Urgent | 1 |
+| BYT-21 | Family home | Artkin | 1 Tier 1 | family | Urgent | 1 |
+| BYT-22 | Report start: whose household | Artkin | 1 Tier 1 | family | Urgent | 1 |
+| BYT-23 | Responder sign in | James | 1 Tier 1 | responder | Urgent | 1 |
+| BYT-24 | Hub shell | Sean | 1 Tier 1 | hub | Urgent | 1 |
+| BYT-26 | Before you send and report sent | Artkin | 1 Tier 1 | family | Urgent | 1.5 |
+| BYT-27 | Status by code | Artkin | 1 Tier 1 | family | Urgent | 1 |
+| BYT-33 | Situation report, SMS and CSV | Sean | 1 Tier 1 | hub | Urgent | 1.5 |
+| BYT-36 | Voice note: ready, recording, reading, retry, microphone off | Artkin | 1 Tier 1 | family | Urgent | 2.5 |
+| BYT-38 | To visit list | James | 1 Tier 1 | responder | Urgent | 1.5 |
+| BYT-39 | Hub overview | Sean | 1 Tier 1 | hub | Urgent | 2 |
+| BYT-40 | Hub map | Sean | 1 Tier 1 | hub | Urgent | 1 |
+| BYT-46 | Check your report | Artkin | 1 Tier 1 | family | Urgent | 2 |
+| BYT-47 | Family report detail | James | 1 Tier 1 | responder | Urgent | 1 |
+| BYT-50 | Capture photos and note | James | 1 Tier 1 | responder | Urgent | 2 |
+| BYT-52 | Drafting, check the draft, unclear and confirmed | James | 1 Tier 1 | responder | Urgent | 2.5 |
+| BYT-54 | Sign in and sessions for responders and staff | CJ | 1 Tier 1 | platform | Urgent | 1 |
+| BYT-55 | Hub status and health API | CJ | 1 Tier 1 | platform | Urgent | 1 |
+| BYT-56 | Updates, map places and safe list API | Sean | 1 Tier 1 | hub | Urgent | 1.5 |
+| BYT-9 | AI: voice and text to fields | CJ | 2 Real AI loop | ai | Urgent | 2 |
+| BYT-25 | AI: photos to damage class | CJ | 2 Real AI loop | ai | Urgent | 2 |
+| BYT-58 | End to end smoke test of the demo loop | CJ | 2 Real AI loop | platform | High | 1 |
+| BYT-11 | Map, updates and safe list | Artkin | 3 Tier 2 | family | High | 2 |
+| BYT-17 | Simulation mode and clear data | CJ | 3 Tier 2 | platform | High | 0.5 |
+| BYT-19 | Type instead | Artkin | 3 Tier 2 | family | High | 1 |
+| BYT-20 | Updates, translations and map points | Sean | 3 Tier 2 | hub | High | 2 |
+| BYT-28 | Family reports and assigning | Sean | 3 Tier 2 | hub | High | 1.5 |
+| BYT-29 | Safe list and help desk | Sean | 3 Tier 2 | hub | High | 2 |
+| BYT-30 | Review, second look | Sean | 3 Tier 2 | hub | High | 1.5 |
+| BYT-31 | All entries and entry detail | Sean | 3 Tier 2 | hub | High | 2 |
+| BYT-37 | Report for a neighbor | Artkin | 3 Tier 2 | family | High | 1 |
+| BYT-42 | Eval script | CJ | 3 Tier 2 | ai | High | 1.5 |
+| BYT-44 | Offline queue and saved on phone | Artkin | 3 Tier 2 | family | High | 2 |
+| BYT-48 | Responder map, done and queue tabs | James | 3 Tier 2 | responder | High | 2 |
+| BYT-51 | Edit sheet and what we heard sheet | Artkin | 3 Tier 2 | family | High | 1 |
+| BYT-53 | House with no report and can't assess | James | 3 Tier 2 | responder | High | 1.5 |
+| BYT-57 | AI: translate updates to Bisaya and Tagalog | CJ | 3 Tier 2 | ai | High | 0.5 |
+| BYT-32 | Possible duplicates | Sean | 4 Tier 3 | hub | Medium | 1.5 |
+| BYT-41 | Lock screen and low battery | Sean | 4 Tier 3 | hub | Medium | 1 |
+| BYT-43 | Printable situation report and join poster | Sean | 4 Tier 3 | hub | Medium | 1 |
+| BYT-49 | Kit setup, checklist and AI check pages | Sean | 4 Tier 3 | hub | Medium | 2 |
+| BYT-6 | README and disclosures | CJ | 5 Ship | demo | Urgent | 1 |
+| BYT-18 | Demo seed and dry run | CJ | 5 Ship | demo | Urgent | 1 |
+| BYT-34 | Record and post the video | CJ | 5 Ship | demo | Urgent | 1.5 |
+| BYT-35 | Pitch and Q&A rehearsal | CJ | 5 Ship | demo | Urgent | 1 |
+| BYT-45 | Submit on Cerebral Valley | CJ | 5 Ship | demo | Urgent | 0.5 |
 
-Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
+Hours per person: Artkin 20, CJ 20, James 15.5, Sean 24.
 
 ---
 
-## BYT-01 Repo from the starter kit with SQLite
+## BYT-1 Repo from the starter kit with SQLite
 
 - **Owner:** CJ
+- **Milestone:** 0 Foundation
 - **Label:** platform
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
@@ -84,13 +93,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-02 Design tokens and fonts
+## BYT-7 Design tokens and fonts
 
 - **Owner:** CJ
+- **Milestone:** 0 Foundation
 - **Label:** platform
 - **Priority:** Urgent, tier 1
 - **Estimate:** 0.5 h
-- **Depends on:** BYT-01
+- **Depends on:** BYT-1
 - **Spec:** DESIGN.md
 
 **Acceptance criteria**
@@ -102,13 +112,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-03 UI kit components
+## BYT-12 UI kit components
 
 - **Owner:** CJ
+- **Milestone:** 0 Foundation
 - **Label:** platform
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-02
+- **Depends on:** BYT-7
 - **Spec:** DESIGN.md components
 - **Screens:**
   - Family: check your report: `design/screens/family/check-your-report.html`, `design/png/family/check-your-report.png`, route `/report/check`
@@ -124,13 +135,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-04 Database schema, contracts, seed and mock AI
+## BYT-8 Database schema, contracts, seed and mock AI
 
 - **Owner:** CJ
+- **Milestone:** 0 Foundation
 - **Label:** platform
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-01
+- **Depends on:** BYT-1
 - **Spec:** 3, 10
 
 **Acceptance criteria**
@@ -143,9 +155,10 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-05 Risk check: HTTPS on the local network
+## BYT-2 Risk check: HTTPS on the local network
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 0 Foundation
 - **Label:** infra
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
@@ -161,9 +174,10 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-06 Risk check: eval photos and voice notes
+## BYT-3 Risk check: eval photos and voice notes
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 0 Foundation
 - **Label:** ai
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
@@ -178,9 +192,10 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-07 Risk check: offline map package and MapView
+## BYT-4 Risk check: offline map package and MapView
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 0 Foundation
 - **Label:** hub
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
@@ -198,9 +213,10 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-08 Risk check: Ollama and Gemma 4 E4B
+## BYT-5 Risk check: Ollama and Gemma 4 E4B
 
 - **Owner:** CJ
+- **Milestone:** 0 Foundation
 - **Label:** ai
 - **Priority:** Urgent, tier 1
 - **Estimate:** 0.5 h
@@ -215,13 +231,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-10 Family home
+## BYT-21 Family home
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** family
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-03
+- **Depends on:** BYT-12
 - **Spec:** 2
 - **Screens:**
   - Family: home: `design/screens/family/home.html`, `design/png/family/home.png`, route `/`
@@ -235,13 +252,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-11 Report start: whose household
+## BYT-22 Report start: whose household
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** family
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-03
+- **Depends on:** BYT-12
 - **Spec:** 2
 - **Screens:**
   - Family: whose household: `design/screens/family/whose-household.html`, `design/png/family/whose-household.png`, route `/report`
@@ -255,13 +273,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-12 Voice note: ready, recording, reading, retry, microphone off
+## BYT-36 Voice note: ready, recording, reading, retry, microphone off
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** family
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2.5 h
-- **Depends on:** BYT-11
+- **Depends on:** BYT-22
 - **Spec:** 2, 5
 - **Screens:**
   - Family: voice note, ready: `design/screens/family/voice-note-ready.html`, `design/png/family/voice-note-ready.png`, route `/report/voice`
@@ -281,13 +300,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-13 Check your report
+## BYT-46 Check your report
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** family
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2 h
-- **Depends on:** BYT-12
+- **Depends on:** BYT-36
 - **Spec:** 2, 5
 - **Screens:**
   - Family: check your report: `design/screens/family/check-your-report.html`, `design/png/family/check-your-report.png`, route `/report/check`
@@ -302,13 +322,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-14 Set home location
+## BYT-10 Set home location
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** family
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-07
+- **Depends on:** BYT-4
 - **Spec:** 8
 - **Screens:**
   - Family: set home location: `design/screens/family/set-home-location.html`, `design/png/family/set-home-location.png`, route `/report/location`
@@ -322,13 +343,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-15 Before you send and report sent
+## BYT-26 Before you send and report sent
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** family
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-40
+- **Depends on:** BYT-13
 - **Spec:** 2, 3
 - **Screens:**
   - Family: before you send: `design/screens/family/before-you-send.html`, `design/png/family/before-you-send.png`, route `/report/send`
@@ -343,13 +365,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-16 Status by code
+## BYT-27 Status by code
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** family
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-40
+- **Depends on:** BYT-13
 - **Spec:** 2, 4
 - **Screens:**
   - Family: status, waiting for visit: `design/screens/family/status-waiting-for-visit.html`, `design/png/family/status-waiting-for-visit.png`, route `/status`
@@ -364,13 +387,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-20 Responder sign in
+## BYT-23 Responder sign in
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 1 Tier 1
 - **Label:** responder
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-03
+- **Depends on:** BYT-12
 - **Spec:** 1 roles
 - **Screens:**
   - Responder: unlock: `design/screens/responder/unlock.html`, `design/png/responder/unlock.png`, route `/r/sign-in`
@@ -384,13 +408,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-21 To visit list
+## BYT-38 To visit list
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 1 Tier 1
 - **Label:** responder
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-20
+- **Depends on:** BYT-23
 - **Spec:** 2, 6
 - **Screens:**
   - Responder: to visit: `design/screens/responder/to-visit.html`, `design/png/responder/to-visit.png`, route `/r`
@@ -405,13 +430,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-22 Family report detail
+## BYT-47 Family report detail
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 1 Tier 1
 - **Label:** responder
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-21
+- **Depends on:** BYT-38
 - **Spec:** 2
 - **Screens:**
   - Responder: family report: `design/screens/responder/family-report.html`, `design/png/responder/family-report.png`, route `/r/reports/[code]`
@@ -420,18 +446,19 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 - [ ] Shows counts, needs, voice note with transcript and English
 - [ ] Start assessment creates a draft entry and opens capture
-- [ ] Can't assess opens the sheet from BYT-56, or links to it if not built yet
+- [ ] Can't assess opens the sheet from BYT-53, or links to it if not built yet
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
 
 ---
 
-## BYT-23 Capture photos and note
+## BYT-50 Capture photos and note
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 1 Tier 1
 - **Label:** responder
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2 h
-- **Depends on:** BYT-22
+- **Depends on:** BYT-47
 - **Spec:** 2, 4
 - **Screens:**
   - Responder: photos and note: `design/screens/responder/photos-and-note.html`, `design/png/responder/photos-and-note.png`, route `/r/assess/[entryId]`
@@ -446,13 +473,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-24 Drafting, check the draft, unclear and confirmed
+## BYT-52 Drafting, check the draft, unclear and confirmed
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 1 Tier 1
 - **Label:** responder
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2.5 h
-- **Depends on:** BYT-23
+- **Depends on:** BYT-50
 - **Spec:** 5
 - **Screens:**
   - Responder: hub drafting: `design/screens/responder/hub-drafting.html`, `design/png/responder/hub-drafting.png`, route `/r/assess/[entryId]/drafting`
@@ -470,13 +498,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-30 Hub shell
+## BYT-24 Hub shell
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 1 Tier 1
 - **Label:** hub
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-03
+- **Depends on:** BYT-12
 - **Spec:** 2, 6
 - **Screens:**
   - Hub: overview: `design/screens/hub/overview.html`, `design/png/hub/overview.png`, route `/hub`
@@ -491,13 +520,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-31 Hub overview
+## BYT-39 Hub overview
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 1 Tier 1
 - **Label:** hub
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2 h
-- **Depends on:** BYT-30, BYT-45
+- **Depends on:** BYT-24, BYT-16
 - **Spec:** 6
 - **Screens:**
   - Hub: overview: `design/screens/hub/overview.html`, `design/png/hub/overview.png`, route `/hub`
@@ -511,13 +541,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-32 Hub map
+## BYT-40 Hub map
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 1 Tier 1
 - **Label:** hub
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-07, BYT-30
+- **Depends on:** BYT-4, BYT-24
 - **Spec:** 8
 - **Screens:**
   - Hub: map: `design/screens/hub/map.html`, `design/png/hub/map.png`, route `/hub/map`
@@ -533,11 +564,12 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ## BYT-33 Situation report, SMS and CSV
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 1 Tier 1
 - **Label:** hub
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-45
+- **Depends on:** BYT-16
 - **Spec:** 7
 - **Screens:**
   - Hub: situation report and exports: `design/screens/hub/situation-report-and-exports.html`, `design/png/hub/situation-report-and-exports.png`, route `/hub/reports`
@@ -552,13 +584,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-40 Reports API
+## BYT-13 Reports API
 
-- **Owner:** CJ
+- **Owner:** Artkin
+- **Milestone:** 1 Tier 1
 - **Label:** platform
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-04
+- **Depends on:** BYT-8
 - **Spec:** 3, 4
 
 **Acceptance criteria**
@@ -570,13 +603,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-41 Entries API and audit trail
+## BYT-14 Entries API and audit trail
 
-- **Owner:** CJ
+- **Owner:** James
+- **Milestone:** 1 Tier 1
 - **Label:** platform
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2 h
-- **Depends on:** BYT-04
+- **Depends on:** BYT-8
 - **Spec:** 3, 4, 5
 
 **Acceptance criteria**
@@ -588,13 +622,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-42 AI: voice and text to fields
+## BYT-9 AI: voice and text to fields
 
 - **Owner:** CJ
+- **Milestone:** 2 Real AI loop
 - **Label:** ai
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2 h
-- **Depends on:** BYT-08
+- **Depends on:** BYT-5
 - **Spec:** 5
 
 **Acceptance criteria**
@@ -606,13 +641,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-43 AI: photos to damage class
+## BYT-25 AI: photos to damage class
 
 - **Owner:** CJ
+- **Milestone:** 2 Real AI loop
 - **Label:** ai
 - **Priority:** Urgent, tier 1
 - **Estimate:** 2 h
-- **Depends on:** BYT-08, BYT-41
+- **Depends on:** BYT-5, BYT-14
 - **Spec:** 5
 
 **Acceptance criteria**
@@ -624,13 +660,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-44 Live events
+## BYT-15 Live events
 
 - **Owner:** CJ
+- **Milestone:** 1 Tier 1
 - **Label:** platform
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-04
+- **Depends on:** BYT-8
 - **Spec:** 4
 
 **Acceptance criteria**
@@ -642,13 +679,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-45 Summary queries
+## BYT-16 Summary queries
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 1 Tier 1
 - **Label:** hub
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-04
+- **Depends on:** BYT-8
 - **Spec:** 6
 
 **Acceptance criteria**
@@ -660,13 +698,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-46 Eval script
+## BYT-42 Eval script
 
 - **Owner:** CJ
+- **Milestone:** 3 Tier 2
 - **Label:** ai
 - **Priority:** High, tier 2
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-06, BYT-43
+- **Depends on:** BYT-3, BYT-25
 - **Spec:** 11
 - **Screens:**
   - Hub: AI check: `design/screens/hub/ai-check.html`, `design/png/hub/ai-check.png`, route `/hub/ai-check`
@@ -679,13 +718,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-50 Type instead
+## BYT-19 Type instead
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 3 Tier 2
 - **Label:** family
 - **Priority:** High, tier 2
 - **Estimate:** 1 h
-- **Depends on:** BYT-42
+- **Depends on:** BYT-9
 - **Spec:** 2, 5
 - **Screens:**
   - Family: type instead: `design/screens/family/type-instead.html`, `design/png/family/type-instead.png`, route `/report/type`
@@ -698,13 +738,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-51 Report for a neighbor
+## BYT-37 Report for a neighbor
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 3 Tier 2
 - **Label:** family
 - **Priority:** High, tier 2
 - **Estimate:** 1 h
-- **Depends on:** BYT-11
+- **Depends on:** BYT-22
 - **Spec:** 2
 - **Screens:**
   - Family: report for a neighbor: `design/screens/family/report-for-a-neighbor.html`, `design/png/family/report-for-a-neighbor.png`, route `/report?for=neighbor`
@@ -717,13 +758,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-52 Edit sheet and what we heard sheet
+## BYT-51 Edit sheet and what we heard sheet
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 3 Tier 2
 - **Label:** family
 - **Priority:** High, tier 2
 - **Estimate:** 1 h
-- **Depends on:** BYT-13
+- **Depends on:** BYT-46
 - **Spec:** 2
 - **Screens:**
   - Family: edit a field: `design/screens/family/edit-a-field.html`, `design/png/family/edit-a-field.png`, route `/report/check, sheet`
@@ -737,13 +779,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-53 Map, updates and safe list
+## BYT-11 Map, updates and safe list
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 3 Tier 2
 - **Label:** family
 - **Priority:** High, tier 2
 - **Estimate:** 2 h
-- **Depends on:** BYT-07
+- **Depends on:** BYT-4
 - **Spec:** 2, 4, 8
 - **Screens:**
   - Family: map: `design/screens/family/map.html`, `design/png/family/map.png`, route `/map`
@@ -760,13 +803,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-54 Offline queue and saved on phone
+## BYT-44 Offline queue and saved on phone
 
-- **Owner:** Teammate A
+- **Owner:** Artkin
+- **Milestone:** 3 Tier 2
 - **Label:** family
 - **Priority:** High, tier 2
 - **Estimate:** 2 h
-- **Depends on:** BYT-15
+- **Depends on:** BYT-26
 - **Spec:** 9
 - **Screens:**
   - Family: saved on phone: `design/screens/family/saved-on-phone.html`, `design/png/family/saved-on-phone.png`, route `any, state`
@@ -780,13 +824,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-55 Responder map, done and queue tabs
+## BYT-48 Responder map, done and queue tabs
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 3 Tier 2
 - **Label:** responder
 - **Priority:** High, tier 2
 - **Estimate:** 2 h
-- **Depends on:** BYT-21, BYT-07
+- **Depends on:** BYT-38, BYT-4
 - **Spec:** 2, 9
 - **Screens:**
   - Responder: map: `design/screens/responder/map.html`, `design/png/responder/map.png`, route `/r/map`
@@ -802,13 +847,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-56 House with no report and can't assess
+## BYT-53 House with no report and can't assess
 
-- **Owner:** Teammate B
+- **Owner:** James
+- **Milestone:** 3 Tier 2
 - **Label:** responder
 - **Priority:** High, tier 2
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-23
+- **Depends on:** BYT-50
 - **Spec:** 2, 3
 - **Screens:**
   - Responder: house with no report: `design/screens/responder/house-with-no-report.html`, `design/png/responder/house-with-no-report.png`, route `/r/new`
@@ -822,13 +868,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-57 Review, second look
+## BYT-30 Review, second look
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 3 Tier 2
 - **Label:** hub
 - **Priority:** High, tier 2
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-41
+- **Depends on:** BYT-14
 - **Spec:** 5
 - **Screens:**
   - Hub: review: `design/screens/hub/review.html`, `design/png/hub/review.png`, route `/hub/review`
@@ -842,13 +889,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-58 Family reports and assigning
+## BYT-28 Family reports and assigning
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 3 Tier 2
 - **Label:** hub
 - **Priority:** High, tier 2
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-40
+- **Depends on:** BYT-13
 - **Spec:** 4
 - **Screens:**
   - Hub: family reports and assigning: `design/screens/hub/family-reports-and-assigning.html`, `design/png/hub/family-reports-and-assigning.png`, route `/hub/review/family-reports`
@@ -862,13 +910,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-59 All entries and entry detail
+## BYT-31 All entries and entry detail
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 3 Tier 2
 - **Label:** hub
 - **Priority:** High, tier 2
 - **Estimate:** 2 h
-- **Depends on:** BYT-41
+- **Depends on:** BYT-14
 - **Spec:** 3, 4
 - **Screens:**
   - Hub: all entries: `design/screens/hub/all-entries.html`, `design/png/hub/all-entries.png`, route `/hub/entries`
@@ -882,13 +931,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-60 Updates, translations and map points
+## BYT-20 Updates, translations and map points
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 3 Tier 2
 - **Label:** hub
 - **Priority:** High, tier 2
 - **Estimate:** 2 h
-- **Depends on:** BYT-42
+- **Depends on:** BYT-9
 - **Spec:** 4, 5
 - **Screens:**
   - Hub: post updates: `design/screens/hub/post-updates.html`, `design/png/hub/post-updates.png`, route `/hub/updates`
@@ -903,13 +953,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-61 Safe list and help desk
+## BYT-29 Safe list and help desk
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 3 Tier 2
 - **Label:** hub
 - **Priority:** High, tier 2
 - **Estimate:** 2 h
-- **Depends on:** BYT-40
+- **Depends on:** BYT-13
 - **Spec:** 2, 4
 - **Screens:**
   - Hub: safe list: `design/screens/hub/safe-list.html`, `design/png/hub/safe-list.png`, route `/hub/safe-list`
@@ -923,13 +974,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-70 Possible duplicates
+## BYT-32 Possible duplicates
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 4 Tier 3
 - **Label:** hub
 - **Priority:** Medium, tier 3
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-40, BYT-41
+- **Depends on:** BYT-13, BYT-14
 - **Spec:** 6
 - **Screens:**
   - Hub: possible duplicates: `design/screens/hub/possible-duplicates.html`, `design/png/hub/possible-duplicates.png`, route `/hub/review/duplicates`
@@ -942,9 +994,10 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-71 Printable situation report and join poster
+## BYT-43 Printable situation report and join poster
 
-- **Owner:** Teammate C
+- **Owner:** Sean
+- **Milestone:** 4 Tier 3
 - **Label:** hub
 - **Priority:** Medium, tier 3
 - **Estimate:** 1 h
@@ -962,13 +1015,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-72 Kit setup, checklist and AI check pages
+## BYT-49 Kit setup, checklist and AI check pages
 
-- **Owner:** Teammate B
+- **Owner:** Sean
+- **Milestone:** 4 Tier 3
 - **Label:** hub
 - **Priority:** Medium, tier 3
 - **Estimate:** 2 h
-- **Depends on:** BYT-46
+- **Depends on:** BYT-42
 - **Spec:** 1, 11
 - **Screens:**
   - Hub: kit setup: `design/screens/hub/kit-setup.html`, `design/png/hub/kit-setup.png`, route `/hub/setup`
@@ -984,13 +1038,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-73 Lock screen and low battery
+## BYT-41 Lock screen and low battery
 
-- **Owner:** Teammate B
+- **Owner:** Sean
+- **Milestone:** 4 Tier 3
 - **Label:** hub
 - **Priority:** Medium, tier 3
 - **Estimate:** 1 h
-- **Depends on:** BYT-30
+- **Depends on:** BYT-24
 - **Spec:** 1, 6
 - **Screens:**
   - Hub: locked: `design/screens/hub/locked.html`, `design/png/hub/locked.png`, route `/hub/lock`
@@ -1004,13 +1059,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-74 Simulation mode and clear data
+## BYT-17 Simulation mode and clear data
 
 - **Owner:** CJ
+- **Milestone:** 3 Tier 2
 - **Label:** platform
 - **Priority:** High, tier 2
 - **Estimate:** 0.5 h
-- **Depends on:** BYT-04
+- **Depends on:** BYT-8
 - **Spec:** 10
 
 **Acceptance criteria**
@@ -1021,9 +1077,10 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-80 README and disclosures
+## BYT-6 README and disclosures
 
-- **Owner:** Teammate C
+- **Owner:** CJ
+- **Milestone:** 5 Ship
 - **Label:** demo
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
@@ -1037,13 +1094,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-81 Demo seed and dry run
+## BYT-18 Demo seed and dry run
 
 - **Owner:** CJ
+- **Milestone:** 5 Ship
 - **Label:** demo
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-04
+- **Depends on:** BYT-8
 - **Spec:** BRIEF demo script
 
 **Acceptance criteria**
@@ -1054,13 +1112,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-82 Record and post the video
+## BYT-34 Record and post the video
 
-- **Owner:** Teammate B
+- **Owner:** CJ
+- **Milestone:** 5 Ship
 - **Label:** demo
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1.5 h
-- **Depends on:** BYT-81
+- **Depends on:** BYT-18
 - **Spec:** BRIEF demo script
 
 **Acceptance criteria**
@@ -1071,13 +1130,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-83 Pitch and Q&A rehearsal
+## BYT-35 Pitch and Q&A rehearsal
 
-- **Owner:** Teammate A
+- **Owner:** CJ
+- **Milestone:** 5 Ship
 - **Label:** demo
 - **Priority:** Urgent, tier 1
 - **Estimate:** 1 h
-- **Depends on:** BYT-81
+- **Depends on:** BYT-18
 - **Spec:** BRIEF
 
 **Acceptance criteria**
@@ -1088,13 +1148,14 @@ Hours per person: CJ 16.5, Teammate A 19.5, Teammate B 17.5, Teammate C 20.5.
 
 ---
 
-## BYT-84 Submit on Cerebral Valley
+## BYT-45 Submit on Cerebral Valley
 
 - **Owner:** CJ
+- **Milestone:** 5 Ship
 - **Label:** demo
 - **Priority:** Urgent, tier 1
 - **Estimate:** 0.5 h
-- **Depends on:** BYT-80, BYT-82
+- **Depends on:** BYT-6, BYT-34
 - **Spec:** BRIEF hackathon facts
 
 **Acceptance criteria**

@@ -180,127 +180,141 @@ for (const e of seed.entries) {
   if (e.report_code && e.confirmed_at) confirmedAtByReport.set(e.report_code, iso(e.confirmed_at));
 }
 
-const settingRows = Object.entries({ ...seed.settings, map_bbox: bbox }).flatMap(([key, value]) => {
-  if (key === "team_pin") return [{ key: "team_pin_hash", value: hashPin(String(value)) }];
-  if (key === "staff_pin") return [{ key: "staff_pin_hash", value: hashPin(String(value)) }];
-  return [{ key, value: settingText(value) }];
+async function buildSettingRows() {
+  return Promise.all(
+    Object.entries({ ...seed.settings, map_bbox: bbox }).map(async ([key, value]) => {
+      if (key === "team_pin") return { key: "team_pin_hash", value: await hashPin(String(value)) };
+      if (key === "staff_pin") return { key: "staff_pin_hash", value: await hashPin(String(value)) };
+      return { key, value: settingText(value) };
+    }),
+  );
+}
+
+async function main() {
+  // Hash first. The transaction below is synchronous and must not wait.
+  const settingRows = await buildSettingRows();
+
+  db.transaction((tx) => {
+    // Children first, so foreign keys hold.
+    for (const table of [photos, duplicates, entries, reports, events, updates, places, safe_checkins, sitreps, responders]) {
+      tx.delete(table).run();
+    }
+
+    for (const row of settingRows) {
+      tx.insert(settings).values(row).onConflictDoUpdate({ target: settings.key, set: { value: row.value } }).run();
+    }
+
+    tx.insert(responders)
+      .values(seed.responders.map((r) => ({ id: responderId(r.id), name: r.name, team: r.team, active: true })))
+      .run();
+
+    tx.insert(reports)
+      .values(
+        seed.reports.map((r) => ({
+          id: reportIds.get(r.code)!,
+          code: r.code,
+          source: r.source,
+          household_head: r.household_head,
+          barangay: r.barangay,
+          purok: r.purok,
+          ...toLatLng(r.pos),
+          people: r.people,
+          hurt: r.hurt,
+          missing: r.missing,
+          what_happened: r.what_happened ?? null,
+          needs: r.needs,
+          transcript: r.transcript ?? null,
+          transcript_en: r.english ?? null,
+          language: r.language ?? null,
+          status: r.status,
+          assigned_to: r.assigned_to ? responderId(r.assigned_to) : null,
+          created_at: iso(r.created_at),
+          updated_at: confirmedAtByReport.get(r.code) ?? iso(r.created_at),
+        })),
+      )
+      .run();
+
+    tx.insert(entries)
+      .values(
+        seed.entries.map((e) => {
+          const confirmedAt = e.confirmed_at ? iso(e.confirmed_at) : null;
+          const reviewAt = drillTime(REVIEW_TIMES[e.number] ?? FALLBACK_TIME);
+          return {
+            number: e.number,
+            report_id: e.report_code ? (reportIds.get(e.report_code) ?? null) : null,
+            responder_id: responderId(e.responder_id),
+            barangay: e.barangay,
+            purok: e.purok,
+            household_head: e.household_head,
+            ...toLatLng(e.pos),
+            families: e.families,
+            people: e.people,
+            hurt: e.hurt,
+            missing: e.missing,
+            needs: e.needs,
+            material: e.material,
+            hazards: e.hazards,
+            damage_class: e.damage_class,
+            ai_class: e.ai_class,
+            ai_confidence: e.ai_confidence,
+            ai_reason: e.ai_reason ?? null,
+            status: e.status,
+            review_reason: e.review_reason ?? null,
+            confirmed_by: confirmedAt ? (responderNames.get(e.responder_id) ?? null) : null,
+            confirmed_at: confirmedAt,
+            created_at: confirmedAt ?? reviewAt,
+          };
+        }),
+      )
+      .run();
+
+    tx.insert(places)
+      .values(
+        seed.places.map((p) => ({
+          type: p.type,
+          name: p.name,
+          details: p.details,
+          when_text: p.when_text,
+          ...toLatLng(p.pos),
+          visible: true,
+          created_at: drillTime("12:00"),
+        })),
+      )
+      .run();
+
+    tx.insert(updates)
+      .values(
+        seed.updates.map((u) => ({
+          type: u.type,
+          headline: u.headline,
+          message: u.message,
+          seen_count: u.seen_count,
+          posted_at: iso(u.posted_at),
+        })),
+      )
+      .run();
+
+    tx.insert(safe_checkins)
+      .values(
+        seed.safe_checkins.map((c) => ({
+          name: c.name,
+          barangay: c.barangay,
+          staying_at: c.staying_at,
+          source: c.source,
+          at: iso(c.at),
+        })),
+      )
+      .run();
+  });
+
+  console.log(
+    `Seeded ${settingRows.length} settings, ${seed.responders.length} responders, ${seed.reports.length} reports, ` +
+      `${seed.entries.length} entries, ${seed.places.length} places, ${seed.updates.length} updates, ` +
+      `${seed.safe_checkins.length} check-ins.`,
+  );
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
 });
-
-db.transaction((tx) => {
-  // Children first, so foreign keys hold.
-  for (const table of [photos, duplicates, entries, reports, events, updates, places, safe_checkins, sitreps, responders]) {
-    tx.delete(table).run();
-  }
-
-  for (const row of settingRows) {
-    tx.insert(settings).values(row).onConflictDoUpdate({ target: settings.key, set: { value: row.value } }).run();
-  }
-
-  tx.insert(responders)
-    .values(seed.responders.map((r) => ({ id: responderId(r.id), name: r.name, team: r.team, active: true })))
-    .run();
-
-  tx.insert(reports)
-    .values(
-      seed.reports.map((r) => ({
-        id: reportIds.get(r.code)!,
-        code: r.code,
-        source: r.source,
-        household_head: r.household_head,
-        barangay: r.barangay,
-        purok: r.purok,
-        ...toLatLng(r.pos),
-        people: r.people,
-        hurt: r.hurt,
-        missing: r.missing,
-        what_happened: r.what_happened ?? null,
-        needs: r.needs,
-        transcript: r.transcript ?? null,
-        transcript_en: r.english ?? null,
-        language: r.language ?? null,
-        status: r.status,
-        assigned_to: r.assigned_to ? responderId(r.assigned_to) : null,
-        created_at: iso(r.created_at),
-        updated_at: confirmedAtByReport.get(r.code) ?? iso(r.created_at),
-      })),
-    )
-    .run();
-
-  tx.insert(entries)
-    .values(
-      seed.entries.map((e) => {
-        const confirmedAt = e.confirmed_at ? iso(e.confirmed_at) : null;
-        const reviewAt = drillTime(REVIEW_TIMES[e.number] ?? FALLBACK_TIME);
-        return {
-          number: e.number,
-          report_id: e.report_code ? (reportIds.get(e.report_code) ?? null) : null,
-          responder_id: responderId(e.responder_id),
-          barangay: e.barangay,
-          purok: e.purok,
-          household_head: e.household_head,
-          ...toLatLng(e.pos),
-          families: e.families,
-          people: e.people,
-          hurt: e.hurt,
-          missing: e.missing,
-          needs: e.needs,
-          material: e.material,
-          hazards: e.hazards,
-          damage_class: e.damage_class,
-          ai_class: e.ai_class,
-          ai_confidence: e.ai_confidence,
-          ai_reason: e.ai_reason ?? null,
-          status: e.status,
-          review_reason: e.review_reason ?? null,
-          confirmed_by: confirmedAt ? (responderNames.get(e.responder_id) ?? null) : null,
-          confirmed_at: confirmedAt,
-          created_at: confirmedAt ?? reviewAt,
-        };
-      }),
-    )
-    .run();
-
-  tx.insert(places)
-    .values(
-      seed.places.map((p) => ({
-        type: p.type,
-        name: p.name,
-        details: p.details,
-        when_text: p.when_text,
-        ...toLatLng(p.pos),
-        visible: true,
-        created_at: drillTime("12:00"),
-      })),
-    )
-    .run();
-
-  tx.insert(updates)
-    .values(
-      seed.updates.map((u) => ({
-        type: u.type,
-        headline: u.headline,
-        message: u.message,
-        seen_count: u.seen_count,
-        posted_at: iso(u.posted_at),
-      })),
-    )
-    .run();
-
-  tx.insert(safe_checkins)
-    .values(
-      seed.safe_checkins.map((c) => ({
-        name: c.name,
-        barangay: c.barangay,
-        staying_at: c.staying_at,
-        source: c.source,
-        at: iso(c.at),
-      })),
-    )
-    .run();
-});
-
-console.log(
-  `Seeded ${settingRows.length} settings, ${seed.responders.length} responders, ${seed.reports.length} reports, ` +
-    `${seed.entries.length} entries, ${seed.places.length} places, ${seed.updates.length} updates, ` +
-    `${seed.safe_checkins.length} check-ins.`,
-);

@@ -31,8 +31,8 @@ describe("shadingFillColor", () => {
     ]);
   });
 
-  it("is a plain value when nothing is shaded, since match needs at least one pair", () => {
-    expect(shadingFillColor({}, "name", colors, "none")).toEqual(["literal", "none"]);
+  it("is a plain color when nothing is shaded, since match needs at least one pair", () => {
+    expect(shadingFillColor({}, "name", colors, "none")).toBe("none");
   });
 });
 

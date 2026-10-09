@@ -4,9 +4,9 @@ import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "reac
 import { barangayNameProperty } from "@/lib/hub/map-assets";
 import { type Bbox, type Percent, fitBbox, inside, toPercent, zoomBbox } from "@/lib/hub/map-projection";
 import { cn } from "@/lib/utils";
-import { PinMark } from "./pin-mark";
+import { PinTarget } from "./pin-mark";
 import { barangayName } from "./shading";
-import type { BarangayFeature, MapEngineHandle, MapEngineProps, MapPin, PinKind } from "./types";
+import type { BarangayFeature, MapEngineHandle, MapEngineProps, PinKind } from "./types";
 
 /*
   The map without tiles: barangay outlines, shading, names and pins drawn in
@@ -138,44 +138,16 @@ export function SchematicMap({
         const at = toPercent(pin, view);
         if (!inside(at)) return null;
         return (
-          <PinButton key={pin.id} pin={pin} at={at} selected={pin.id === selectedId} onSelect={onSelect} />
+          <PinTarget
+            key={pin.id}
+            ref={placeAt(at)}
+            pin={pin}
+            selected={pin.id === selectedId}
+            onSelect={onSelect}
+            className="absolute -translate-x-1/2 -translate-y-1/2"
+          />
         );
       })}
     </div>
-  );
-}
-
-function PinButton({
-  pin,
-  at,
-  selected,
-  onSelect,
-}: {
-  pin: MapPin;
-  at: Percent;
-  selected: boolean;
-  onSelect?: (pin: MapPin) => void;
-}) {
-  const mark = <PinMark kind={pin.kind} at={selected ? "selected" : "map"} />;
-  const position = "absolute -translate-x-1/2 -translate-y-1/2";
-  if (!onSelect) {
-    return (
-      <span ref={placeAt(at)} title={pin.label} className={cn(position, "pointer-events-none")}>
-        {mark}
-      </span>
-    );
-  }
-  return (
-    <button
-      type="button"
-      ref={placeAt(at)}
-      title={pin.label}
-      aria-label={pin.label}
-      aria-pressed={selected}
-      onClick={() => onSelect(pin)}
-      className={cn(position, "flex size-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-primary")}
-    >
-      {mark}
-    </button>
   );
 }

@@ -1,6 +1,7 @@
 import { Triangle } from "lucide-react";
+import type { Ref } from "react";
 import { cn } from "@/lib/utils";
-import type { PinKind } from "./types";
+import type { MapPin, PinKind } from "./types";
 
 /*
   The pin shapes from DESIGN.md: totally is a danger dot, partially a warning
@@ -35,5 +36,48 @@ export function PinMark({ kind, at = "map" }: { kind: PinKind | "shade"; at?: Pi
       aria-hidden
       className={cn("block", shape[kind], size[at], at === "selected" && kind !== "you" && "ring-4 ring-primary/30")}
     />
+  );
+}
+
+/**
+ * A pin on the map: a 44px button when pins can be selected, else a plain mark.
+ * Each engine places it, so position comes in through ref and className.
+ */
+export function PinTarget({
+  ref,
+  pin,
+  selected,
+  onSelect,
+  className,
+}: {
+  ref?: Ref<HTMLElement>;
+  pin: MapPin;
+  selected: boolean;
+  onSelect?: (pin: MapPin) => void;
+  className?: string;
+}) {
+  const mark = <PinMark kind={pin.kind} at={selected ? "selected" : "map"} />;
+  if (!onSelect) {
+    return (
+      <span ref={ref} title={pin.label} className={cn(className, "pointer-events-none")}>
+        {mark}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      ref={ref as Ref<HTMLButtonElement>}
+      title={pin.label}
+      aria-label={pin.label}
+      aria-pressed={selected}
+      onClick={() => onSelect(pin)}
+      className={cn(
+        className,
+        "flex size-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-primary",
+      )}
+    >
+      {mark}
+    </button>
   );
 }

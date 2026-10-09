@@ -1,13 +1,13 @@
 // Downloads the Protomaps basemap glyphs and light sprites into public/map.
 // Without the glyphs, map labels silently vanish offline. Only the fonts the
-// light style uses for Latin script are fetched, about 13 MB on disk.
+// light style asks for are fetched, about 14 MB on disk.
 //
 //   node scripts/map/basemap-assets.mjs
 
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const base = "https://raw.githubusercontent.com/protomaps/basemaps-assets/main";
-const fonts = ["Noto Sans Regular", "Noto Sans Medium", "Noto Sans Italic"];
+const fonts = ["Noto Sans Regular", "Noto Sans Medium", "Noto Sans Italic", "Noto Sans Devanagari Regular v1"];
 const sprites = ["light.json", "light.png", "light@2x.json", "light@2x.png"];
 
 const jobs = sprites.map((file) => [`${base}/sprites/v4/${file}`, `public/map/sprites/v4/${file}`]);

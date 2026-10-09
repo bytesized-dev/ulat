@@ -26,9 +26,9 @@ export function shadingFillColor(
   nameProperty: string,
   colors: Readonly<Record<ShadeLevel, string>>,
   none: string,
-): unknown[] {
+): string | unknown[] {
   const pairs = Object.entries(shading).flatMap(([name, level]) => [name, colors[level]]);
-  if (pairs.length === 0) return ["literal", none];
+  if (pairs.length === 0) return none;
   return ["match", ["get", nameProperty], ...pairs, none];
 }
 

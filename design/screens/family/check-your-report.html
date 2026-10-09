@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family: check your report</title>
+<!-- Reference only. Canvas: https://claude.ai/artifact/DazFfmDpKxWhyxodNk9KwH . Route /report/check, issue BYT-13, tier 1. The app loads fonts with next/font, never this link. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+a{color:#0052FF;text-decoration:none}a:hover{color:#003ECC}
+.i{flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:500;font-variant-numeric:tabular-nums}
+.m{color:#5B616E}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:100px;background:#EEF0F3;color:#0A0B0D;font-size:12px;font-weight:600;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;display:inline-block}
+.d-red{background:#CF202F}.d-amb{background:#F4B000}.d-grn{background:#05B169}.d-gry{background:#A8ACB3}.d-blu{background:#0052FF}.d-ink{background:#0A0B0D}
+.t-red{color:#CF202F}.t-grn{color:#05B169}
+.ic{width:40px;height:40px;border-radius:50%;background:#EEF0F3;color:#0A0B0D;display:flex;align-items:center;justify-content:center;flex:none}
+.wm{font-weight:700;font-size:20px;color:#0052FF;letter-spacing:-.4px}
+.tl{display:flex;gap:14px}
+.trail{display:flex;flex-direction:column;align-items:center;width:20px;flex:none}
+.mk{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.mk-d{background:#0A0B0D;color:#fff}.mk-c{border:6px solid #0052FF;background:#fff}.mk-f{border:1.5px solid #C8CCD2;background:#fff}
+.tln{flex:1;width:1.5px;background:#DEE1E6;min-height:12px;margin:4px 0}.tln-d{background:#0A0B0D}
+.tx{padding-bottom:20px;min-width:0;display:flex;justify-content:space-between;gap:12px;flex:1}.tx b{font-size:15px;font-weight:600}.tx.fut b{color:#A8ACB3;font-weight:500}.tx span{font-size:14px;color:#5B616E;white-space:nowrap}
+.ph{width:390px;background:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;color:#0A0B0D;font-size:16px;line-height:1.5;display:flex;flex-direction:column;overflow:hidden}
+.top{display:grid;grid-template-columns:64px minmax(0,1fr) 64px;align-items:center;height:56px;padding:0 8px;flex:none;background:#fff}
+.top .t{text-align:center;font-size:16px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .r{justify-self:end;padding-right:8px;font-size:13px;color:#5B616E}
+.ib{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0A0B0D;background:none;border:0;cursor:pointer}
+.ib:hover{background:#EEF0F3;color:#0A0B0D}
+.apptop{display:flex;align-items:center;gap:12px;height:64px;padding:0 20px;flex:none;background:#fff}
+.search{display:flex;align-items:center;gap:8px;height:44px;border-radius:100px;background:#EEF0F3;padding:0 16px;color:#5B616E;flex:1;font-size:15px}
+.av{width:40px;height:40px;border-radius:50%;background:#EEF0F3;color:#0A0B0D;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+.prog{padding:0 20px 6px;flex:none}
+.track{height:4px;border-radius:100px;background:#EEF0F3;overflow:hidden}
+.track span{display:block;height:4px;border-radius:100px;background:#0052FF}
+.lbls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:8px;font-size:12px;font-weight:500;color:#A8ACB3;white-space:nowrap}
+.lbls .dn{color:#5B616E}.lbls .cur{color:#0A0B0D;font-weight:600}
+.body{flex:1;display:flex;flex-direction:column;gap:28px;padding:20px 20px 28px}
+.h1{font-size:30px;line-height:1.13;font-weight:400;letter-spacing:-.6px;margin:0}
+.sub{margin:8px 0 0;color:#5B616E;font-size:15px}
+.h2{font-size:18px;font-weight:600;margin:0 0 4px}
+.lst > * + *{border-top:1px solid #EEF0F3}
+.row{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 0;color:#0A0B0D;background:none;border:0;width:100%;text-align:left;font:inherit;cursor:pointer}
+.row:hover{color:#0A0B0D}
+.k{flex:1;min-width:0;display:flex;flex-direction:column}
+.lab{font-size:14px;color:#5B616E}
+.val{font-size:16px;font-weight:500}
+.chev{color:#A8ACB3}
+.foot{padding:12px 20px 28px;display:flex;flex-direction:column;gap:10px;flex:none;background:#fff}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border-radius:100px;font:inherit;font-weight:600;font-size:16px;border:0;cursor:pointer;width:100%;padding:0 20px;white-space:nowrap}
+.bp,.bp:hover{background:#0052FF;color:#fff}
+.bs,.bs:hover{background:#EEF0F3;color:#0A0B0D}
+.bt,.bt:hover{background:none;color:#0052FF;height:44px;width:auto;padding:0 8px}
+.bo,.bo:hover{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6)}
+.in{width:100%;height:52px;border:1px solid #DEE1E6;border-radius:12px;padding:0 16px;font:inherit;font-size:16px;color:#0A0B0D;background:#fff;appearance:none;-webkit-appearance:none}
+.in.f{border:2px solid #0052FF;padding:0 15px}
+textarea.in{height:auto;padding:14px 16px;resize:none;line-height:1.5}
+.fl{display:block;font-size:14px;font-weight:600;margin:0 0 8px}
+.fields{display:flex;flex-direction:column;gap:18px}
+.sel{position:relative}.sel .i{position:absolute;right:16px;top:16px;pointer-events:none;color:#5B616E}
+.opt{display:flex;align-items:center;gap:14px;padding:14px 0;cursor:pointer}
+.opt input{width:22px;height:22px;margin:0;accent-color:#0052FF;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 18px;border-radius:100px;border:0;background:#EEF0F3;font:inherit;font-size:15px;font-weight:500;color:#0A0B0D;cursor:pointer;white-space:nowrap}
+.chip.on{background:#0A0B0D;color:#fff}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px}
+.stp{display:flex;align-items:center;gap:4px}
+.sb{width:44px;height:44px;border-radius:50%;border:0;background:#EEF0F3;color:#0A0B0D;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.n{width:40px;text-align:center;font-size:18px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fff;border-top:1px solid #EEF0F3;padding:6px 4px 22px;flex:none}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:48px;font-size:11px;font-weight:600;color:#7C828A}
+.tab:hover{color:#0A0B0D}.tab.on{color:#0052FF}
+.spin{width:22px;height:22px;border-radius:50%;border:2.5px solid #EEF0F3;border-top-color:#0052FF;flex:none}
+.soft{background:#F7F7F7;border-radius:16px;padding:16px}
+.card{border:1px solid #DEE1E6;border-radius:24px}
+.tile{position:relative;aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:#5B616E;color:#fff;display:flex;align-items:center;justify-content:center}
+.tile b{position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:600;background:rgba(10,11,13,.7);padding:2px 8px;border-radius:100px}
+.addt{aspect-ratio:3/4;border-radius:16px;border:1.5px dashed #C8CCD2;background:#fff;color:#0A0B0D;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px}
+.mic{width:104px;height:104px;border-radius:50%;background:#0052FF;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 14px #EBF0FF}
+.mic:hover{color:#fff;background:#003ECC}
+.play{width:40px;height:40px;border-radius:50%;background:#0A0B0D;color:#fff;display:flex;align-items:center;justify-content:center;flex:none;border:0;cursor:pointer}
+.zb{width:44px;height:44px;border-radius:50%;background:#fff;border:0;color:#0A0B0D;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.dim{position:absolute;inset:0;background:rgba(10,11,13,.5)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 28px;display:flex;flex-direction:column;gap:16px}
+.handle{width:36px;height:4px;border-radius:100px;background:#DEE1E6;margin:0 auto 4px}
+.okc{width:22px;height:22px;border-radius:50%;background:#0A0B0D;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.success{width:72px;height:72px;border-radius:50%;background:#0052FF;color:#fff;display:flex;align-items:center;justify-content:center}
+
+body{background:#E6E8EB}
+</style>
+</head>
+<body>
+<div class="ph" style="height:1266px"><header class="top"><a class="ib" href="/family/Voice-Idle.dc.html" aria-label="Back"><svg class="i" style="width:22px;height:22px;" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"></path></svg></a><p class="t">New report</p><span></span></header><div class="prog"><div class="track" aria-hidden="true"><span style="width:75%"></span></div><div class="lbls"><span class="vh">Step 3 of 4.</span><span class="dn">Household</span><span class="dn">Details</span><span class="cur">Check</span><span class="">Send</span></div></div><main class="body"><h1 class="h1">Check your report</h1><section><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px"><h2 class="h2">Household</h2></div><div class="lst"><a class="row" href="/family/Review-Edit.dc.html"><span class="k"><span class="lab">Head of household</span><span class="val">Rosa Dela Cruz</span></span><svg class="i chev" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></a><a class="row" href="/family/Review-Edit.dc.html"><span class="k"><span class="lab">Barangay</span><span class="val">San Isidro, Purok 3</span></span><svg class="i chev" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></a><a class="row" href="/family/Pin.dc.html"><span class="k"><span class="lab">Location</span><span class="val">Near Purok 3</span></span><svg class="i chev" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></a></div></section><section><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px"><h2 class="h2">People</h2></div><div class="lst"><div class="srow"><span class="val">In the house</span><div class="stp"><button class="sb" aria-label="Fewer, In the house"><svg class="i" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M6 12h12"></path></svg></button><span class="n mono">5</span><button class="sb" aria-label="More, In the house"><svg class="i" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"></path></svg></button></div></div><div><div class="srow"><span class="val">Hurt</span><div class="stp"><button class="sb" aria-label="Fewer, Hurt"><svg class="i" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M6 12h12"></path></svg></button><span class="n mono">1</span><button class="sb" aria-label="More, Hurt"><svg class="i" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"></path></svg></button></div></div><p style="margin:-4px 0 10px;display:flex;align-items:center;gap:8px;font-size:13px;color:#5B616E"><span class="dot d-amb"></span>Please check</p></div><div class="srow"><span class="val">Missing</span><div class="stp"><button class="sb" aria-label="Fewer, Missing"><svg class="i" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M6 12h12"></path></svg></button><span class="n mono">0</span><button class="sb" aria-label="More, Missing"><svg class="i" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"></path></svg></button></div></div></div></section><section><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px"><h2 class="h2">Damage</h2></div><div class="lst"><a class="row" href="/family/Review-Edit.dc.html"><span class="k"><span class="lab">What happened</span><span class="val">The roof is gone.</span></span><svg class="i chev" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></a><div class="row" style="cursor:default"><span class="k"><span class="lab">Photo</span><span class="val"><span style="color:#0052FF">Add a photo</span></span></span><svg class="i" style="width:20px;height:20px;color:#0052FF" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></div></div></section><section><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px"><h2 class="h2">Needs</h2></div><div class="chips"><button class="chip on" aria-pressed="true">Water</button><button class="chip" aria-pressed="false">Food</button><button class="chip on" aria-pressed="true">Tarp</button><button class="chip" aria-pressed="false">Medicine</button><button class="chip" aria-pressed="false">Hygiene kit</button><button class="chip" aria-pressed="false">Baby needs</button></div></section><a class="row" href="/family/Review-Transcript.dc.html"><span class="play"><svg class="i" style="width:14px;height:14px;fill:#fff;stroke:none" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></span><span class="k"><span class="val">Your voice note</span></span><span class="mono lab">0:21</span><svg class="i chev" style="width:18px;height:18px;" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></a></main><footer class="foot"><a class="btn bp" href="/family/Consent.dc.html">Continue</a></footer></div>
+</body>
+</html>

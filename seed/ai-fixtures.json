@@ -1,0 +1,58 @@
+{
+ "voice": {
+  "language": "ceb",
+  "transcript": "Lima mi ka tawo sa balay. Naay bata nga nasamdan sa tiil. Nawala among atop. Kinahanglan mi og tubig ug trapal.",
+  "english": "We are five in the house. A child is hurt on the foot. Our roof is gone. We need water and tarp.",
+  "household_head": "Rosa Dela Cruz",
+  "people": 5,
+  "hurt": 1,
+  "missing": 0,
+  "what_happened": "The roof is gone.",
+  "needs": [
+   "water",
+   "tarp"
+  ],
+  "hazards": [],
+  "uncertain_fields": [
+   "hurt"
+  ]
+ },
+ "text": {
+  "language": "en",
+  "transcript": "",
+  "english": "Five of us live here. My son hurt his foot. The roof is gone. We need water and a tarp.",
+  "household_head": null,
+  "people": 5,
+  "hurt": 1,
+  "missing": 0,
+  "what_happened": "The roof is gone.",
+  "needs": [
+   "water",
+   "tarp"
+  ],
+  "hazards": [],
+  "uncertain_fields": []
+ },
+ "photo": {
+  "damage_class": "total",
+  "confidence": "high",
+  "material": "light",
+  "hazards": [
+   "Fallen power line"
+  ],
+  "reason": "Most of the roof is gone and two back walls collapsed.",
+  "need_more": null
+ },
+ "photo_unclear": {
+  "damage_class": "unclear",
+  "confidence": "low",
+  "material": "unknown",
+  "hazards": [],
+  "reason": "Only the front wall is visible.",
+  "need_more": "Roof from the side"
+ },
+ "translation": {
+  "ceb": "Tubig sa plaza, 3 hangtod 5 sa hapon. Pagdala og sudlanan. Usa matag pamilya.",
+  "tl": "Tubig sa plaza, 3 hanggang 5 ng hapon. Magdala ng lalagyan. Isa bawat pamilya."
+ }
+}

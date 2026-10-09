@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub: post updates</title>
+<!-- Reference only. Canvas: https://claude.ai/artifact/DazFfmDpKxWhyxodNk9KwH . Route /hub/updates, issue BYT-60, tier 2. The app loads fonts with next/font, never this link. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+a{color:#0052FF;text-decoration:none}a:hover{color:#003ECC}
+.i{flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:500;font-variant-numeric:tabular-nums}
+.m{color:#5B616E}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:100px;background:#EEF0F3;color:#0A0B0D;font-size:12px;font-weight:600;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;display:inline-block}
+.d-red{background:#CF202F}.d-amb{background:#F4B000}.d-grn{background:#05B169}.d-gry{background:#A8ACB3}.d-blu{background:#0052FF}.d-ink{background:#0A0B0D}
+.t-red{color:#CF202F}.t-grn{color:#05B169}
+.ic{width:40px;height:40px;border-radius:50%;background:#EEF0F3;color:#0A0B0D;display:flex;align-items:center;justify-content:center;flex:none}
+.wm{font-weight:700;font-size:20px;color:#0052FF;letter-spacing:-.4px}
+.tl{display:flex;gap:14px}
+.trail{display:flex;flex-direction:column;align-items:center;width:20px;flex:none}
+.mk{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.mk-d{background:#0A0B0D;color:#fff}.mk-c{border:6px solid #0052FF;background:#fff}.mk-f{border:1.5px solid #C8CCD2;background:#fff}
+.tln{flex:1;width:1.5px;background:#DEE1E6;min-height:12px;margin:4px 0}.tln-d{background:#0A0B0D}
+.tx{padding-bottom:20px;min-width:0;display:flex;justify-content:space-between;gap:12px;flex:1}.tx b{font-size:15px;font-weight:600}.tx.fut b{color:#A8ACB3;font-weight:500}.tx span{font-size:14px;color:#5B616E;white-space:nowrap}
+.app{display:flex;flex-wrap:wrap;width:100%;background:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;color:#0A0B0D;font-size:14px;line-height:1.5}
+.side{flex:1 1 240px;max-width:100%;border-right:1px solid #DEE1E6;padding:20px 12px;display:flex;flex-direction:column;gap:2px}
+.content{flex:999 1 640px;min-width:0;display:flex;flex-direction:column}
+.nav{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:100px;color:#0A0B0D;font-weight:500;font-size:15px}
+.nav:hover{background:#F7F7F7;color:#0A0B0D}
+.nav.on{background:#EEF0F3;color:#0052FF}
+.cnt{margin-left:auto;font-size:12px;font-weight:600;color:#fff;background:#0052FF;border-radius:100px;padding:0 8px;line-height:20px}
+.ngrp{font-size:12px;font-weight:600;color:#7C828A;padding:20px 14px 6px}
+.stat{margin-top:28px;padding:14px 16px;border-radius:16px;background:#F7F7F7;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.stat div{display:flex;justify-content:space-between;gap:8px}
+.hbar{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:72px;padding:12px 32px;border-bottom:1px solid #DEE1E6;flex-wrap:wrap}
+.title{font-size:22px;font-weight:600;letter-spacing:-.2px;margin:0}
+.hsearch{display:flex;align-items:center;gap:8px;height:40px;width:260px;max-width:100%;border-radius:100px;background:#EEF0F3;padding:0 16px;color:#5B616E}
+.icb{width:40px;height:40px;border-radius:50%;background:#EEF0F3;display:flex;align-items:center;justify-content:center;color:#0A0B0D;flex:none}
+.split{display:flex;flex-wrap:wrap;flex:1;align-items:stretch}
+.main{flex:999 1 620px;min-width:0;padding:28px 32px 40px;display:flex;flex-direction:column;gap:36px}
+.rail{flex:1 1 320px;min-width:0;border-left:1px solid #DEE1E6;padding:28px 24px 40px;display:flex;flex-direction:column;gap:28px}
+.st{font-size:18px;font-weight:600;margin:0}
+.shead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:40px;padding:0 18px;border-radius:100px;font:inherit;font-weight:600;font-size:14px;border:0;cursor:pointer;white-space:nowrap}
+.bp,.bp:hover{background:#0052FF;color:#fff}
+.bs,.bs:hover{background:#EEF0F3;color:#0A0B0D}
+.bo,.bo:hover{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6)}
+.bdg,.bdg:hover{background:#fff;color:#CF202F;border:1px solid #DEE1E6}
+.lab{font-size:13px;color:#7C828A;font-weight:500}
+.big{font-size:36px;font-weight:400;letter-spacing:-.8px;line-height:1.1}
+.tbl{overflow-x:auto}
+.tr{display:grid;gap:16px;align-items:center;padding:14px 0;border-top:1px solid #EEF0F3}
+.th{font-size:13px;color:#7C828A;font-weight:500;border-top:0;padding-top:0}
+.r{text-align:right}
+.in{width:100%;height:44px;border:1px solid #DEE1E6;border-radius:12px;padding:0 14px;font:inherit;color:#0A0B0D;background:#fff}
+textarea.in{height:auto;padding:10px 14px;resize:vertical;line-height:1.5}
+.fl{display:block;font-size:13px;font-weight:600;margin:0 0 6px}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:100px;background:#EEF0F3}
+.seg a,.seg button{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:100px;border:0;background:none;font:inherit;font-weight:600;font-size:13px;color:#5B616E;cursor:pointer}
+.seg a:hover{color:#0A0B0D}
+.seg .on,.seg .on:hover{background:#0A0B0D;color:#fff}
+.seg .n{font-family:'JetBrains Mono',monospace;font-size:12px;opacity:.7}
+.card{border:1px solid #DEE1E6;border-radius:16px;min-width:0}
+.hero{background:#0A0B0D;color:#fff;border-radius:24px;padding:32px}
+.kvr{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #EEF0F3}
+.kvr:first-child{border-top:0}
+.kvr > span:first-child{color:#5B616E}
+.kvr > span:last-child{font-weight:500;text-align:right}
+.tile{position:relative;aspect-ratio:4/3;border-radius:16px;background:#5B616E;overflow:hidden}
+.tile b{position:absolute;left:10px;bottom:10px;font-size:12px;font-weight:600;background:rgba(10,11,13,.7);color:#fff;padding:2px 10px;border-radius:100px}
+.li{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%;text-align:left;padding:14px 16px;border:0;border-radius:16px;background:none;font:inherit;color:#0A0B0D;cursor:pointer}
+.li.on{background:#F7F7F7}
+.legrow{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:12px;font-size:12px;color:#5B616E}
+.legrow span{display:inline-flex;align-items:center;gap:6px}
+.sw{position:relative;width:44px;height:26px;border-radius:100px;background:#0052FF;border:0;cursor:pointer;padding:0;flex:none}
+.sw span{position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.ck{display:flex;align-items:center;gap:10px;font-weight:500;cursor:pointer}
+.ck input{width:18px;height:18px;margin:0;accent-color:#0052FF}
+.land{fill:#F2F3F5}.sea{fill:#E1E7EF}.b0{fill:#F2F3F5}.b1{fill:#F6CFD2}.b2{fill:#FAE2E4}.b3{fill:#FDF1F2}
+.bz polygon{stroke:#B4B9C1;stroke-width:1.2;stroke-dasharray:4 5}
+.rv{fill:none;stroke:#C5D3E6;stroke-width:4}
+.rc{fill:none;stroke:#E2E5EA;stroke-width:10;stroke-linecap:round}
+.rd{fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round}
+.ml{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;fill:#5B616E;text-anchor:middle}
+.pin{position:absolute;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.p-tot{background:#CF202F}.p-par{background:#F4B000}.p-unv{background:#fff;border:2px dashed #0A0B0D;box-shadow:none}
+.p-rel{background:#0052FF;width:18px;height:18px}.p-ev{background:#5B616E;border-radius:5px;width:18px;height:18px}
+.p-hz{background:#0A0B0D;border:0;border-radius:0;width:20px;height:18px;clip-path:polygon(50% 0,100% 100%,0 100%);box-shadow:none}
+.p-you{width:16px;height:16px;background:#0052FF;border:3px solid #fff;box-shadow:0 0 0 6px rgba(0,82,255,.2)}
+.p-sel{width:26px;height:26px;box-shadow:0 0 0 6px rgba(0,82,255,.25)}
+.lg{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;box-shadow:none;border:0}
+.lg.p-ev{border-radius:3px}.lg.p-unv{border:1.5px dashed #0A0B0D}.lg.p-hz{width:11px;height:10px}
+.legend{position:absolute;left:12px;top:12px;background:#fff;border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.legend span{display:flex;align-items:center;gap:6px}
+
+body{background:#E6E8EB}
+</style>
+</head>
+<body>
+<div class="app" style="min-height:900px"><aside class="side"><div style="padding:6px 14px 22px"><span class="wm">Ulat</span></div><nav aria-label="Hub" style="display:flex;flex-direction:column;gap:2px"><a class="nav" href="/Main.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>Overview</a><a class="nav" href="/hub/Review.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M4 13l2.5-8h11L20 13v6H4z"></path><path d="M4 13h5l1 2h4l1-2h5"></path></svg>Review<span class="cnt">5</span></a><a class="nav" href="/hub/Map.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"></path><path d="M9 4v14M15 6v14"></path></svg>Map</a><a class="nav" href="/hub/Entries.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"></rect><path d="M4 10h16M10 10v9"></path></svg>Entries</a><a class="nav" href="/hub/Reports.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4M9 12h6M9 16h6"></path></svg>Reports</a><a class="nav on" href="/hub/Updates.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M4 10v4h3l8 4V6L7 10z"></path><path d="M18 9.5a3.5 3.5 0 0 1 0 5"></path></svg>Updates</a><a class="nav" href="/hub/People.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z"></path><path d="M9 12l2 2 4-4"></path></svg>Safe list</a><a class="nav" href="/hub/Desk.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><path d="M3 10h18M5 10v9M19 10v9M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Help desk</a><div class="ngrp">Kit</div><a class="nav" href="/hub/Checklist.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"></rect><path d="M9 3h6v3H9zM9 13l2 2 4-4"></path></svg>Before the storm</a><a class="nav" href="/hub/Setup.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"></path></svg>Kit setup</a><a class="nav" href="/hub/AI-check.dc.html"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"></rect><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"></path></svg>AI check</a></nav><div class="stat"><div><span class="m">Internet</span><b>Offline</b></div><div><span class="m">Phones</span><b class="mono">9</b></div><div><span class="m">Battery</span><b class="mono">68%</b></div></div><a class="nav" href="/hub/Lock.dc.html" style="margin-top:8px"><svg class="i" style="width:20px;height:20px;" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Lock hub</a></aside><div class="content"><header class="hbar"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h1 class="title">Updates</h1><span class="pill"><span class="dot d-amb"></span>Simulation</span></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="hsearch"><svg class="i" style="width:16px;height:16px;" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg>Search</span><span class="icb" aria-label="MDRRMO staff">MD</span></div></header><div class="split"><div class="main"><h2 style="margin:0;font-size:32px;font-weight:400;letter-spacing:-.6px">New update</h2><nav class="seg" aria-label="Type" style="align-self:flex-start"><button class="on">Water and food</button><button>Shelter</button><button>Hazard</button><button>Notice</button></nav><div style="display:flex;flex-direction:column;gap:16px;max-width:640px"><div><label class="fl" for="hl">Headline</label><input id="hl" class="in" value="Water at the town plaza, 3 to 5 PM"></div><div><label class="fl" for="en">Message</label><textarea id="en" class="in" style="min-height:64px">Bring a container. One per family.</textarea></div><div><label class="fl" for="ceb" style="display:flex;justify-content:space-between">Bisaya <span class="lab">AI draft</span></label><textarea id="ceb" lang="ceb" class="in" style="min-height:64px">Tubig sa plaza, 3 hangtod 5 sa hapon. Pagdala og sudlanan. Usa matag pamilya.</textarea></div><div><label class="fl" for="tl" style="display:flex;justify-content:space-between">Tagalog <span class="lab">AI draft</span></label><textarea id="tl" lang="tl" class="in" style="min-height:64px">Tubig sa plaza, 3 hanggang 5 ng hapon. Magdala ng lalagyan. Isa bawat pamilya.</textarea></div><div style="display:flex;gap:10px"><button class="btn bp">Post to families</button><a class="btn bs" href="/hub/Map-Add.dc.html"><svg class="i" style="width:16px;height:16px;" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle></svg>Pin on map</a></div></div></div><aside class="rail"><div class="shead"><h2 class="st">Posted</h2><span class="lab mono">4</span></div><div class="kvr" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0"><span style="display:flex;justify-content:space-between;width:100%;align-items:center"><span class="pill"><span class="dot d-blu"></span>Water</span><span class="lab mono" style="font-size:12px">2:30 PM</span></span><span style="font-weight:600;color:#0A0B0D;text-align:left">Water at the town plaza</span><span class="lab">Seen on <span class="mono">46</span> phones</span></div><div class="kvr" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0"><span style="display:flex;justify-content:space-between;width:100%;align-items:center"><span class="pill"><span class="dot d-ink"></span>Hazard</span><span class="lab mono" style="font-size:12px">1:55 PM</span></span><span style="font-weight:600;color:#0A0B0D;text-align:left">Upper San Isidro road blocked</span><span class="lab">Seen on <span class="mono">61</span> phones</span></div><div class="kvr" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0"><span style="display:flex;justify-content:space-between;width:100%;align-items:center"><span class="pill"><span class="dot d-gry"></span>Shelter</span><span class="lab mono" style="font-size:12px">1:10 PM</span></span><span style="font-weight:600;color:#0A0B0D;text-align:left">Elementary school is full</span><span class="lab">Seen on <span class="mono">72</span> phones</span></div><div class="kvr" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px 0"><span style="display:flex;justify-content:space-between;width:100%;align-items:center"><span class="pill"><span class="dot d-gry"></span>Notice</span><span class="lab mono" style="font-size:12px">12:20 PM</span></span><span style="font-weight:600;color:#0A0B0D;text-align:left">Visits start in San Isidro</span><span class="lab">Seen on <span class="mono">80</span> phones</span></div></aside></div></div></div>
+</body>
+</html>

@@ -1,0 +1,1947 @@
+{
+ "_note": "Matches the design canvas. pos is [x%, y%] of the map area, converted to lat and lng with the map_bbox setting. Times are Philippine time on the drill day. Only confirmed entries count toward totals.",
+ "_expected_totals": {
+  "houses": 46,
+  "totally": 14,
+  "partially": 23,
+  "none": 9,
+  "families": 58,
+  "people": 241,
+  "hurt": 6,
+  "missing": 1,
+  "not_yet_visited": 17,
+  "in_review": 3,
+  "needs": {
+   "water": 41,
+   "food": 38,
+   "tarp": 33,
+   "medicine": 9
+  }
+ },
+ "settings": {
+  "town": "[Town]",
+  "barangays": [
+   "San Isidro",
+   "Santa Cruz",
+   "Mabini",
+   "Poblacion",
+   "Bagong Silang",
+   "Rizal"
+  ],
+  "map_bbox": null,
+  "simulation": true,
+  "wifi_name": "ULAT-HUB",
+  "hub_address": "https://hub.[your-domain]",
+  "team_pin": "123456",
+  "staff_pin": "1234"
+ },
+ "responders": [
+  {
+   "id": "r1",
+   "name": "Mae Santos",
+   "team": "San Isidro"
+  },
+  {
+   "id": "r2",
+   "name": "Jun Reyes",
+   "team": "San Isidro"
+  },
+  {
+   "id": "r3",
+   "name": "Carlo Mendoza",
+   "team": "Santa Cruz"
+  },
+  {
+   "id": "r4",
+   "name": "Ana Villanueva",
+   "team": "Poblacion"
+  },
+  {
+   "id": "r5",
+   "name": "Lito Bautista",
+   "team": "Bagong Silang"
+  }
+ ],
+ "entries": [
+  {
+   "number": 201,
+   "household_head": "Dela Cruz household",
+   "barangay": "San Isidro",
+   "purok": "Purok 3",
+   "pos": [
+    58.8,
+    45.2
+   ],
+   "families": 2,
+   "people": 5,
+   "hurt": 1,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [
+    "Fallen power line"
+   ],
+   "needs": [
+    "water",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T14:48:00+08:00",
+   "status": "confirmed",
+   "report_code": "K7P4"
+  },
+  {
+   "number": 202,
+   "household_head": "Lim household",
+   "barangay": "San Isidro",
+   "purok": "Purok 1",
+   "pos": [
+    71.2,
+    34.7
+   ],
+   "families": 2,
+   "people": 5,
+   "hurt": 1,
+   "missing": 1,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T14:10:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 203,
+   "household_head": "Ramirez household",
+   "barangay": "San Isidro",
+   "purok": "Purok 5",
+   "pos": [
+    73.2,
+    41.1
+   ],
+   "families": 2,
+   "people": 4,
+   "hurt": 1,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T13:30:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 204,
+   "household_head": "Santos household",
+   "barangay": "San Isidro",
+   "purok": "Purok 1",
+   "pos": [
+    73.6,
+    33.7
+   ],
+   "families": 2,
+   "people": 7,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T13:09:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 205,
+   "household_head": "Cruz household",
+   "barangay": "San Isidro",
+   "purok": "Purok 3",
+   "pos": [
+    64.7,
+    40.6
+   ],
+   "families": 1,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T14:41:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 206,
+   "household_head": "Ocampo household",
+   "barangay": "San Isidro",
+   "purok": "Purok 5",
+   "pos": [
+    71.1,
+    35.5
+   ],
+   "families": 1,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T11:04:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 207,
+   "household_head": "Torres household",
+   "barangay": "San Isidro",
+   "purok": "Purok 3",
+   "pos": [
+    59.6,
+    43.0
+   ],
+   "families": 1,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T14:31:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 208,
+   "household_head": "Pascual household",
+   "barangay": "San Isidro",
+   "purok": "Purok 5",
+   "pos": [
+    61.3,
+    42.5
+   ],
+   "families": 1,
+   "people": 7,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T13:58:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 209,
+   "household_head": "Domingo household",
+   "barangay": "San Isidro",
+   "purok": "Purok 3",
+   "pos": [
+    65.4,
+    45.9
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T13:41:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 210,
+   "household_head": "Flores household",
+   "barangay": "San Isidro",
+   "purok": "Purok 3",
+   "pos": [
+    62.0,
+    35.5
+   ],
+   "families": 1,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T11:23:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 211,
+   "household_head": "Gonzales household",
+   "barangay": "San Isidro",
+   "purok": "Purok 1",
+   "pos": [
+    67.2,
+    40.4
+   ],
+   "families": 1,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T11:58:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 212,
+   "household_head": "Navarro household",
+   "barangay": "San Isidro",
+   "purok": "Purok 4",
+   "pos": [
+    62.6,
+    46.7
+   ],
+   "families": 1,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T12:02:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 213,
+   "household_head": "Mercado household",
+   "barangay": "San Isidro",
+   "purok": "Purok 5",
+   "pos": [
+    64.7,
+    43.6
+   ],
+   "families": 1,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T11:27:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 214,
+   "household_head": "Castillo household",
+   "barangay": "San Isidro",
+   "purok": "Purok 4",
+   "pos": [
+    64.7,
+    46.5
+   ],
+   "families": 1,
+   "people": 3,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [],
+   "responder_id": "r1",
+   "confirmed_at": "2026-10-10T14:22:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 215,
+   "household_head": "Valdez household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 4",
+   "pos": [
+    81.7,
+    53.6
+   ],
+   "families": 2,
+   "people": 5,
+   "hurt": 1,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T13:21:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 216,
+   "household_head": "Castro household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 1",
+   "pos": [
+    79.5,
+    49.0
+   ],
+   "families": 2,
+   "people": 5,
+   "hurt": 1,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T13:38:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 217,
+   "household_head": "Romero household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 4",
+   "pos": [
+    82.3,
+    57.2
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T14:37:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 218,
+   "household_head": "Herrera household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 2",
+   "pos": [
+    83.2,
+    52.7
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T14:04:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 219,
+   "household_head": "Morales household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 4",
+   "pos": [
+    89.8,
+    48.9
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T11:17:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 220,
+   "household_head": "Gutierrez household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 3",
+   "pos": [
+    86.9,
+    50.3
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T14:44:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 221,
+   "household_head": "Rosales household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 2",
+   "pos": [
+    77.3,
+    47.1
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T11:03:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 222,
+   "household_head": "Velasco household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 1",
+   "pos": [
+    83.8,
+    53.2
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T13:41:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 223,
+   "household_head": "Manalo household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 3",
+   "pos": [
+    76.1,
+    50.9
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T14:18:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 224,
+   "household_head": "Samonte household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 5",
+   "pos": [
+    85.1,
+    58.3
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water"
+   ],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T14:56:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 225,
+   "household_head": "Villareal household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 4",
+   "pos": [
+    90.4,
+    55.9
+   ],
+   "families": 1,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [],
+   "responder_id": "r3",
+   "confirmed_at": "2026-10-10T13:01:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 226,
+   "household_head": "Pineda household",
+   "barangay": "Mabini",
+   "purok": "Purok 2",
+   "pos": [
+    23.1,
+    17.9
+   ],
+   "families": 2,
+   "people": 8,
+   "hurt": 1,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:25:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 227,
+   "household_head": "Garcia household",
+   "barangay": "Mabini",
+   "purok": "Purok 1",
+   "pos": [
+    27.4,
+    15.7
+   ],
+   "families": 2,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:58:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 228,
+   "household_head": "Tolentino household",
+   "barangay": "Mabini",
+   "purok": "Purok 5",
+   "pos": [
+    24.4,
+    16.4
+   ],
+   "families": 2,
+   "people": 7,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:06:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 229,
+   "household_head": "Dizon household",
+   "barangay": "Mabini",
+   "purok": "Purok 5",
+   "pos": [
+    22.4,
+    27.2
+   ],
+   "families": 1,
+   "people": 7,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:40:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 230,
+   "household_head": "Javier household",
+   "barangay": "Mabini",
+   "purok": "Purok 2",
+   "pos": [
+    32.2,
+    28.4
+   ],
+   "families": 1,
+   "people": 7,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:03:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 231,
+   "household_head": "Galang household",
+   "barangay": "Poblacion",
+   "purok": "Purok 5",
+   "pos": [
+    29.8,
+    52.7
+   ],
+   "families": 2,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:07:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 232,
+   "household_head": "Agustin household",
+   "barangay": "Poblacion",
+   "purok": "Purok 5",
+   "pos": [
+    28.8,
+    52.0
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T11:54:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 233,
+   "household_head": "Ramos household",
+   "barangay": "Poblacion",
+   "purok": "Purok 3",
+   "pos": [
+    32.3,
+    55.7
+   ],
+   "families": 1,
+   "people": 3,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:25:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 234,
+   "household_head": "Medina household",
+   "barangay": "Poblacion",
+   "purok": "Purok 2",
+   "pos": [
+    32.5,
+    53.9
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:29:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 235,
+   "household_head": "Padilla household",
+   "barangay": "Poblacion",
+   "purok": "Purok 2",
+   "pos": [
+    33.8,
+    54.0
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T14:30:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 236,
+   "household_head": "Alvarez household",
+   "barangay": "Poblacion",
+   "purok": "Purok 2",
+   "pos": [
+    37.1,
+    53.4
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T13:05:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 237,
+   "household_head": "Aguilar household",
+   "barangay": "Poblacion",
+   "purok": "Purok 2",
+   "pos": [
+    32.3,
+    48.0
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T12:06:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 238,
+   "household_head": "Bernal household",
+   "barangay": "Poblacion",
+   "purok": "Purok 1",
+   "pos": [
+    36.6,
+    49.6
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T13:47:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 239,
+   "household_head": "Cabrera household",
+   "barangay": "Poblacion",
+   "purok": "Purok 5",
+   "pos": [
+    39.3,
+    49.3
+   ],
+   "families": 1,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T13:30:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 240,
+   "household_head": "Dimaculangan household",
+   "barangay": "Poblacion",
+   "purok": "Purok 3",
+   "pos": [
+    25.3,
+    44.4
+   ],
+   "families": 1,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T12:33:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 241,
+   "household_head": "Espiritu household",
+   "barangay": "Poblacion",
+   "purok": "Purok 2",
+   "pos": [
+    29.4,
+    49.8
+   ],
+   "families": 1,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [],
+   "responder_id": "r4",
+   "confirmed_at": "2026-10-10T11:13:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 242,
+   "household_head": "Fernandez household",
+   "barangay": "Bagong Silang",
+   "purok": "Purok 1",
+   "pos": [
+    42.6,
+    84.0
+   ],
+   "families": 2,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "total",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp",
+    "medicine"
+   ],
+   "responder_id": "r5",
+   "confirmed_at": "2026-10-10T14:58:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 243,
+   "household_head": "Bernardo household",
+   "barangay": "Bagong Silang",
+   "purok": "Purok 4",
+   "pos": [
+    42.2,
+    79.1
+   ],
+   "families": 1,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food"
+   ],
+   "responder_id": "r5",
+   "confirmed_at": "2026-10-10T14:02:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 244,
+   "household_head": "Hernandez household",
+   "barangay": "Bagong Silang",
+   "purok": "Purok 1",
+   "pos": [
+    40.8,
+    86.6
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food",
+    "tarp"
+   ],
+   "responder_id": "r5",
+   "confirmed_at": "2026-10-10T13:51:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 245,
+   "household_head": "Ignacio household",
+   "barangay": "Bagong Silang",
+   "purok": "Purok 4",
+   "pos": [
+    34.4,
+    86.3
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water"
+   ],
+   "responder_id": "r5",
+   "confirmed_at": "2026-10-10T11:53:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 246,
+   "household_head": "Rivera household",
+   "barangay": "Rizal",
+   "purok": "Purok 2",
+   "pos": [
+    79.9,
+    75.4
+   ],
+   "families": 2,
+   "people": 8,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "none",
+   "ai_class": "none",
+   "ai_confidence": "high",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food"
+   ],
+   "responder_id": "r5",
+   "confirmed_at": "2026-10-10T13:50:00+08:00",
+   "status": "confirmed",
+   "report_code": null
+  },
+  {
+   "number": 238,
+   "household_head": "Lopez household",
+   "barangay": "San Isidro",
+   "purok": "Purok 4",
+   "pos": [
+    63,
+    36
+   ],
+   "families": 1,
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "total",
+   "ai_class": "partial",
+   "ai_confidence": "low",
+   "ai_reason": "Roof partly missing on the left.",
+   "material": "light",
+   "hazards": [],
+   "needs": [
+    "water",
+    "tarp"
+   ],
+   "responder_id": "r2",
+   "status": "needs_review",
+   "review_reason": "Responder changed class",
+   "report_code": null
+  },
+  {
+   "number": 239,
+   "household_head": "Aquino household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 1",
+   "pos": [
+    86,
+    48
+   ],
+   "families": 1,
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "unclear",
+   "ai_confidence": "low",
+   "ai_reason": "The roof is not visible.",
+   "material": "mixed",
+   "hazards": [],
+   "needs": [
+    "water",
+    "food"
+   ],
+   "responder_id": "r3",
+   "status": "needs_review",
+   "review_reason": "AI not sure",
+   "report_code": null
+  },
+  {
+   "number": 241,
+   "household_head": "Salcedo household",
+   "barangay": "Poblacion",
+   "purok": "Purok 2",
+   "pos": [
+    30,
+    54
+   ],
+   "families": 1,
+   "people": 5,
+   "hurt": 2,
+   "missing": 0,
+   "damage_class": "partial",
+   "ai_class": "partial",
+   "ai_confidence": "medium",
+   "ai_reason": "One wall cracked, roof intact.",
+   "material": "concrete",
+   "hazards": [],
+   "needs": [
+    "medicine"
+   ],
+   "responder_id": "r4",
+   "status": "needs_review",
+   "review_reason": "Hurt count differs",
+   "report_code": null
+  }
+ ],
+ "reports": [
+  {
+   "code": "K7P4",
+   "source": "family",
+   "household_head": "Dela Cruz household",
+   "barangay": "San Isidro",
+   "purok": "Purok 3",
+   "people": 5,
+   "hurt": 1,
+   "missing": 0,
+   "needs": [
+    "water",
+    "tarp"
+   ],
+   "status": "visited",
+   "assigned_to": "r1",
+   "created_at": "2026-10-10T14:14:00+08:00",
+   "pos": [
+    56.3,
+    23.1
+   ],
+   "transcript": "Lima mi ka tawo sa balay. Naay bata nga nasamdan sa tiil. Nawala among atop. Kinahanglan mi og tubig ug trapal.",
+   "english": "We are five in the house. A child is hurt on the foot. Our roof is gone. We need water and tarp.",
+   "language": "ceb",
+   "what_happened": "The roof is gone."
+  },
+  {
+   "code": "M2Q9",
+   "source": "family",
+   "household_head": "Bautista household",
+   "barangay": "San Isidro",
+   "purok": "Purok 1",
+   "people": 4,
+   "hurt": 0,
+   "missing": 1,
+   "needs": [
+    "water",
+    "food"
+   ],
+   "status": "on_the_way",
+   "assigned_to": "r1",
+   "created_at": "2026-10-10T14:07:00+08:00",
+   "pos": [
+    62,
+    30
+   ]
+  },
+  {
+   "code": "T5H8",
+   "source": "family",
+   "household_head": "Reyes household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 2",
+   "people": 6,
+   "hurt": 2,
+   "missing": 0,
+   "needs": [
+    "medicine",
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T14:55:00+08:00",
+   "pos": [
+    85,
+    40.4
+   ]
+  },
+  {
+   "code": "B3N6",
+   "source": "family",
+   "household_head": "Villanueva household",
+   "barangay": "San Isidro",
+   "purok": "Purok 2",
+   "people": 3,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "tarp"
+   ],
+   "status": "on_the_way",
+   "assigned_to": "r1",
+   "created_at": "2026-10-10T13:51:00+08:00",
+   "pos": [
+    53.1,
+    57.7
+   ]
+  },
+  {
+   "code": "R8W2",
+   "source": "family",
+   "household_head": "Mendoza household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 3",
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T13:40:00+08:00",
+   "pos": [
+    90.6,
+    26.9
+   ]
+  },
+  {
+   "code": "J2V8",
+   "source": "family",
+   "household_head": "Ocampo household",
+   "barangay": "Mabini",
+   "purok": "Purok 1",
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "food"
+   ],
+   "status": "cant_assess",
+   "assigned_to": "r2",
+   "created_at": "2026-10-10T13:22:00+08:00",
+   "pos": [
+    25.6,
+    30
+   ]
+  },
+  {
+   "code": "P6K1",
+   "source": "family",
+   "household_head": "Navarro household",
+   "barangay": "Poblacion",
+   "purok": "Purok 4",
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water",
+    "food"
+   ],
+   "status": "on_the_way",
+   "assigned_to": "r4",
+   "created_at": "2026-10-10T13:12:00+08:00",
+   "pos": [
+    34,
+    46
+   ]
+  },
+  {
+   "code": "D9X3",
+   "source": "family",
+   "household_head": "Salazar household",
+   "barangay": "Bagong Silang",
+   "purok": "Purok 2",
+   "people": 3,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "tarp"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T12:58:00+08:00",
+   "pos": [
+    32.5,
+    88.5
+   ]
+  },
+  {
+   "code": "H4J7",
+   "source": "neighbor",
+   "household_head": "Garcia household",
+   "barangay": "Mabini",
+   "purok": "Purok 3",
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T12:40:00+08:00",
+   "pos": [
+    33,
+    20
+   ]
+  },
+  {
+   "code": "K9D2",
+   "source": "family",
+   "household_head": "Aquino household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 1",
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water",
+    "food"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T14:36:00+08:00",
+   "pos": [
+    75.6,
+    40.2
+   ]
+  },
+  {
+   "code": "K9F5",
+   "source": "neighbor",
+   "household_head": "Aquino household",
+   "barangay": "Santa Cruz",
+   "purok": "Purok 1",
+   "people": 6,
+   "hurt": 1,
+   "missing": 0,
+   "needs": [
+    "water",
+    "food",
+    "medicine"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T14:40:00+08:00",
+   "pos": [
+    77.4,
+    41.6
+   ]
+  },
+  {
+   "code": "Q2W3",
+   "source": "family",
+   "household_head": "Lacson household",
+   "barangay": "San Isidro",
+   "purok": "Purok 2",
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T13:09:00+08:00",
+   "pos": [
+    66.8,
+    34.8
+   ]
+  },
+  {
+   "code": "E4R5",
+   "source": "family",
+   "household_head": "Macaraeg household",
+   "barangay": "San Isidro",
+   "purok": "Purok 1",
+   "people": 3,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T12:27:00+08:00",
+   "pos": [
+    73.8,
+    35.7
+   ]
+  },
+  {
+   "code": "T6Y7",
+   "source": "family",
+   "household_head": "Natividad household",
+   "barangay": "San Isidro",
+   "purok": "Purok 2",
+   "people": 3,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T13:13:00+08:00",
+   "pos": [
+    62.7,
+    36.4
+   ]
+  },
+  {
+   "code": "U8P9",
+   "source": "family",
+   "household_head": "Pangilinan household",
+   "barangay": "San Isidro",
+   "purok": "Purok 5",
+   "people": 5,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T13:34:00+08:00",
+   "pos": [
+    64.7,
+    34.8
+   ]
+  },
+  {
+   "code": "A2S3",
+   "source": "family",
+   "household_head": "Quiambao household",
+   "barangay": "Mabini",
+   "purok": "Purok 3",
+   "people": 6,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T14:52:00+08:00",
+   "pos": [
+    36.7,
+    22.0
+   ]
+  },
+  {
+   "code": "D4F5",
+   "source": "family",
+   "household_head": "Sison household",
+   "barangay": "Poblacion",
+   "purok": "Purok 5",
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T11:55:00+08:00",
+   "pos": [
+    31.0,
+    45.6
+   ]
+  },
+  {
+   "code": "G6H7",
+   "source": "family",
+   "household_head": "Tan household",
+   "barangay": "Poblacion",
+   "purok": "Purok 1",
+   "people": 4,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T12:09:00+08:00",
+   "pos": [
+    31.6,
+    53.2
+   ]
+  },
+  {
+   "code": "J8K9",
+   "source": "family",
+   "household_head": "Umali household",
+   "barangay": "Bagong Silang",
+   "purok": "Purok 5",
+   "people": 3,
+   "hurt": 0,
+   "missing": 0,
+   "needs": [
+    "water"
+   ],
+   "status": "waiting",
+   "assigned_to": null,
+   "created_at": "2026-10-10T13:43:00+08:00",
+   "pos": [
+    36.3,
+    80.8
+   ]
+  }
+ ],
+ "places": [
+  {
+   "type": "relief",
+   "name": "Water distribution",
+   "details": "Town plaza",
+   "when_text": "Today, 3 to 5 PM",
+   "pos": [
+    29,
+    44.6
+   ]
+  },
+  {
+   "type": "relief",
+   "name": "Food packs",
+   "details": "Barangay hall",
+   "when_text": "Today, 4 to 6 PM",
+   "pos": [
+    36,
+    49
+   ]
+  },
+  {
+   "type": "shelter",
+   "name": "Poblacion covered court",
+   "details": null,
+   "when_text": null,
+   "pos": [
+    22.5,
+    48.1
+   ]
+  },
+  {
+   "type": "shelter",
+   "name": "Poblacion Elementary School",
+   "details": "Full",
+   "when_text": null,
+   "pos": [
+    33,
+    37
+   ]
+  },
+  {
+   "type": "hazard",
+   "name": "Landslide",
+   "details": "Upper San Isidro road",
+   "when_text": null,
+   "pos": [
+    68.1,
+    13.5
+   ]
+  },
+  {
+   "type": "hazard",
+   "name": "Fallen power line",
+   "details": "Purok 3",
+   "when_text": null,
+   "pos": [
+    45,
+    30
+   ]
+  }
+ ],
+ "updates": [
+  {
+   "type": "water_food",
+   "headline": "Water at the town plaza",
+   "message": "3 to 5 PM. Bring a container.",
+   "posted_at": "2026-10-10T14:30:00+08:00",
+   "seen_count": 46
+  },
+  {
+   "type": "hazard",
+   "headline": "Upper San Isidro road blocked",
+   "message": "Use the coastal road.",
+   "posted_at": "2026-10-10T13:55:00+08:00",
+   "seen_count": 61
+  },
+  {
+   "type": "shelter",
+   "headline": "Elementary school is full",
+   "message": "Go to the covered court.",
+   "posted_at": "2026-10-10T13:10:00+08:00",
+   "seen_count": 72
+  },
+  {
+   "type": "notice",
+   "headline": "Visits start in San Isidro",
+   "message": "Hurt or missing go first.",
+   "posted_at": "2026-10-10T12:20:00+08:00",
+   "seen_count": 80
+  }
+ ],
+ "safe_checkins": [
+  {
+   "name": "Ernesto Bautista",
+   "barangay": "Bagong Silang",
+   "staying_at": "Poblacion covered court",
+   "at": "2026-10-10T13:42:00+08:00",
+   "source": "phone"
+  },
+  {
+   "name": "Lorna Bautista",
+   "barangay": "San Isidro",
+   "staying_at": "With relatives",
+   "at": "2026-10-10T14:05:00+08:00",
+   "source": "phone"
+  },
+  {
+   "name": "Rogelio Bautista",
+   "barangay": "San Isidro",
+   "staying_at": "Poblacion Elementary School",
+   "at": "2026-10-10T14:18:00+08:00",
+   "source": "phone"
+  },
+  {
+   "name": "Marivic Bautista",
+   "barangay": "Santa Cruz",
+   "staying_at": "At home",
+   "at": "2026-10-10T14:31:00+08:00",
+   "source": "phone"
+  },
+  {
+   "name": "Jomar Bautista",
+   "barangay": "Mabini",
+   "staying_at": "Poblacion covered court",
+   "at": "2026-10-10T14:40:00+08:00",
+   "source": "phone"
+  },
+  {
+   "name": "Teresita Bautista",
+   "barangay": "Rizal",
+   "staying_at": "With relatives",
+   "at": "2026-10-10T14:52:00+08:00",
+   "source": "phone"
+  }
+ ]
+}

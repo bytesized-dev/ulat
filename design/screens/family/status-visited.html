@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family: status, visited</title>
+<!-- Reference only. Canvas: https://claude.ai/artifact/DazFfmDpKxWhyxodNk9KwH . Route /status, state, issue BYT-16, tier 1. The app loads fonts with next/font, never this link. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+a{color:#0052FF;text-decoration:none}a:hover{color:#003ECC}
+.i{flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:500;font-variant-numeric:tabular-nums}
+.m{color:#5B616E}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:100px;background:#EEF0F3;color:#0A0B0D;font-size:12px;font-weight:600;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;display:inline-block}
+.d-red{background:#CF202F}.d-amb{background:#F4B000}.d-grn{background:#05B169}.d-gry{background:#A8ACB3}.d-blu{background:#0052FF}.d-ink{background:#0A0B0D}
+.t-red{color:#CF202F}.t-grn{color:#05B169}
+.ic{width:40px;height:40px;border-radius:50%;background:#EEF0F3;color:#0A0B0D;display:flex;align-items:center;justify-content:center;flex:none}
+.wm{font-weight:700;font-size:20px;color:#0052FF;letter-spacing:-.4px}
+.tl{display:flex;gap:14px}
+.trail{display:flex;flex-direction:column;align-items:center;width:20px;flex:none}
+.mk{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
+.mk-d{background:#0A0B0D;color:#fff}.mk-c{border:6px solid #0052FF;background:#fff}.mk-f{border:1.5px solid #C8CCD2;background:#fff}
+.tln{flex:1;width:1.5px;background:#DEE1E6;min-height:12px;margin:4px 0}.tln-d{background:#0A0B0D}
+.tx{padding-bottom:20px;min-width:0;display:flex;justify-content:space-between;gap:12px;flex:1}.tx b{font-size:15px;font-weight:600}.tx.fut b{color:#A8ACB3;font-weight:500}.tx span{font-size:14px;color:#5B616E;white-space:nowrap}
+.ph{width:390px;background:#fff;font-family:'Inter',-apple-system,system-ui,sans-serif;color:#0A0B0D;font-size:16px;line-height:1.5;display:flex;flex-direction:column;overflow:hidden}
+.top{display:grid;grid-template-columns:64px minmax(0,1fr) 64px;align-items:center;height:56px;padding:0 8px;flex:none;background:#fff}
+.top .t{text-align:center;font-size:16px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .r{justify-self:end;padding-right:8px;font-size:13px;color:#5B616E}
+.ib{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#0A0B0D;background:none;border:0;cursor:pointer}
+.ib:hover{background:#EEF0F3;color:#0A0B0D}
+.apptop{display:flex;align-items:center;gap:12px;height:64px;padding:0 20px;flex:none;background:#fff}
+.search{display:flex;align-items:center;gap:8px;height:44px;border-radius:100px;background:#EEF0F3;padding:0 16px;color:#5B616E;flex:1;font-size:15px}
+.av{width:40px;height:40px;border-radius:50%;background:#EEF0F3;color:#0A0B0D;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex:none}
+.prog{padding:0 20px 6px;flex:none}
+.track{height:4px;border-radius:100px;background:#EEF0F3;overflow:hidden}
+.track span{display:block;height:4px;border-radius:100px;background:#0052FF}
+.lbls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:8px;font-size:12px;font-weight:500;color:#A8ACB3;white-space:nowrap}
+.lbls .dn{color:#5B616E}.lbls .cur{color:#0A0B0D;font-weight:600}
+.body{flex:1;display:flex;flex-direction:column;gap:28px;padding:20px 20px 28px}
+.h1{font-size:30px;line-height:1.13;font-weight:400;letter-spacing:-.6px;margin:0}
+.sub{margin:8px 0 0;color:#5B616E;font-size:15px}
+.h2{font-size:18px;font-weight:600;margin:0 0 4px}
+.lst > * + *{border-top:1px solid #EEF0F3}
+.row{display:flex;align-items:center;gap:14px;min-height:64px;padding:10px 0;color:#0A0B0D;background:none;border:0;width:100%;text-align:left;font:inherit;cursor:pointer}
+.row:hover{color:#0A0B0D}
+.k{flex:1;min-width:0;display:flex;flex-direction:column}
+.lab{font-size:14px;color:#5B616E}
+.val{font-size:16px;font-weight:500}
+.chev{color:#A8ACB3}
+.foot{padding:12px 20px 28px;display:flex;flex-direction:column;gap:10px;flex:none;background:#fff}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:56px;border-radius:100px;font:inherit;font-weight:600;font-size:16px;border:0;cursor:pointer;width:100%;padding:0 20px;white-space:nowrap}
+.bp,.bp:hover{background:#0052FF;color:#fff}
+.bs,.bs:hover{background:#EEF0F3;color:#0A0B0D}
+.bt,.bt:hover{background:none;color:#0052FF;height:44px;width:auto;padding:0 8px}
+.bo,.bo:hover{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.6)}
+.in{width:100%;height:52px;border:1px solid #DEE1E6;border-radius:12px;padding:0 16px;font:inherit;font-size:16px;color:#0A0B0D;background:#fff;appearance:none;-webkit-appearance:none}
+.in.f{border:2px solid #0052FF;padding:0 15px}
+textarea.in{height:auto;padding:14px 16px;resize:none;line-height:1.5}
+.fl{display:block;font-size:14px;font-weight:600;margin:0 0 8px}
+.fields{display:flex;flex-direction:column;gap:18px}
+.sel{position:relative}.sel .i{position:absolute;right:16px;top:16px;pointer-events:none;color:#5B616E}
+.opt{display:flex;align-items:center;gap:14px;padding:14px 0;cursor:pointer}
+.opt input{width:22px;height:22px;margin:0;accent-color:#0052FF;flex:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:44px;padding:0 18px;border-radius:100px;border:0;background:#EEF0F3;font:inherit;font-size:15px;font-weight:500;color:#0A0B0D;cursor:pointer;white-space:nowrap}
+.chip.on{background:#0A0B0D;color:#fff}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px}
+.stp{display:flex;align-items:center;gap:4px}
+.sb{width:44px;height:44px;border-radius:50%;border:0;background:#EEF0F3;color:#0A0B0D;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.n{width:40px;text-align:center;font-size:18px}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#fff;border-top:1px solid #EEF0F3;padding:6px 4px 22px;flex:none}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:48px;font-size:11px;font-weight:600;color:#7C828A}
+.tab:hover{color:#0A0B0D}.tab.on{color:#0052FF}
+.spin{width:22px;height:22px;border-radius:50%;border:2.5px solid #EEF0F3;border-top-color:#0052FF;flex:none}
+.soft{background:#F7F7F7;border-radius:16px;padding:16px}
+.card{border:1px solid #DEE1E6;border-radius:24px}
+.tile{position:relative;aspect-ratio:3/4;border-radius:16px;overflow:hidden;background:#5B616E;color:#fff;display:flex;align-items:center;justify-content:center}
+.tile b{position:absolute;left:8px;bottom:8px;font-size:12px;font-weight:600;background:rgba(10,11,13,.7);padding:2px 8px;border-radius:100px}
+.addt{aspect-ratio:3/4;border-radius:16px;border:1.5px dashed #C8CCD2;background:#fff;color:#0A0B0D;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:6px}
+.mic{width:104px;height:104px;border-radius:50%;background:#0052FF;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 14px #EBF0FF}
+.mic:hover{color:#fff;background:#003ECC}
+.play{width:40px;height:40px;border-radius:50%;background:#0A0B0D;color:#fff;display:flex;align-items:center;justify-content:center;flex:none;border:0;cursor:pointer}
+.zb{width:44px;height:44px;border-radius:50%;background:#fff;border:0;color:#0A0B0D;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.dim{position:absolute;inset:0;background:rgba(10,11,13,.5)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 28px;display:flex;flex-direction:column;gap:16px}
+.handle{width:36px;height:4px;border-radius:100px;background:#DEE1E6;margin:0 auto 4px}
+.okc{width:22px;height:22px;border-radius:50%;background:#0A0B0D;color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.success{width:72px;height:72px;border-radius:50%;background:#0052FF;color:#fff;display:flex;align-items:center;justify-content:center}
+
+body{background:#E6E8EB}
+</style>
+</head>
+<body>
+<div class="ph" style="height:844px"><header class="top"><a class="ib" href="/family/Home.dc.html" aria-label="Back"><svg class="i" style="width:22px;height:22px;" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"></path></svg></a><p class="t">Report K7P4</p><span></span></header><main class="body"><div><div class="lab">Result</div><h1 class="h1" style="display:flex;align-items:center;gap:12px;margin-top:4px"><span class="dot d-red" style="width:12px;height:12px"></span>Totally damaged</h1><p class="sub">Confirmed by Mae Santos</p></div><div><div class="tl"><div class="trail"><span class="mk mk-d"><svg class="i" style="width:12px;height:12px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="tln tln-d"></span></div><div class="tx"><b>Received</b><span>2:14 PM</span></div></div><div class="tl"><div class="trail"><span class="mk mk-d"><svg class="i" style="width:12px;height:12px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="tln tln-d"></span></div><div class="tx"><b>On the way</b><span>2:20 PM</span></div></div><div class="tl"><div class="trail"><span class="mk mk-d"><svg class="i" style="width:12px;height:12px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="tln tln-d"></span></div><div class="tx"><b>Visited</b><span>2:46 PM</span></div></div><div class="tl"><div class="trail"><span class="mk mk-d"><svg class="i" style="width:12px;height:12px;stroke-width:2.6" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></div><div class="tx"><b>Confirmed</b><span>2:48 PM</span></div></div></div><div class="soft lab">Ask the help desk about relief. Bring your code.</div></main></div>
+</body>
+</html>

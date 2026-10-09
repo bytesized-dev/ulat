@@ -1,0 +1,14 @@
+# Serves the app over HTTPS on the local network. See infra/README.md.
+# HUB_DOMAIN is for example hub.example.dev. Certificates are fetched before the storm.
+{
+	auto_https disable_redirects
+	admin off
+}
+
+{$HUB_DOMAIN} {
+	tls /etc/ulat/certs/fullchain.pem /etc/ulat/certs/privkey.pem
+	# Fallback when no real certificate: replace the line above with
+	# tls internal
+	encode gzip
+	reverse_proxy localhost:3000
+}

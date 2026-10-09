@@ -35,7 +35,7 @@ export function PostedList({ items }: { items: PostedItem[] }) {
 
   return (
     <section aria-labelledby="posted-heading" className="flex flex-col">
-      <div className="flex items-baseline justify-between pb-6">
+      <div className="flex items-baseline justify-between pb-12">
         <h2 id="posted-heading" className="text-title-md">
           Posted
         </h2>
@@ -45,7 +45,7 @@ export function PostedList({ items }: { items: PostedItem[] }) {
         {items.map((item) => {
           const pill = updateTypePill[item.type];
           return (
-            <li key={item.id} className="flex flex-col gap-2 border-t border-hairline py-4">
+            <li key={item.id} className="flex flex-col gap-2 border-t border-hairline pt-4 pb-11">
               <div className="flex items-center justify-between gap-2">
                 <Pill>
                   <StatusDot tone={pill.dot} className={pill.dot ? undefined : "bg-ink"} />

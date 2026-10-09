@@ -23,7 +23,7 @@ const warnings = [];
 
 function files(dir) {
   const path = join(EVAL, dir);
-  return existsSync(path) ? readdirSync(path).filter((f) => !f.startsWith(".")) : [];
+  return existsSync(path) ? readdirSync(path).filter((f) => !f.startsWith(".")).map((f) => `${dir}/${f}`) : [];
 }
 
 // Minimal CSV reader with quoted fields. Returns objects keyed by the header row.

@@ -32,7 +32,8 @@ export function distanceMeters(a: Point, b: Point): number {
 
 /** 350 m, 1.2 km. Under 1 km it rounds to the nearest 10 m. */
 export function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters / 10) * 10} m`;
+  const nearest10 = Math.round(meters / 10) * 10;
+  if (nearest10 < 1000) return `${nearest10} m`;
   return `${(meters / 1000).toFixed(1)} km`;
 }
 

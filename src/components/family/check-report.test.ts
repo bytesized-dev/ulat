@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyDraft, type ReportDraft } from "./report-draft";
-import { householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, setCount, setNeed, whatHappened } from "./check-report";
+import { EDIT_LIMITS, householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, setCount, setHead, setNeed, setPlace, setWhatHappened, whatHappened } from "./check-report";
 
 const draft: ReportDraft = {
   ...emptyDraft(),
@@ -52,6 +52,37 @@ describe("setCount", () => {
     const next = setCount({ ...draft, uncertain_fields: ["hurt", "needs"] }, "hurt", 2);
     expect(next.hurt).toBe(2);
     expect(next.uncertain_fields).toEqual(["needs"]);
+  });
+});
+
+describe("setHead", () => {
+  it("trims the name and drops its marker only", () => {
+    const next = setHead({ ...draft, uncertain_fields: ["household_head", "hurt"] }, "  Rosa Reyes ");
+    expect(next.household_head).toBe("Rosa Reyes");
+    expect(next.uncertain_fields).toEqual(["hurt"]);
+  });
+
+  it("stops at the length the report accepts", () => {
+    expect(setHead(draft, "a".repeat(200)).household_head).toHaveLength(EDIT_LIMITS.household_head);
+  });
+});
+
+describe("setPlace", () => {
+  it("changes the barangay and purok and leaves the markers alone", () => {
+    const next = setPlace(draft, "Mabini", " Purok 5 ");
+    expect(next).toMatchObject({ barangay: "Mabini", purok: "Purok 5", uncertain_fields: ["hurt"] });
+  });
+});
+
+describe("setWhatHappened", () => {
+  it("saves the text and drops its marker", () => {
+    const next = setWhatHappened({ ...draft, uncertain_fields: ["what_happened"] }, " The roof is gone and water came in. ");
+    expect(next.what_happened).toBe("The roof is gone and water came in.");
+    expect(next.uncertain_fields).toEqual([]);
+  });
+
+  it("stops at the length the report accepts", () => {
+    expect(setWhatHappened(draft, "a".repeat(300)).what_happened).toHaveLength(EDIT_LIMITS.what_happened);
   });
 });
 

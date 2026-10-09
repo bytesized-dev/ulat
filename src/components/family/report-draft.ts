@@ -31,6 +31,8 @@ export const ReportDraft = z.object({
   transcript: z.string().max(2000),
   english: z.string().max(2000),
   language: Language.nullable(),
+  /** True when the note was recorded, so the check screen offers the voice note. A typed note is false. */
+  spoken: z.boolean().default(false),
   /** Fields the model was not sure about. They show the Please check marker. */
   uncertain_fields: z.array(VoiceField),
 });
@@ -55,6 +57,7 @@ export function emptyDraft(): ReportDraft {
     transcript: "",
     english: "",
     language: null,
+    spoken: false,
     uncertain_fields: [],
   };
 }

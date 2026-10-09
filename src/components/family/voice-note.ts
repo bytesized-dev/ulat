@@ -62,6 +62,15 @@ export async function readVoiceNote(audio: Blob, send: typeof fetch = fetch): Pr
   }
 }
 
+/** The playback bar fills in twelfths of its width. */
+export const PROGRESS_STEPS = 12;
+
+/** How many twelfths of the bar are filled at this point in the recording. 0 when the length is unknown. */
+export function progressStep(at: number, length: number): number {
+  if (!(length > 0)) return 0;
+  return Math.round(Math.min(1, Math.max(0, at / length)) * PROGRESS_STEPS);
+}
+
 /** How many heights a waveform bar can take, from the shortest to the tallest. */
 export const BAR_STEPS = 9;
 

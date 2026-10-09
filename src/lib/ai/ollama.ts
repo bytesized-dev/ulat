@@ -52,7 +52,8 @@ export type ChatJsonInput<S extends z.ZodType> = {
   options?: Record<string, unknown>;
   /**
    * Gemma's hidden reasoning pass. Off unless a call needs it, since it adds
-   * 600 to 750 tokens and 10 to 60 seconds before the JSON.
+   * 600 to 750 tokens and 10 to 60 seconds before the JSON. Thinking tokens
+   * count toward the num_predict cap.
    */
   think?: boolean;
   /** Extra line for the schema instructions, used only when the schema goes in the prompt. */
@@ -122,8 +123,13 @@ async function chat<S extends z.ZodType>(input: ChatJsonInput<S>, withFormat: bo
         response.status,
       );
     }
-    const body = (await response.json()) as { message?: { content?: unknown } };
-    return typeof body.message?.content === "string" ? body.message.content : "";
+    const body = (await response.json()) as { message?: { content?: unknown }; done_reason?: unknown };
+    const content = typeof body.message?.content === "string" ? body.message.content : "";
+    // A reply cut off at the cap is partial JSON. Say why instead of "not JSON".
+    if (body.done_reason === "length") {
+      throw new OllamaError("invalid_output", `The reply hit the ${MAX_OUTPUT_TOKENS} token cap`, content);
+    }
+    return content;
   } catch (error) {
     if (error instanceof OllamaError) throw error;
     if (error instanceof Error && error.name === "TimeoutError") {

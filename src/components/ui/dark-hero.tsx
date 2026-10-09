@@ -26,15 +26,17 @@ type DarkHeroProps = Omit<React.ComponentProps<"section">, "title"> &
     /** The small line above the title, in muted-soft. */
     eyebrow?: string;
     title?: React.ReactNode;
+    /** The heading level of the title. */
+    as?: "h1" | "h2" | "h3";
   };
 
 // The one big moment on a screen. Anything in children that is secondary text
 // takes text-muted-soft.
-function DarkHero({ size = "phone", eyebrow, title, className, children, ...props }: DarkHeroProps) {
+function DarkHero({ size = "phone", eyebrow, title, as: Heading = "h2", className, children, ...props }: DarkHeroProps) {
   return (
     <section data-slot="dark-hero" className={cn(heroVariants({ size }), className)} {...props}>
       {eyebrow ? <p className="text-body-sm text-muted-soft">{eyebrow}</p> : null}
-      {title ? <h2 className={cn(titleVariants({ size }), eyebrow && "mt-2")}>{title}</h2> : null}
+      {title ? <Heading className={cn(titleVariants({ size }), eyebrow && "mt-2")}>{title}</Heading> : null}
       {children}
     </section>
   );

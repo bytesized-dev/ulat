@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CantAssessSheet } from "@/components/responder/cant-assess-sheet";
+import { FamilyPhoto } from "@/components/responder/family-photo";
 import { FamilyVoiceNote } from "@/components/responder/family-voice-note";
 import { LiveRefresh } from "@/components/responder/live-refresh";
 import { concernText, needLabel } from "@/components/responder/report-detail-labels";
@@ -14,7 +15,7 @@ import { Pill } from "@/components/ui/pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TopBar } from "@/components/ui/top-bar";
 import { db } from "@/db/client";
-import { reports, responders } from "@/db/schema";
+import { photos, reports, responders } from "@/db/schema";
 import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
 import { ReportCode, routes } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,10 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
   const closedNote = CLOSED_NOTE[report.status];
   const whatHappened = report.what_happened?.trim() || null;
   const hasNote = report.voice_path !== null || report.transcript !== null || report.transcript_en !== null;
+  // The one photo the family sent. /api/files serves it by its photos row.
+  const photo = report.photo_path
+    ? db.select({ id: photos.id }).from(photos).where(and(eq(photos.report_id, report.id), eq(photos.path, report.photo_path))).get()
+    : undefined;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -113,6 +118,12 @@ export default async function FamilyReportPage({ params }: { params: Promise<{ c
               transcript={report.transcript}
               english={report.transcript_en}
             />
+          </div>
+        ) : null}
+
+        {photo ? (
+          <div className="mt-6">
+            <FamilyPhoto photoId={photo.id} />
           </div>
         ) : null}
       </main>

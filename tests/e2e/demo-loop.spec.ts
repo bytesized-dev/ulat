@@ -30,7 +30,7 @@ const numberIn = async (text: string | null) => Number((text ?? "").replace(/\D/
 test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser }, testInfo) => {
   const baseURL = testInfo.project.use.baseURL;
   const family = await (await browser.newContext({ baseURL, viewport: PHONE })).newPage();
-  const responder = await (await browser.newContext({ baseURL, viewport: PHONE })).newPage();
+  const responder = await (await browser.newContext({ baseURL, viewport: PHONE, permissions: ["microphone"] })).newPage();
   const staffContext = await browser.newContext({ baseURL, viewport: LAPTOP });
   const staff = await staffContext.newPage();
 
@@ -54,7 +54,11 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await action(family, "Continue").click();
 
     // Check your report
+    // The typed note gives no head of household and a report cannot be sent without one.
     await expect(family.getByRole("heading", { name: "Check your report" })).toBeVisible();
+    await family.getByRole("button", { name: /Head of household/ }).click();
+    await family.getByRole("textbox", { name: "Head of household" }).fill("Ocampo household");
+    await family.getByRole("button", { name: "Save" }).click();
     await action(family, "Continue").click();
 
     // Before you send
@@ -63,17 +67,17 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
 
     // Report sent
     await expect(family.getByRole("heading", { name: "Report sent" })).toBeVisible();
-    const block = family.getByText("Your report code").locator("..");
-    await expect(block).toContainText(/\b[A-HJ-NP-Z2-9]{4}\b/);
-    code = (await block.innerText()).match(/\b[A-HJ-NP-Z2-9]{4}\b/)![0];
-    expect(code).toMatch(/^[A-HJ-NP-Z2-9]{4}$/);
+    const shown = family.getByRole("region", { name: "Your report code" }).getByText(/^[A-HJ-NP-Z2-9]{4}$/);
+    await expect(shown).toBeVisible();
+    code = (await shown.innerText()).trim();
   });
 
   await test.step("2. The report shows on the responder's To visit list", async () => {
     await responder.goto("/r");
     await expect(responder).toHaveURL(/\/r\/sign-in/);
 
-    await responder.getByLabel("Name").selectOption({ label: responderName });
+    await responder.getByRole("combobox", { name: "Name" }).click();
+    await responder.getByRole("option", { name: responderName }).click();
     for (const digit of seed.settings.team_pin) {
       await responder.getByRole("button", { name: digit, exact: true }).click();
     }
@@ -93,7 +97,11 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     const picker = responder.locator('input[type="file"]');
     for (const file of FIXTURES) await picker.first().setInputFiles(file);
     await expect(responder.getByText("2/3")).toBeVisible();
-    await responder.getByRole("textbox", { name: /note/i }).fill("Wala nang bubong, gumuho ang dalawang pader sa likod.");
+    // The note is a recording. Chromium runs with a fake microphone, see playwright.config.ts.
+    await responder.getByRole("button", { name: "Record a note" }).click();
+    await responder.waitForTimeout(1500);
+    await responder.getByRole("button", { name: /^Stop/ }).click();
+    await expect(responder.getByRole("button", { name: "Play your note" })).toBeVisible();
     await action(responder, "Send to hub").click();
 
     // Hub drafting, MOCK_AI answers from seed/ai-fixtures.json
@@ -104,16 +112,21 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(responder.getByText("Check the draft")).toBeVisible();
     await expect(responder.getByText("Most of the roof is gone and two back walls collapsed.")).toBeVisible();
     await expect(responder.getByRole("radio", { name: "Totally damaged" })).toBeChecked();
+    // The photos say nothing about who lives there, so the responder counts. A hurt
+    // count that differs from the family report sends the entry to review and out of the totals.
+    for (let i = 0; i < 5; i++) await responder.getByRole("button", { name: "More, People" }).click();
+    await responder.getByRole("button", { name: "More, Hurt" }).click();
+    await expect(responder.getByText("Matches report")).toBeVisible();
     await action(responder, "Confirm entry").click();
 
     await expect(responder.getByRole("heading", { name: "Entry confirmed" })).toBeVisible();
   });
 
   await test.step("4. The hub totals change on the hub overview after staff sign in", async () => {
-    const signIn = await staffContext.request.post("/api/auth/staff", { data: { pin: seed.settings.staff_pin } });
-    expect(signIn.ok(), "staff sign in").toBe(true);
-
     await staff.goto("/hub");
+    await expect(staff).toHaveURL(/\/hub\/lock/);
+    await staff.getByLabel("Staff PIN").fill(seed.settings.staff_pin);
+    await action(staff, "Unlock").click();
     await expect(staff.getByRole("heading", { name: "Overview" })).toBeVisible();
     await expect(houseCount(staff)).toBeVisible();
     // Only the confirmed entry counts, the family report on its own did not.
@@ -136,8 +149,9 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await staff.goto("/hub");
     await action(staff, "Make report").click();
     await expect(staff).toHaveURL(/\/hub\/reports/);
+    await action(staff, "Create report").click();
 
-    const sms = await staff.getByLabel("SMS summary").inputValue();
+    const sms = await staff.getByRole("textbox", { name: "SMS summary" }).inputValue();
     expect(sms).toContain(`${before.houses + 1} houses checked, ${before.totally + 1} totally`);
     // Up to 2 x 153 GSM-7 characters, or 2 x 67 with a character outside it.
     expect(smsSegments(sms), `SMS is ${sms.length} characters:\n${sms}`).toBeLessThanOrEqual(2);

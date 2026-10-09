@@ -15,6 +15,7 @@ type CounterProps = Omit<React.ComponentProps<"div">, "onChange" | "children"> &
 // right. The buttons name the label, so "Fewer, Hurt" is read, not "Minus".
 function Counter({ label, value, onChange, min = 0, max, className, ...props }: CounterProps) {
   const labelId = React.useId();
+  // The caller owns clamping. Counter does not move value when max drops below it.
   const atMin = value <= min;
   const atMax = max !== undefined && value >= max;
 

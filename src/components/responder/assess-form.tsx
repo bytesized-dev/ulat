@@ -16,6 +16,7 @@ type AssessFormProps = { house: House };
 function AssessForm({ house }: AssessFormProps) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
+  const sending = useRef(false);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [note, setNote] = useState<Blob | null>(null);
   const [seconds, setSeconds] = useState(0);
@@ -47,24 +48,28 @@ function AssessForm({ house }: AssessFormProps) {
   }
 
   async function send() {
-    if (busy || photos.length === 0) return;
+    // The ref answers at once. State would still read false for a second tap in
+    // the same frame, and each POST makes its own entry.
+    if (sending.current || photos.length === 0) return;
     const meta = buildMeta(house, photos.map((p) => p.label), gps);
     if (!meta.success) return setError("This house is missing its barangay. Go back and open it again.");
+    sending.current = true;
     setBusy(true);
     setError(null);
     try {
       const res = await fetch("/api/entries", { method: "POST", body: buildForm(meta.data, photos.map((p) => p.file), note) });
       const body = (await res.json().catch(() => null)) as { id?: string; error?: string } | null;
       if (res.ok && body?.id) {
+        // Stay locked while the next screen loads, so a late tap cannot post again.
         router.push(routes.responder.drafting(body.id));
         return;
       }
       setError(sendError(res.status, body?.error));
     } catch {
       setError("Could not reach the hub. Check the Wi-Fi and try again.");
-    } finally {
-      setBusy(false);
     }
+    sending.current = false;
+    setBusy(false);
   }
 
   const next = nextLabel(photos.length);
@@ -151,7 +156,7 @@ function AssessForm({ house }: AssessFormProps) {
         </p>
       </main>
       <footer className="px-gutter pb-6">
-        <Button type="button" className="w-full" disabled={busy || photos.length === 0} onClick={() => void send()}>
+        <Button type="button" className="w-full" disabled={busy || photos.length === 0} aria-busy={busy} onClick={() => void send()}>
           {busy ? "Sending" : "Send to hub"}
         </Button>
       </footer>

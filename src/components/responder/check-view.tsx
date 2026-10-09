@@ -24,6 +24,7 @@ import {
   type CheckForm,
   canConfirm,
   confidenceWords,
+  entryMovedOn,
   HAZARD_SUGGESTIONS,
   initialForm,
   isUnclear,
@@ -134,6 +135,10 @@ function CheckView({ entryId, title, house, entry, ai, photos, reportHurt, hasNe
         body: JSON.stringify(built.data),
       });
       if (res.ok) {
+        router.push(routes.responder.confirmed(entryId));
+        return;
+      }
+      if (await entryMovedOn(res)) {
         router.push(routes.responder.confirmed(entryId));
         return;
       }

@@ -18,6 +18,7 @@ import {
   updates,
 } from "../src/db/schema";
 import {
+  AiPhotoDraft,
   Confidence,
   ConfirmedDamageClass,
   DamageClass,
@@ -38,11 +39,35 @@ import { hashPin } from "../src/lib/pin";
 // runs it for db:seed and scripts/demo-reset.ts runs it after clearing. It wipes every
 // data table and reloads it in one transaction, so running it twice gives the
 // same totals. Settings are upserted, not wiped.
+//
+// Times in the file are fixed on the drill day. The loader shifts all of them by
+// one offset so the newest lands a few minutes before the load. Order and
+// spacing stay as written. SEED_FIXED_TIMES=1 keeps the times as written.
 
 // Entries in the seed that have no confirmed_at get a time on the drill day.
 // The canvas shows 0238 at 2:51 PM.
 const REVIEW_TIMES: Record<number, string> = { 238: "14:51", 239: "14:44", 241: "14:47" };
 const FALLBACK_TIME = "14:30";
+const PLACES_TIME = "12:00";
+/** The newest seeded time lands this long before the load. */
+const NEWEST_LEAD_MS = 3 * 60_000;
+// History of a seeded entry, as minutes before it was confirmed or sent for review.
+const TAKEN_BEFORE_MIN = 28;
+const DRAFTED_BEFORE_MIN = 1;
+
+/** The seed's review text, as the keys the app writes in entry.needs_review. */
+const REVIEW_REASON_KEYS: Record<string, string> = {
+  "Responder changed class": "class_differs",
+  "AI not sure": "unclear_no_new_photo",
+  "Hurt count differs": "hurt_differs",
+};
+
+const AI_REASONS = {
+  total: "Roof gone and walls down.",
+  partial: "Roof and walls damaged, structure standing.",
+  none: "No visible damage to the roof or walls.",
+  unclear: "The roof is not visible.",
+} as const;
 
 const BBox = z.object({ west: z.number(), south: z.number(), east: z.number(), north: z.number() });
 type BBox = z.infer<typeof BBox>;
@@ -131,10 +156,25 @@ const Seed = z.object({
 
 const seed = Seed.parse(JSON.parse(readFileSync("seed/simulation.json", "utf8")));
 
-const iso = (value: string) => new Date(value).toISOString();
-
 const drillDay = seed.reports[0].created_at.slice(0, 10);
-const drillTime = (hhmm: string) => iso(`${drillDay}T${hhmm}:00+08:00`);
+const drillClock = (hhmm: string) => `${drillDay}T${hhmm}:00+08:00`;
+
+const newestSeeded = Math.max(
+  ...[
+    ...seed.reports.map((r) => r.created_at),
+    ...seed.entries.map((e) => e.confirmed_at ?? drillClock(REVIEW_TIMES[e.number] ?? FALLBACK_TIME)),
+    ...seed.updates.map((u) => u.posted_at),
+    ...seed.safe_checkins.map((c) => c.at),
+    drillClock(PLACES_TIME),
+  ].map((value) => Date.parse(value)),
+);
+/** Whole minutes, so a seeded 14:58 stays on a minute mark after the shift. */
+const shiftMs =
+  process.env.SEED_FIXED_TIMES === "1" ? 0 : Math.floor((Date.now() - NEWEST_LEAD_MS) / 60_000) * 60_000 - newestSeeded;
+
+const iso = (value: string) => new Date(Date.parse(value) + shiftMs).toISOString();
+const drillTime = (hhmm: string) => iso(drillClock(hhmm));
+const minutesBefore = (value: string, minutes: number) => new Date(Date.parse(value) - minutes * 60_000).toISOString();
 
 function settingText(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
@@ -169,6 +209,7 @@ function toLatLng([x, y]: [number, number]) {
 const responderIds = new Map(seed.responders.map((r) => [r.id, randomUUID()]));
 const responderNames = new Map(seed.responders.map((r) => [r.id, r.name]));
 const reportIds = new Map(seed.reports.map((r) => [r.code, randomUUID()]));
+const entryIds = new Map(seed.entries.map((e) => [e.number, randomUUID()]));
 
 function responderId(seedId: string): string {
   const found = responderIds.get(seedId);
@@ -179,6 +220,44 @@ function responderId(seedId: string): string {
 const confirmedAtByReport = new Map<string, string>();
 for (const e of seed.entries) {
   if (e.report_code && e.confirmed_at) confirmedAtByReport.set(e.report_code, iso(e.confirmed_at));
+}
+
+type EventRow = typeof events.$inferInsert;
+
+/**
+ * The trail a responder's visit leaves, in the types the app writes: taken,
+ * the AI draft, then confirmed or sent for review. The draft is the same
+ * AiPhotoDraft shape the photo route stores, checked before it is saved.
+ */
+function entryEvents(e: (typeof seed.entries)[number], confirmedAt: string | null, reviewAt: string): EventRow[] {
+  const id = entryIds.get(e.number)!;
+  const actor = responderId(e.responder_id);
+  const end = confirmedAt ?? reviewAt;
+  const draft = AiPhotoDraft.parse({
+    damage_class: e.ai_class,
+    confidence: e.ai_confidence,
+    material: e.material,
+    hazards: e.hazards,
+    reason: e.ai_reason ?? AI_REASONS[e.ai_class],
+    need_more: null,
+  });
+  const reasonKey = e.review_reason ? REVIEW_REASON_KEYS[e.review_reason] : undefined;
+  const reasonKeys = reasonKey ? [reasonKey] : [];
+  const row = (type: string, who: string, at: string, data: Record<string, unknown>): EventRow => ({
+    entity: "entry",
+    entity_id: id,
+    type,
+    actor: who,
+    data,
+    at,
+  });
+  return [
+    row("entry.created", actor, minutesBefore(end, TAKEN_BEFORE_MIN), { number: e.number, report_code: e.report_code, photos: 0, note: false }),
+    row("ai.photo", "system", minutesBefore(end, DRAFTED_BEFORE_MIN), { raw: JSON.stringify(draft) }),
+    confirmedAt
+      ? row("entry.confirmed", actor, confirmedAt, { class: e.damage_class })
+      : row("entry.needs_review", actor, reviewAt, { reasons: reasonKeys }),
+  ];
 }
 
 async function buildSettingRows() {
@@ -241,6 +320,7 @@ export async function loadSeed() {
           const confirmedAt = e.confirmed_at ? iso(e.confirmed_at) : null;
           const reviewAt = drillTime(REVIEW_TIMES[e.number] ?? FALLBACK_TIME);
           return {
+            id: entryIds.get(e.number)!,
             number: e.number,
             report_id: e.report_code ? (reportIds.get(e.report_code) ?? null) : null,
             responder_id: responderId(e.responder_id),
@@ -269,6 +349,15 @@ export async function loadSeed() {
       )
       .run();
 
+    tx.insert(events)
+      .values(
+        seed.entries.flatMap((e) => {
+          const confirmedAt = e.confirmed_at ? iso(e.confirmed_at) : null;
+          return entryEvents(e, confirmedAt, drillTime(REVIEW_TIMES[e.number] ?? FALLBACK_TIME));
+        }),
+      )
+      .run();
+
     tx.insert(places)
       .values(
         seed.places.map((p) => ({
@@ -278,7 +367,7 @@ export async function loadSeed() {
           when_text: p.when_text,
           ...toLatLng(p.pos),
           visible: true,
-          created_at: drillTime("12:00"),
+          created_at: drillTime(PLACES_TIME),
         })),
       )
       .run();
@@ -311,6 +400,6 @@ export async function loadSeed() {
   console.log(
     `Seeded ${settingRows.length} settings, ${seed.responders.length} responders, ${seed.reports.length} reports, ` +
       `${seed.entries.length} entries, ${seed.places.length} places, ${seed.updates.length} updates, ` +
-      `${seed.safe_checkins.length} check-ins.`,
+      `${seed.safe_checkins.length} check-ins. Times shifted by ${Math.round(shiftMs / 60_000)} minutes.`,
   );
 }

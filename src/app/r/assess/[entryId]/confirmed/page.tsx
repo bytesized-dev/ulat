@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, EyeIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -55,16 +55,27 @@ export default async function ConfirmedPage({ params }: { params: Promise<{ entr
   const next = orderToVisit(withDistance(open, null), "urgent").find(isUrgent) ?? null;
   const tag = next ? urgencyLabel(next.hurt, next.missing) : null;
   const damage = entry.damage_class;
+  // A held entry does not count yet, so it must not read as confirmed.
+  const held = entry.status === "needs_review";
 
   return (
     <div className="flex min-h-dvh flex-col">
       <TopBar as="p" title="" leading={{ kind: "close", href: routes.responder.toVisit }} />
       <main className="flex flex-1 flex-col gap-8 px-gutter pt-6 pb-6">
         <div className="flex flex-col items-center gap-5">
-          <span className="flex size-18 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <CheckIcon aria-hidden="true" className="size-9" />
-          </span>
-          <h1 className="text-title-page text-ink">Entry confirmed</h1>
+          {held ? (
+            <span className="flex size-18 items-center justify-center rounded-full bg-hairline-soft text-ink">
+              <EyeIcon aria-hidden="true" className="size-9" />
+            </span>
+          ) : (
+            <span className="flex size-18 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <CheckIcon aria-hidden="true" className="size-9" />
+            </span>
+          )}
+          <div className="flex flex-col items-center gap-2 text-center">
+            <h1 className="text-title-page text-ink">{held ? "Sent for a second look" : "Entry confirmed"}</h1>
+            {held ? <p className="text-body-md text-body">Staff at the hub will check it before it counts.</p> : null}
+          </div>
         </div>
         <div className="flex flex-col">
           <Row
@@ -82,11 +93,13 @@ export default async function ConfirmedPage({ params }: { params: Promise<{ entr
               href={routes.responder.report(next.code)}
               label="Next urgent"
               value={householdName(next.household_head)}
+              // Row drops its chevron when it has a trailing slot, so the page draws it.
               trailing={
                 tag ? (
                   <span className="flex items-center gap-1.5 text-caption-strong text-danger">
                     <StatusDot tone="danger" />
                     {tag}
+                    <ChevronRightIcon aria-hidden="true" className="size-5 shrink-0 text-muted-soft" />
                   </span>
                 ) : null
               }

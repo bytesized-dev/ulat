@@ -110,6 +110,16 @@ export function buildConfirm(form: CheckForm, newPhotoSinceUnclear: boolean) {
 }
 
 /** "Matches report" shows when the hurt count equals the family report. Nothing shows without a report. */
+/**
+ * True when a failed save means the entry moved on while the screen was open: the
+ * route answered 409 not_a_draft. Retrying cannot work, so the screen goes to the confirmed page.
+ */
+export async function entryMovedOn(res: Pick<Response, "status" | "json">): Promise<boolean> {
+  if (res.status !== 409) return false;
+  const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+  return body?.error === "not_a_draft";
+}
+
 export function matchesReport(hurt: number, reportHurt: number | null): boolean {
   return reportHurt !== null && hurt === reportHurt;
 }

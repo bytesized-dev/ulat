@@ -1,7 +1,8 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { entries, events, photos, reports } from "@/db/schema";
-import { EntryConfirm, EntryStatus } from "@/lib/contracts";
+import { EntryConfirm, EntryStatus, type HubEvent } from "@/lib/contracts";
+import { setStatus } from "@/app/api/reports/_lib/audit";
 import { audit, emit } from "../_lib/audit";
 import { authorize } from "../_lib/auth";
 import { REVIEW_REASONS, reviewReasons } from "../_lib/review";
@@ -50,6 +51,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!entry) return Response.json({ error: "not_found" }, { status: 404 });
   const report = entry.report_id ? db.select().from(reports).where(eq(reports.id, entry.report_id)).get() : undefined;
 
+  // A responder only reaches their own entries. It says not_found for someone
+  // else's, so it does not confirm that the entry exists. The update below checks
+  // the same thing again in its where clause.
+  if (actor.role === "responder" && entry.responder_id !== actor.id) return Response.json({ error: "not_found" }, { status: 404 });
+
   // Staff settle a needs_review entry from the review screen, so their save
   // confirms it. A responder's save goes through the SPEC section 5 rules.
   const hasNewPhoto =
@@ -65,7 +71,6 @@ export async function PATCH(req: Request, { params }: Ctx) {
       : reviewReasons({ aiClass: entry.ai_class, confirm, hasNewPhoto, reportHurt: report?.hurt ?? null });
   const status = reasons.length > 0 ? "needs_review" : "confirmed";
   const now = new Date().toISOString();
-
   // Staff editing an entry that is already confirmed change fields only. It is not
   // a new confirmation, so the status, who confirmed and when, and the report stay.
   // A caller that sends the header is settling a review and keeps the path below.
@@ -73,9 +78,15 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const changed = FIELDS.filter((field) => JSON.stringify(entry[field]) !== JSON.stringify(confirm[field]));
   if (editing && changed.length === 0) return Response.json({ entry, status: entry.status, reasons: [] });
 
+  // A responder saves their own draft. Staff settle an entry that waits for review,
+  // or edit one that is confirmed. The update below holds each path to its own status.
+  const required = actor.role === "responder" ? "draft" : editing ? "confirmed" : "needs_review";
+  let visited: HubEvent | null = null;
+
   const settled = db.transaction((tx) => {
-    // The update goes first, and with the header it only matches an entry that is
-    // still in the status the caller saw. No row changed means another save got there
+    // The update goes first. It only matches an entry in the status the role may
+    // change, owned by the responder when one is saving, and with the header still
+    // in the status the caller saw. No row changed means another save got there
     // first, so nothing has been written and the audit rows below never are.
     const result = tx
       .update(entries)
@@ -97,9 +108,16 @@ export async function PATCH(req: Request, { params }: Ctx) {
               confirmed_at: status === "confirmed" ? now : null,
             }),
       })
-      .where(expected?.success ? and(eq(entries.id, id), eq(entries.status, expected.data)) : eq(entries.id, id))
+      .where(
+        and(
+          eq(entries.id, id),
+          eq(entries.status, required),
+          actor.role === "responder" ? eq(entries.responder_id, actor.id) : undefined,
+          expected?.success ? eq(entries.status, expected.data) : undefined,
+        ),
+      )
       .run();
-    if (expected && result.changes !== 1) return false;
+    if (result.changes !== 1) return false;
 
     for (const field of changed) {
       audit(tx, id, "entry.field_changed", actor.id, { field, from: entry[field], to: confirm[field] });
@@ -109,23 +127,18 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
     if (status === "confirmed") {
       audit(tx, id, "entry.confirmed", actor.id, { class: confirm.damage_class });
-      if (report) {
-        tx.update(reports).set({ status: "visited", updated_at: now }).where(eq(reports.id, report.id)).run();
-        tx.insert(events)
-          .values({ entity: "report", entity_id: report.id, type: "report.visited", actor: actor.id, data: { entry_id: id }, at: now })
-          .run();
-      }
+      if (report) visited = setStatus(tx, report, "visited", actor.id, {}, { entry_id: id });
     } else {
       audit(tx, id, "entry.needs_review", actor.id, { reasons });
     }
     return true;
   });
-  if (!settled) return Response.json({ error: "not_in_review" }, { status: 409 });
+  if (!settled) return Response.json({ error: actor.role === "responder" ? "not_a_draft" : "not_in_review" }, { status: 409 });
 
   if (status === "confirmed") {
     // For an edit this is only the refresh signal, so the hub totals refetch.
     emit({ type: "entry.confirmed", entry_id: id, report_code: report?.code ?? null });
-    if (report && !editing) emit({ type: "report.updated", code: report.code, status: "visited" });
+    if (visited) emit(visited);
   } else {
     emit({ type: "entry.needs_review", entry_id: id });
   }

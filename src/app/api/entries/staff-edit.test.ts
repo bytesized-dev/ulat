@@ -88,7 +88,7 @@ describe("a staff edit of a confirmed entry", () => {
     expect(entryRow(id)).toMatchObject({ people: 6, hurt: 2, status: "confirmed", confirmed_by: responderId, confirmed_at: CONFIRMED_AT });
   });
 
-  it("audits each changed field and writes no confirmed or visited row", async () => {
+  it("audits each changed field and writes no confirmed row and no report row", async () => {
     const { id, reportId } = newConfirmed();
     await patch(id, body({ people: 6, hurt: 2 }));
     expect(rows(id).map((e) => e.type).sort()).toEqual(["entry.field_changed", "entry.field_changed"]);
@@ -131,7 +131,7 @@ describe("a staff edit of a confirmed entry", () => {
 });
 
 describe("a staff save on an entry in review", () => {
-  it("still confirms it, audits the confirmation and marks the report visited", async () => {
+  it("still confirms it, audits the confirmation and moves the report to visited", async () => {
     const { id, reportId } = newConfirmed("needs_review");
     const res = await patch(id, body({ people: 6 }), { "x-ulat-expect-status": "needs_review" });
     expect(res.status).toBe(200);
@@ -140,7 +140,7 @@ describe("a staff save on an entry in review", () => {
     expect(row.confirmed_by).toBe("staff");
     expect(row.confirmed_at).not.toBeNull();
     expect(rows(id).filter((e) => e.type === "entry.confirmed")).toHaveLength(1);
-    expect(rows(reportId).filter((e) => e.type === "report.visited")).toHaveLength(1);
+    expect(rows(reportId).map((e) => [e.type, (e.data as { status: string }).status])).toEqual([["report.status_changed", "visited"]]);
     expect(reportRow(reportId).status).toBe("visited");
     expect(types()).toEqual(["entry.confirmed", "report.updated"]);
   });

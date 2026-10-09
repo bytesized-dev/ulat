@@ -16,7 +16,8 @@ export default async function CheckPage({ params }: { params: Promise<{ entryId:
 
   const entry = db.select().from(entries).where(eq(entries.id, entryId)).get();
   if (!entry) notFound();
-  if (entry.status === "confirmed") redirect(routes.responder.confirmed(entryId));
+  // Only a draft can be checked. A confirmed or held entry has its own screen.
+  if (entry.status !== "draft") redirect(routes.responder.confirmed(entryId));
   // The photo draft has not landed yet.
   if (entry.ai_class === null) redirect(routes.responder.drafting(entryId));
 

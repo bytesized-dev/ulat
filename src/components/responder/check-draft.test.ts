@@ -4,6 +4,7 @@ import {
   canConfirm,
   confidenceWords,
   draftSteps,
+  entryMovedOn,
   initialForm,
   isDrafted,
   isUnclear,
@@ -115,5 +116,20 @@ describe("draftSteps", () => {
     const steps = draftSteps({ photos: 1, hasNote: false, drafted: true });
     expect(steps.map((s) => s.label)).toEqual(["1 photo", "Reading the photos", "Filling in the entry"]);
     expect(steps.every((s) => s.state === "done")).toBe(true);
+  });
+});
+
+describe("entryMovedOn", () => {
+  const res = (status: number, body: unknown) => ({ status, json: async () => body });
+
+  it("is true for 409 not_a_draft, which retrying cannot fix", async () => {
+    expect(await entryMovedOn(res(409, { error: "not_a_draft" }))).toBe(true);
+  });
+
+  it("is false for any other failure, so the retry message stays", async () => {
+    expect(await entryMovedOn(res(409, { error: "not_in_review" }))).toBe(false);
+    expect(await entryMovedOn(res(404, { error: "not_found" }))).toBe(false);
+    expect(await entryMovedOn(res(500, { error: "not_a_draft" }))).toBe(false);
+    expect(await entryMovedOn({ status: 409, json: async () => Promise.reject(new Error("not json")) })).toBe(false);
   });
 });

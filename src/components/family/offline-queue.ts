@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NewReport } from "@/lib/contracts";
 import { newClientId } from "@/lib/client-id";
-import { postReport, uploadVoice } from "./send-report";
+import { postReport, uploadPhoto, uploadVoice } from "./send-report";
 
 // Reports a family agreed to send while the hub could not be reached. They wait
 // here, on the phone, with any audio and photos, and go out once /api/health
@@ -108,12 +108,13 @@ export type FlushResult = { reachable: boolean; sent: SentItem[]; refused: numbe
  * its audio too, so the family can fix it and send it with its recording. If the
  * hub answers but refuses the recording, the report goes without it: the report
  * matters more than its audio.
+ *
+ * A photo goes the same way, under the photo_id the report carries, and the
+ * queue keeps it on the same terms as the audio.
  */
 export async function flushQueue(
   store: QueueStore,
   send: typeof fetch = fetch,
-  /** Sends an item's photos once its report has a code. The audio has gone before the report. */
-  upload?: (item: QueuedReport, code: string) => Promise<void>,
 ): Promise<FlushResult> {
   const items = readQueue(await store.list());
   const waiting = items.filter((item) => item.state === "waiting");
@@ -135,14 +136,18 @@ export async function flushQueue(
       // taken within an hour, so only an accepted report can let go of it.
       if (!voice.ok) report = { ...report, voice_id: null };
     }
+    const photo = item.attachments.find((a) => a.kind === "photo");
+    if (photo && report.photo_id) {
+      const sentPhoto = await uploadPhoto(photo.blob, report.photo_id, send);
+      if (!sentPhoto.ok && sentPhoto.unreachable) {
+        reachable = false;
+        break;
+      }
+      // Kept, like the audio, until the hub accepts the report.
+      if (!sentPhoto.ok) report = { ...report, photo_id: null };
+    }
     const result = await postReport(report, send);
     if (result.ok) {
-      try {
-        // The audio went before the report. Photos are what is left to send.
-        await upload?.({ ...item, attachments: item.attachments.filter((a) => a.kind !== "audio") }, result.code);
-      } catch {
-        // The report is counted already. A file that fails to upload must not send it twice.
-      }
       await store.remove(item.id);
       sent.push({ id: item.id, code: result.code, saved_at: item.saved_at });
     } else if (result.unreachable) {

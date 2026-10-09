@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Need, ReportCode, VoiceStored, type NewReport } from "@/lib/contracts";
+import { Need, PhotoStored, ReportCode, VoiceStored, type NewReport } from "@/lib/contracts";
 import { toNewReport, type ReportDraft } from "./report-draft";
 import { voiceFileName } from "./voice-audio";
 
@@ -91,6 +91,38 @@ export async function uploadVoice(audio: Blob, voiceId: string, send: typeof fet
   }
 }
 
+/** `unreachable` means the hub never answered, so the photo can wait on the phone with its report. */
+export type PhotoUpload = { ok: true } | { ok: false; unreachable: boolean };
+
+/** A file name for the upload and the queue, from the photo's type. The hub never reads it. */
+export function photoFileName(photo: Blob): string {
+  const kind = photo.type.split(";")[0].split("/")[1]?.replace(/[^a-z0-9]/gi, "");
+  return `photo.${kind || "jpg"}`;
+}
+
+/**
+ * Sends a photo to the hub under the photo_id the report will carry. The hub
+ * answers the same for a repeat, so sending it again after a lost reply stores
+ * one file. Never throws.
+ */
+export async function uploadPhoto(photo: Blob, photoId: string, send: typeof fetch = fetch): Promise<PhotoUpload> {
+  try {
+    const form = new FormData();
+    form.set("photo_id", photoId);
+    form.set("photo", photo, photoFileName(photo));
+    const res = await send("/api/reports/photo", { method: "POST", body: form });
+    if (res.status === 502 || res.status === 504) return { ok: false, unreachable: true };
+    if (!res.ok) return { ok: false, unreachable: false };
+    const stored = PhotoStored.safeParse(await res.json().catch(() => null));
+    return stored.success && stored.data.photo_id === photoId ? { ok: true } : { ok: false, unreachable: false };
+  } catch {
+    return { ok: false, unreachable: true };
+  }
+}
+
+/** The photo a family picked and the photo_id it will go under. The id is made once per tap on Send. */
+export type PhotoToSend = { blob: Blob; id: string };
+
 /**
  * Sends the draft to the hub as a NewReport with consent true. Never throws, and
  * never touches the draft, so a failed send leaves it for another try. The
@@ -101,12 +133,18 @@ export async function uploadVoice(audio: Blob, voiceId: string, send: typeof fet
  * it, because the transcript is already in the report and a house in need
  * should not wait on an attachment. If the hub does not answer, nothing is
  * sent and the caller queues the report with its audio.
+ *
+ * A photo goes the same way, after the recording and before the report, under
+ * the id the caller made for this tap. The draft has no photo field, so the
+ * photo and its id come from the caller. The hub refusing the photo sends the
+ * report with photo_id null, and an unreachable hub sends nothing.
  */
 export async function sendReport(
   draft: ReportDraft,
   send: typeof fetch = fetch,
   clientId?: string,
   audio: Blob | null = null,
+  photo: PhotoToSend | null = null,
 ): Promise<SendResult> {
   const body = toNewReport(draft);
   if (!body.success) return { ok: false, message: CHECK_REPORT, retry: false };
@@ -116,5 +154,11 @@ export async function sendReport(
     if (!upload.ok && upload.unreachable) return { ok: false, message: UNREACHABLE, retry: true, unreachable: true };
     if (!upload.ok) voiceId = null;
   }
-  return postReport({ ...body.data, voice_id: voiceId, ...(clientId ? { client_id: clientId } : {}) }, send);
+  let photoId = photo ? photo.id : null;
+  if (photo) {
+    const upload = await uploadPhoto(photo.blob, photo.id, send);
+    if (!upload.ok && upload.unreachable) return { ok: false, message: UNREACHABLE, retry: true, unreachable: true };
+    if (!upload.ok) photoId = null;
+  }
+  return postReport({ ...body.data, voice_id: voiceId, photo_id: photoId, ...(clientId ? { client_id: clientId } : {}) }, send);
 }

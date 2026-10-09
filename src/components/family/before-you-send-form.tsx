@@ -15,7 +15,8 @@ import { newClientId } from "@/lib/client-id";
 import { enqueue } from "./offline-queue";
 import { queueStore } from "./queue-db";
 import { clearDraft, toNewReport } from "./report-draft";
-import { canSend, sendReport, summarizeDraft } from "./send-report";
+import { reportPhotoBlob, setReportPhoto } from "./report-photo";
+import { canSend, photoFileName, sendReport, summarizeDraft } from "./send-report";
 import { markSentFromDraft, saveSentReport } from "./sent-report";
 import { setVoiceAudio, voiceAudioBlob, voiceFileName } from "./voice-audio";
 import { announceQueueChange } from "./use-offline-queue";
@@ -51,7 +52,10 @@ function BeforeYouSendForm() {
     // A typed note has no voice_id, and a reload loses the recording in memory.
     // Either way the report goes without audio.
     const audio = draft.voice_id ? voiceAudioBlob() : null;
-    const result = await sendReport(draft, fetch, clientId, audio);
+    // The photo_id is made once per tap too, so a resend never makes a second file.
+    const picked = reportPhotoBlob();
+    const photo = picked ? { blob: picked, id: newClientId() } : null;
+    const result = await sendReport(draft, fetch, clientId, audio, photo);
     if (!result.ok && result.unreachable) {
       // The hub is out of reach. Keep the report on the phone with its
       // recording, where the saved screen takes over and sends both when the
@@ -59,10 +63,14 @@ function BeforeYouSendForm() {
       const body = toNewReport(draft);
       if (body.success) {
         try {
-          const report = { ...body.data, voice_id: audio ? body.data.voice_id : null, client_id: clientId };
-          await enqueue(queueStore(), report, audio ? [{ kind: "audio", name: voiceFileName(audio), blob: audio }] : []);
+          const report = { ...body.data, voice_id: audio ? body.data.voice_id : null, photo_id: photo?.id ?? null, client_id: clientId };
+          await enqueue(queueStore(), report, [
+            ...(audio ? [{ kind: "audio" as const, name: voiceFileName(audio), blob: audio }] : []),
+            ...(photo ? [{ kind: "photo" as const, name: photoFileName(photo.blob), blob: photo.blob }] : []),
+          ]);
           clearDraft();
           setVoiceAudio(null);
+          setReportPhoto(null);
           announceQueueChange();
           setBusy(false);
           return;
@@ -79,6 +87,7 @@ function BeforeYouSendForm() {
     saveSentReport(result.code);
     markSentFromDraft(result.code);
     setVoiceAudio(null);
+    setReportPhoto(null);
     // Replace, so Back from the next screen does not offer to send it again.
     router.replace(routes.family.sent);
   }

@@ -54,18 +54,24 @@ export async function POST(req: Request) {
     return Response.json({ error }, { status: 400 });
   };
   const storedPhotos: Stored[] = [];
-  for (const file of photoFiles) {
-    const photo = await storeUpload(file, "photo");
-    if ("error" in photo) return reject(photo.error);
-    stored.push(photo);
-    storedPhotos.push(photo);
-  }
   let notePath: string | null = null;
-  if (noteFile instanceof File && noteFile.size > 0) {
-    const note = await storeUpload(noteFile, "audio");
-    if ("error" in note) return reject(note.error);
-    stored.push(note);
-    notePath = note.path;
+  try {
+    for (const file of photoFiles) {
+      const photo = await storeUpload(file, "photo");
+      if ("error" in photo) return reject(photo.error);
+      stored.push(photo);
+      storedPhotos.push(photo);
+    }
+    if (noteFile instanceof File && noteFile.size > 0) {
+      const note = await storeUpload(noteFile, "audio");
+      if ("error" in note) return reject(note.error);
+      stored.push(note);
+      notePath = note.path;
+    }
+  } catch (error) {
+    // storeUpload throws when the disk write fails. Files stored before it stay otherwise.
+    await discardUploads(stored);
+    throw error;
   }
 
   const id = randomUUID();

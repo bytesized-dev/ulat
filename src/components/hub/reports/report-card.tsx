@@ -1,5 +1,6 @@
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { HubSummary } from "@/lib/contracts";
+import { barangaysWithData } from "@/lib/hub/barangay-rows";
 import { listedNeeds, NEED_LABELS } from "@/lib/hub/needs";
 import { formatDate, formatTime } from "@/lib/time";
 
@@ -44,7 +45,7 @@ export function ReportCard({ number, createdAt, town, snapshot, hazards }: Repor
             </TableRow>
           </TableHeader>
           <TableBody>
-            {snapshot.barangays.map((b) => (
+            {barangaysWithData(snapshot.barangays).map((b) => (
               <TableRow key={b.barangay} className="border-hairline-soft hover:bg-transparent">
                 <TableCell className="h-12 px-0 text-body-sm text-ink">{b.barangay}</TableCell>
                 <TableCell className={cell}>{b.families}</TableCell>

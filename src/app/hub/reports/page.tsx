@@ -11,7 +11,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { routes } from "@/lib/contracts/routes";
 import { getReviewCount } from "@/lib/hub/review-count";
-import { getLatestSitrep, listEarlierSitreps, readTown } from "@/lib/hub/sitreps";
+import { getHazardLines, getLatestSitrep, listEarlierSitreps, readTown } from "@/lib/hub/sitreps";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Reports" };
@@ -51,7 +51,7 @@ export default function HubReportsPage() {
         </div>
 
         {latest ? (
-          <ReportCard number={latest.number} createdAt={latest.created_at} town={readTown(db)} snapshot={latest.snapshot} />
+          <ReportCard number={latest.number} createdAt={latest.created_at} town={readTown(db)} snapshot={latest.snapshot} hazards={getHazardLines(db)} />
         ) : (
           <p className="text-body-md text-body">No situation report yet. Create the first one from the confirmed entries.</p>
         )}

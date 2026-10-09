@@ -1,6 +1,6 @@
-import { desc, eq, lt, max } from "drizzle-orm";
+import { and, asc, desc, eq, lt, max } from "drizzle-orm";
 import type { Db } from "../../db/client";
-import { settings, sitreps } from "../../db/schema";
+import { entries, places, settings, sitreps } from "../../db/schema";
 import { HubSummary } from "../contracts/schemas";
 import { buildSms, smsSegments, type SmsSnapshot } from "../sms";
 import { formatTime } from "../time";
@@ -104,4 +104,47 @@ export function listEarlierSitreps(db: Db, before: number): { number: number; cr
 /** How many characters and how many texts an SMS takes. */
 export function smsCounts(text: string): { characters: number; texts: number } {
   return { characters: text.length, texts: smsSegments(text) };
+}
+
+const upperFirst = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * Hazard lines for the report, as people wrote them. HubSummary has no hazards,
+ * so these are read live and not frozen in the snapshot. First the visible
+ * hazard places as "name, details". Then hazards typed on confirmed entries
+ * that no place already names, with the barangay so the line says where.
+ */
+export function getHazardLines(db: Db): string[] {
+  const lines: string[] = [];
+  const seen = new Set<string>();
+
+  const placeRows = db
+    .select({ name: places.name, details: places.details })
+    .from(places)
+    .where(and(eq(places.type, "hazard"), eq(places.visible, true)))
+    .orderBy(asc(places.created_at), asc(places.name))
+    .all();
+  for (const { name, details } of placeRows) {
+    const line = [name, details].map((t) => t?.trim()).filter(Boolean).join(", ");
+    if (!line) continue;
+    seen.add(name.trim().toLowerCase());
+    lines.push(upperFirst(line));
+  }
+
+  const entryRows = db
+    .select({ hazards: entries.hazards, barangay: entries.barangay, purok: entries.purok })
+    .from(entries)
+    .where(eq(entries.status, "confirmed"))
+    .orderBy(asc(entries.number))
+    .all();
+  for (const { hazards, barangay, purok } of entryRows) {
+    for (const raw of hazards) {
+      const text = raw.trim();
+      const key = text.toLowerCase();
+      if (!text || seen.has(key)) continue;
+      seen.add(key);
+      lines.push(`${upperFirst(text)}, ${[purok?.trim(), barangay].filter(Boolean).join(", ")}`);
+    }
+  }
+  return lines;
 }

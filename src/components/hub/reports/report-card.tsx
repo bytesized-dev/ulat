@@ -27,10 +27,12 @@ type ReportCardProps = {
   createdAt: string;
   town: string;
   snapshot: HubSummary;
+  /** One line per hazard, read live because the snapshot has no hazards. */
+  hazards: string[];
 };
 
 /** One situation report: the saved snapshot, never the live totals. */
-export function ReportCard({ number, createdAt, town, snapshot }: ReportCardProps) {
+export function ReportCard({ number, createdAt, town, snapshot, hazards }: ReportCardProps) {
   const needs = listedNeeds(snapshot.needs);
   return (
     <article className="flex flex-col gap-9 rounded-lg border border-hairline p-8">
@@ -106,6 +108,13 @@ export function ReportCard({ number, createdAt, town, snapshot }: ReportCardProp
         <p className="text-body-sm text-body">
           <span className="font-mono text-mono-sm text-ink tabular">{snapshot.not_yet_visited}</span> family reports.
         </p>
+      </section>
+
+      <section aria-labelledby="hazards" className="flex flex-col gap-2">
+        <h3 id="hazards" className={sectionTitle}>
+          Hazards
+        </h3>
+        <p className="text-body-sm text-body">{hazards.length === 0 ? "None listed." : hazards.map((h) => (h.endsWith(".") ? h : `${h}.`)).join(" ")}</p>
       </section>
     </article>
   );

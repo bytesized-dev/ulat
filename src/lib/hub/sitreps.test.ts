@@ -121,6 +121,43 @@ describe("reading reports", () => {
   });
 });
 
+describe("getHazardLines", () => {
+  it("is empty when nothing is listed", () => {
+    expect(lib.getHazardLines(db)).toEqual([]);
+  });
+
+  it("lists visible hazard places, then entry hazards no place names, once each", () => {
+    const place = { lat: 1, lng: 2, created_at: THREE_PM };
+    db.insert(schema.places)
+      .values([
+        { ...place, type: "hazard", name: "Landslide", details: "upper Sinonoc road" },
+        { ...place, type: "hazard", name: "Fallen power line", details: "Purok 3", created_at: "2026-10-10T07:05:00.000Z" },
+        { ...place, type: "hazard", name: "Hidden flood", details: null, visible: false },
+        { ...place, type: "shelter", name: "Covered court" },
+      ])
+      .run();
+    db.insert(schema.entries)
+      .values([
+        entry(6, { hazards: ["fallen power line", "Leaning post"], purok: "Purok 5" }),
+        entry(7, { hazards: ["Leaning post", "  "], barangay: "Dawo (Pob.)" }),
+        entry(8, { status: "needs_review", hazards: ["Not counted"] }),
+      ])
+      .run();
+    expect(lib.getHazardLines(db)).toEqual([
+      "Landslide, upper Sinonoc road",
+      "Fallen power line, Purok 3",
+      "Leaning post, Purok 5, Sinonoc",
+    ]);
+  });
+
+  it("writes a place with no details as its name", () => {
+    db.insert(schema.places)
+      .values({ lat: 1, lng: 2, created_at: "2026-10-10T08:00:00.000Z", type: "hazard", name: "Bridge out", details: " " })
+      .run();
+    expect(lib.getHazardLines(db)).toContain("Bridge out");
+  });
+});
+
 describe("smsTimeLabel and smsCounts", () => {
   it("writes the hour without minutes and keeps real minutes", () => {
     expect(lib.smsTimeLabel(at(THREE_PM))).toBe("3PM");

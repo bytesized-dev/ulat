@@ -14,14 +14,14 @@ function HouseholdOption({ icon, label, className, ...props }: HouseholdOptionPr
   return (
     <label
       data-slot="household-option"
-      className={cn("flex min-h-16 w-full cursor-pointer items-center gap-4 border-b border-hairline-soft py-3 last:border-b-0", className)}
+      className={cn("flex min-h-16 w-full cursor-pointer items-center gap-3.5 border-b border-hairline-soft py-3.5 last:border-b-0", className)}
     >
       <IconPlate>{icon}</IconPlate>
       <span className="flex-1 text-title-sm text-ink">{label}</span>
       <input type="radio" className="peer sr-only" {...props} />
       <span
         aria-hidden="true"
-        className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-muted-soft transition-colors after:size-3 after:scale-0 after:rounded-full after:bg-primary after:transition-transform peer-checked:border-primary peer-checked:after:scale-100 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2"
+        className="flex size-5.5 shrink-0 items-center justify-center rounded-full border-2 border-muted-soft transition-colors after:size-3 after:scale-0 after:rounded-full after:bg-primary after:transition-transform peer-checked:border-primary peer-checked:after:scale-100 peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2"
       />
     </label>
   );

@@ -26,24 +26,40 @@ const NOT_PLACES = new Set(
 );
 
 // A period after these does not end a sentence, so "Sto. Niño" stays one name.
-const ABBREVIATIONS = new Set(["sto", "sta", "st", "brgy", "mt", "dr", "mr", "ms", "mrs", "gen", "jr", "sr", "no"]);
+// "St." is both: "St. Peter" starts a name and "Rizal St." ends one, see wordsOf.
+const ABBREVIATIONS = new Set(["sto", "sta", "brgy", "mt", "dr", "mr", "ms", "mrs", "gen"]);
+// A street word only counts as part of a name that already started before it.
+const STREET_SUFFIXES = new Set(["st", "ave", "blvd", "rd"]);
 
 const isCapitalized = (word: string) => /^\p{Lu}\p{Ll}/u.test(word);
 
 type Word = { text: string; startsSentence: boolean; endsRun: boolean };
 
+function isAbbreviation(word: string, previous: string): boolean {
+  const lower = word.toLowerCase();
+  return lower === "st" ? !isCapitalized(previous) : ABBREVIATIONS.has(lower);
+}
+
+/** The words of the text. A line break, a colon or a final period starts a new sentence. */
 function wordsOf(text: string): Word[] {
   const words: Word[] = [];
-  let startsSentence = true;
-  for (const token of text.match(/\S+/gu) ?? []) {
-    const core = token.replace(/^[("'“‘[]+/u, "").replace(/[,;:)"'”’\]]+$/u, "");
-    const endsSentence = /[.!?]$/u.test(core) && !ABBREVIATIONS.has(core.replace(/[.!?]+$/u, "").toLowerCase());
-    words.push({
-      text: endsSentence ? core.replace(/[.!?]+$/u, "") : core,
-      startsSentence,
-      endsRun: endsSentence || core !== token.replace(/^[("'“‘[]+/u, ""),
+  for (const line of text.split(/\r?\n/u)) {
+    const tokens = line.match(/\S+/gu) ?? [];
+    let startsSentence = true;
+    let previous = "";
+    tokens.forEach((token, index) => {
+      const opened = token.replace(/^[("'“‘[]+/u, "");
+      const core = opened.replace(/[,;:)"'”’\]]+$/u, "");
+      const bare = core.replace(/[.!?]+$/u, "");
+      const endsSentence = core !== bare && !isAbbreviation(bare, previous);
+      words.push({
+        text: endsSentence ? bare : core,
+        startsSentence,
+        endsRun: endsSentence || core !== opened || index === tokens.length - 1,
+      });
+      startsSentence = endsSentence || opened.endsWith(":");
+      previous = bare;
     });
-    startsSentence = endsSentence;
   }
   return words;
 }
@@ -62,7 +78,12 @@ function placesIn(text: string): string[] {
     run = [];
   };
   for (const word of wordsOf(text)) {
-    const isPlaceWord = isCapitalized(word.text) && !NOT_PLACES.has(word.text.toLowerCase()) && !word.startsSentence;
+    const lower = word.text.toLowerCase();
+    const isPlaceWord =
+      isCapitalized(word.text) &&
+      !NOT_PLACES.has(lower) &&
+      !word.startsSentence &&
+      !(STREET_SUFFIXES.has(lower) && run.length === 0);
     if (isPlaceWord) run.push(word.text);
     else close();
     if (word.endsRun) close();
@@ -94,14 +115,26 @@ export function extractFacts(english: { headline: string; message: string }): Fa
 
 const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** The fact written exactly as is, not inside a longer number or word. Case and spacing are ignored. */
+// AM and PM may be written the local way. The hour and the minutes may not change.
+const PM = ["pm", "p\\.m\\.", "sa hapon", "sa gabii", "ng hapon", "ng gabi"];
+const AM = ["am", "a\\.m\\.", "sa buntag", "sa kadlawon", "ng umaga"];
+
+const NUMBER_EDGES = [String.raw`(?<!\d)(?<!\d[.,:])`, String.raw`(?!\d)(?![.,:]\d)`] as const;
+const PLACE_EDGES = [String.raw`(?<![\p{L}\p{N}])`, String.raw`(?![\p{L}\p{N}])`] as const;
+
+function patternFor(fact: Fact): string {
+  if (fact.kind === "place") return PLACE_EDGES[0] + escape(fact.text).replace(/\s+/g, "\\s+") + PLACE_EDGES[1];
+
+  const meridiem = fact.kind === "time" ? /^(.+?)\s?([ap])\.?m\.?$/iu.exec(fact.text) : null;
+  if (!meridiem) return NUMBER_EDGES[0] + escape(fact.text.trim()).replace(/\s+/g, "\\s*") + NUMBER_EDGES[1];
+
+  const words = (meridiem[2].toLowerCase() === "p" ? PM : AM).map((word) => word.replace(/ /g, "\\s+"));
+  return `${NUMBER_EDGES[0]}${escape(meridiem[1])}${NUMBER_EDGES[1]}\\s*(?:${words.join("|")})(?!\\p{L})`;
+}
+
+/** The fact in the draft, not inside a longer number or word. Case and spacing are ignored. */
 function appearsIn(fact: Fact, draft: string): boolean {
-  const pattern = escape(fact.text.trim()).replace(/\s+/g, "\\s*");
-  const edges =
-    fact.kind === "place"
-      ? [String.raw`(?<![\p{L}\p{N}])`, String.raw`(?![\p{L}\p{N}])`]
-      : [String.raw`(?<!\d)(?<!\d[.,:])`, String.raw`(?!\d)(?![.,:]\d)`];
-  return new RegExp(`${edges[0]}${pattern}${edges[1]}`, "iu").test(draft);
+  return new RegExp(patternFor(fact), "iu").test(draft);
 }
 
 /** The facts from the English that one or both drafts dropped or changed. Empty means the drafts are safe to show. */

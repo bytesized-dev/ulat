@@ -109,7 +109,7 @@ describe("family reports list", () => {
 
   it("offers active responders only", () => {
     const names = listResponders(db).map((r) => r.name);
-    expect(names).toContain("Mae Santos");
+    expect(names).toContain("CJ Jutba");
     expect(names).toEqual([...names].sort());
   });
 });

@@ -17,11 +17,11 @@ import { smsSegments } from "../../src/lib/sms";
 
 const seed = JSON.parse(readFileSync("seed/simulation.json", "utf8")) as {
   _expected_totals: { houses: number; totally: number };
-  settings: { team_pin: string; staff_pin: string };
-  responders: { name: string }[];
+  settings: { staff_pin: string };
+  responders: { name: string; email: string; password: string }[];
 };
 const before = seed._expected_totals;
-const responderName = seed.responders[0].name;
+const { name: responderName, email: responderEmail, password: responderPassword } = seed.responders[0];
 const FIXTURES = ["tests/e2e/fixtures/front.png", "tests/e2e/fixtures/roof.png"];
 const PHONE = { width: 390, height: 844 };
 const LAPTOP = { width: 1440, height: 900 };
@@ -146,12 +146,9 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await responder.goto("/r");
     await expect(responder).toHaveURL(/\/r\/sign-in/);
 
-    await responder.getByRole("combobox", { name: "Name" }).click();
-    await responder.getByRole("option", { name: responderName }).click();
-    for (const digit of seed.settings.team_pin) {
-      await responder.getByRole("button", { name: digit, exact: true }).click();
-    }
-    await action(responder, "Unlock").click();
+    await responder.getByLabel("Email").fill(responderEmail);
+    await responder.getByLabel("Password", { exact: true }).fill(responderPassword);
+    await action(responder, "Sign in").click();
 
     await expect(responder.getByRole("heading", { name: "To visit" })).toBeVisible();
     const row = responder.locator(`a[href$="/r/reports/${code}"]`);

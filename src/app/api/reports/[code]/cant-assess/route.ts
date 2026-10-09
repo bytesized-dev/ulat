@@ -12,7 +12,8 @@ import { deny, getActor } from "../../_lib/auth";
 const CLOSED = new Set(["visited", "cant_assess", "merged"]);
 
 export async function POST(req: Request, ctx: { params: Promise<{ code: string }> }) {
-  const actor = await getActor();
+  // Only a responder can mark a house, so a laptop that also holds the staff cookie is answered as the responder.
+  const actor = await getActor("responder");
   const blocked = deny(actor, ["responder"]);
   if (blocked) return blocked;
   if (!actor) return Response.json({ error: "not_signed_in" }, { status: 401 });

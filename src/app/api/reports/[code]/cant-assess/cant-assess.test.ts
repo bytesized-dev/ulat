@@ -104,6 +104,16 @@ describe("POST /api/reports/[code]/cant-assess", () => {
     expect(row(c).status).toBe("waiting");
   });
 
+  it("answers a laptop that holds both cookies as the responder", async () => {
+    const c = await make();
+    await signIn("responder");
+    const responder = new Map(jar);
+    await signIn("staff");
+    for (const [name, value] of responder) jar.set(name, value);
+    expect((await route.POST(post({ reason: "cant_find", note: null }), ctx(c))).status).toBe(200);
+    expect(row(c).status).toBe("cant_assess");
+  });
+
   it("validates the body and the code", async () => {
     const c = await make();
     await signIn("responder");

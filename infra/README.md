@@ -15,6 +15,7 @@ Goal: phones with no mobile data join the hub's Wi-Fi, open `https://hub.[your-d
 1. Power the router from a power bank. Leave its internet port empty. Name the Wi-Fi `ULAT-HUB`.
 2. In the router, reserve a fixed IP for the hub, for example `192.168.8.10`, and set the DHCP DNS server to that same IP.
 3. On the hub, run dnsmasq with `infra/dnsmasq.conf`, Caddy with `infra/Caddyfile` and `HUB_DOMAIN=hub.<team-domain>`, and the app with `pnpm start -H 127.0.0.1`. Keep `-H 127.0.0.1`: it makes Caddy the only way in. The sign in limiter trusts the `X-Forwarded-For` header Caddy sets, and a phone that reached port 3000 directly could send its own.
+   On Windows, where dnsmasq is not available, run one script instead: `.\infra\start.ps1 -HubDomain hub.<team-domain> -HubIp 192.168.8.10`. It starts a small DNS stub (`infra/dns-stub.mjs`), Caddy and the app (with `-H 127.0.0.1`). It uses the certificate in `-CertDir`, and falls back to Caddy's internal certificate when there is none. Press Ctrl+C to stop all three.
 4. On a phone: turn off mobile data, join `ULAT-HUB`, open `https://hub.<team-domain>`.
 
 ## Phone gotchas

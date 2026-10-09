@@ -1,4 +1,5 @@
-# Serves the app over HTTPS on the local network. See infra/README.md.
+# Serves the app over HTTPS on the local network, and over plain HTTP as a
+# fallback. See infra/README.md.
 # HUB_DOMAIN is for example hub.example.dev. Certificates are fetched before the storm.
 {
 	auto_https disable_redirects
@@ -10,5 +11,12 @@
 	# Fallback when no real certificate: replace the line above with
 	# tls internal
 	encode gzip
-	reverse_proxy localhost:3000
+	reverse_proxy 127.0.0.1:3000
+}
+
+# Plain HTTP for the "Nothing works" fallback in infra/README.md. It goes
+# through Caddy as well, so the app always sees a real X-Forwarded-For.
+:80 {
+	encode gzip
+	reverse_proxy 127.0.0.1:3000
 }

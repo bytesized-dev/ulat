@@ -14,7 +14,7 @@ Goal: phones with no mobile data join the hub's Wi-Fi, open `https://hub.[your-d
 
 1. Power the router from a power bank. Leave its internet port empty. Name the Wi-Fi `ULAT-HUB`.
 2. In the router, reserve a fixed IP for the hub, for example `192.168.8.10`, and set the DHCP DNS server to that same IP.
-3. On the hub, run dnsmasq with `infra/dnsmasq.conf`, Caddy with `infra/Caddyfile` and `HUB_DOMAIN=hub.<team-domain>`, and the app with `pnpm start`.
+3. On the hub, run dnsmasq with `infra/dnsmasq.conf`, Caddy with `infra/Caddyfile` and `HUB_DOMAIN=hub.<team-domain>`, and the app with `pnpm start -H 127.0.0.1`. Keep `-H 127.0.0.1`: it makes Caddy the only way in. The sign in limiter trusts the `X-Forwarded-For` header Caddy sets, and a phone that reached port 3000 directly could send its own.
 4. On a phone: turn off mobile data, join `ULAT-HUB`, open `https://hub.<team-domain>`.
 
 ## Phone gotchas
@@ -27,4 +27,4 @@ Goal: phones with no mobile data join the hub's Wi-Fi, open `https://hub.[your-d
 
 - **Certificate problems:** use `tls internal` in the Caddyfile and install Caddy's root certificate on the demo phones.
 - **DNS problems:** stock phones can't edit their hosts file, so open the hub by IP address with the internal certificate.
-- **Nothing works:** run plain HTTP on the IP. Camera and microphone will not work in the browser, so families type or use the help desk, and responders use the photo file picker.
+- **Nothing works:** run plain HTTP on the IP, for example `http://192.168.8.10`. The `:80` site in the Caddyfile serves it, so it still goes through Caddy. Camera and microphone will not work in the browser, so families type or use the help desk, and responders use the photo file picker.

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { HubSummary } from "@/lib/contracts";
-import { changesOverview, debounce, newerSummary } from "@/lib/hub/live-refresh";
-import { useLiveEvents } from "@/lib/live/use-live-events";
+import { useLiveRefresh } from "@/components/hub/use-live-refresh";
+import { changesOverview, newerSummary } from "@/lib/hub/live-refresh";
 
 // One summary per tab, shared by the main column and the rail, which sit in
 // different parts of the hub shell. The page renders with the summary it read
@@ -52,29 +52,9 @@ async function fetchSummary(): Promise<HubSummary | null> {
  */
 export function OverviewLive() {
   const router = useRouter();
-  const { latest, connected } = useLiveEvents();
-  const connectedBefore = useRef(false);
-  const refresh = useRef<ReturnType<typeof debounce> | null>(null);
-
-  useEffect(() => {
-    const d = debounce(() => {
-      void fetchSummary().then((summary) => summary && publish(summary));
-      router.refresh();
-    }, 300);
-    refresh.current = d;
-    return () => d.cancel();
-  }, [router]);
-
-  useEffect(() => {
-    if (changesOverview(latest)) refresh.current?.call();
-  }, [latest]);
-
-  useEffect(() => {
-    if (!connected) return;
-    // The first connect is covered by the page load itself.
-    if (connectedBefore.current) refresh.current?.call();
-    connectedBefore.current = true;
-  }, [connected]);
-
+  useLiveRefresh(changesOverview, () => {
+    void fetchSummary().then((summary) => summary && publish(summary));
+    router.refresh();
+  });
   return null;
 }

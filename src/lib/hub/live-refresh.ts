@@ -9,6 +9,15 @@ export function changesOverview(event: HubEvent | null): boolean {
   return event !== null && OVERVIEW_EVENTS.has(event.type);
 }
 
+/**
+ * The hub map moves on the same events as the overview: a house is pinned when
+ * its entry is confirmed, a report when it is created or visited, a place when
+ * it is saved. A draft has no confirmed damage, so it moves nothing.
+ */
+export function changesMap(event: HubEvent | null): boolean {
+  return changesOverview(event);
+}
+
 /** Runs `fn` once, `ms` after the last call, so a burst of events costs one refetch. */
 export function debounce(fn: () => void, ms: number): { call: () => void; cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null;

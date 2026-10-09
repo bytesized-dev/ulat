@@ -30,8 +30,10 @@ function files(dir) {
   return existsSync(path) ? readdirSync(path).filter((f) => !f.startsWith(".")).map((f) => `${dir}/${f}`) : [];
 }
 
-// Minimal CSV reader with quoted fields. Returns objects keyed by the header row. A missing column
-// is a problem, as in parseCsv in src/lib/eval/csv.ts, and the file then yields no rows.
+// CSV reader keyed by the header row. The scanner is a copy of parseCsv in src/lib/eval/csv.ts, which
+// pnpm eval uses, so keep the two in step. A script cannot import that file: node only loads .ts on
+// 22.18 and later, and it warns that package.json has no "type". A missing column is a problem, as
+// there, and the file then yields no rows. An unclosed quote is a problem too, where parseCsv throws.
 function readCsv(name, required) {
   const path = join(EVAL, name);
   if (!existsSync(path)) {
@@ -42,25 +44,42 @@ function readCsv(name, required) {
   let row = [];
   let cell = "";
   let quoted = false;
+  // A quote opens a quoted field only before the field has any character, as in parseCsv.
+  let fieldStarted = false;
   const text = readFileSync(path, "utf8").replace(/^﻿/, "");
+  const endCell = () => {
+    row.push(cell);
+    cell = "";
+    fieldStarted = false;
+  };
+  const endRow = () => {
+    endCell();
+    if (row.some((v) => v.trim())) rows.push(row);
+    row = [];
+  };
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (quoted) {
       if (c === '"' && text[i + 1] === '"') cell += text[i++];
       else if (c === '"') quoted = false;
       else cell += c;
-    } else if (c === '"') quoted = true;
-    else if (c === ",") (row.push(cell), (cell = ""));
+    } else if (c === '"' && !fieldStarted) {
+      quoted = true;
+      fieldStarted = true;
+    } else if (c === ",") endCell();
     else if (c === "\n" || c === "\r") {
       if (c === "\r" && text[i + 1] === "\n") i++;
-      row.push(cell);
-      cell = "";
-      if (row.some((v) => v.trim())) rows.push(row);
-      row = [];
-    } else cell += c;
+      endRow();
+    } else {
+      cell += c;
+      fieldStarted = true;
+    }
   }
-  row.push(cell);
-  if (row.some((v) => v.trim())) rows.push(row);
+  if (quoted) {
+    errors.push(`${name} has an unclosed quote, so pnpm eval cannot read it`);
+    return [];
+  }
+  if (cell !== "" || row.length > 0) endRow();
   const [header = [], ...body] = rows;
   const keys = header.map((h) => h.trim());
   const absent = header.length ? required.filter((k) => !keys.includes(k)) : [];

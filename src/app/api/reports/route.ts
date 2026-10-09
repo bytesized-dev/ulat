@@ -3,12 +3,13 @@ import { and, asc, desc, eq, ne, or, sql, type SQL } from "drizzle-orm";
 import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
 import { db } from "@/db/client";
-import { reports } from "@/db/schema";
+import { photos, reports } from "@/db/schema";
 import { NewReport, ReportStatus } from "@/lib/contracts";
 import { audit, emit } from "./_lib/audit";
 import { readJsonCapped } from "./_lib/body";
 import { deny, getActor } from "./_lib/auth";
 import { freshCode } from "./_lib/code";
+import { findPhoto, photoLinked } from "./_lib/photo-store";
 import { findVoice, voiceLinked } from "./_lib/voice-store";
 import { isUrgent, urgentSql } from "./_lib/view";
 
@@ -20,6 +21,10 @@ import { isUrgent, urgentSql } from "./_lib/view";
 // it. Otherwise the report is saved without audio and the audit row says why:
 // a disaster report must not be lost over an attachment, and answering the same
 // 201 either way gives nobody a way to test which voice_ids exist.
+//
+// A photo_id works the same way, for a photo sent to POST /api/reports/photo. It
+// becomes the report's photo_path and a photos row with that id, so
+// /api/files/<photo_id> serves it to responders and staff.
 
 export async function POST(req: Request) {
   const read = await readJsonCapped(req);
@@ -37,10 +42,11 @@ export async function POST(req: Request) {
   }
 
   const stored = body.voice_id ? await findVoice(body.voice_id) : null;
+  const storedPhoto = body.photo_id ? await findPhoto(body.photo_id) : null;
   const id = randomUUID();
   const now = new Date().toISOString();
   const urgent = isUrgent(body);
-  const { code, created, attached } = db.transaction((tx) => {
+  const { code, created, attached, photoAttached } = db.transaction((tx) => {
     const fresh = freshCode(tx);
     // Checked in the same transaction as the insert, so two reports cannot take one recording.
     const voice = !body.voice_id
@@ -48,6 +54,18 @@ export async function POST(req: Request) {
       : !stored
         ? ("unknown" as const)
         : tx.select({ id: reports.id }).from(reports).where(eq(reports.voice_path, stored)).get()
+          ? ("used" as const)
+          : ("attached" as const);
+    // Used means a photos row already has this id or this file.
+    const photo = !body.photo_id
+      ? null
+      : !storedPhoto
+        ? ("unknown" as const)
+        : tx
+              .select({ id: photos.id })
+              .from(photos)
+              .where(or(eq(photos.id, body.photo_id), eq(photos.path, storedPhoto)))
+              .get()
           ? ("used" as const)
           : ("attached" as const);
     // A phone sends the same client_id again after a lost reply. The unique
@@ -72,6 +90,7 @@ export async function POST(req: Request) {
         what_happened: body.what_happened,
         needs: body.needs,
         voice_path: voice === "attached" ? stored : null,
+        photo_path: photo === "attached" ? storedPhoto : null,
         transcript: body.transcript,
         transcript_en: body.english,
         language: body.language,
@@ -83,7 +102,10 @@ export async function POST(req: Request) {
       .run();
     if (inserted.changes === 0 && body.client_id) {
       const existing = tx.select({ code: reports.code }).from(reports).where(eq(reports.client_id, body.client_id)).get();
-      if (existing) return { code: existing.code, created: false, attached: false };
+      if (existing) return { code: existing.code, created: false, attached: false, photoAttached: false };
+    }
+    if (photo === "attached" && body.photo_id && storedPhoto) {
+      tx.insert(photos).values({ id: body.photo_id, report_id: id, path: storedPhoto }).run();
     }
     audit(tx, id, "report.created", actor, {
       code: fresh,
@@ -91,13 +113,16 @@ export async function POST(req: Request) {
       urgent,
       voice_id: body.voice_id,
       ...(voice ? { voice } : {}),
+      photo_id: body.photo_id,
+      ...(photo ? { photo } : {}),
     });
-    return { code: fresh, created: true, attached: voice === "attached" };
+    return { code: fresh, created: true, attached: voice === "attached", photoAttached: photo === "attached" };
   });
 
   if (created) emit({ type: "report.created", code, urgent });
   // The recording no longer counts as unlinked, so it stops using the unlinked cap.
   if (attached && stored) await voiceLinked(stored);
+  if (photoAttached && storedPhoto) await photoLinked(storedPhoto);
   return Response.json({ code }, { status: 201 });
 }
 

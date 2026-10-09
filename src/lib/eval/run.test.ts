@@ -254,6 +254,67 @@ describe("runEval when Ollama drops", () => {
     expect(calls).toBe(MAX_UNAVAILABLE_IN_A_ROW);
   });
 
+  // Ollama is up but could not serve the call. Not a verdict on the model.
+  const http = (status: number) => new OllamaError("unavailable", `Ollama answered ${status}`, "x", status);
+
+  // 503 busy, 429 too many requests, 408 request timeout, 500 runner crash.
+  it.each([[503], [429], [408], [500]])("does not score or time an HTTP %i from a reachable Ollama", async (status) => {
+    await writeSet();
+    let call = 0;
+    const draftPhoto = async () => {
+      if (call++ === 1) throw http(status);
+      return draft("partial");
+    };
+    const results = await runEval({ dir, model: "stub-model", deps: deps({ draftPhoto }) });
+
+    expect(results.skipped.filter((item) => item.reason === "unavailable")).toEqual([
+      { kind: "photo", file: "photos/p2.jpg", reason: "unavailable", ran: false },
+    ]);
+    expect(results.counts.photos).toMatchObject({ run: 4, calls: 4, call_failed: 0 });
+    expect(results.photos.items.map((item) => item.file)).not.toContain("photos/p2.jpg");
+    expect(results.photos.seconds.n).toBe(4);
+    expect(results.battery.houses).toBe(4);
+  });
+
+  it("does not score a voice note when Ollama answers with an error", async () => {
+    await writeSet();
+    const readVoice = async () => {
+      throw http(503);
+    };
+    const results = await runEval({ dir, model: "stub-model", deps: deps({ readVoice }) });
+    expect(results.skipped.filter((item) => item.kind === "voice" && item.reason === "unavailable").length).toBeGreaterThan(0);
+    expect(results.counts.voice.run).toBe(0);
+  });
+
+  it("stops after 3 HTTP errors in a row, and says Ollama answered rather than was unreachable", async () => {
+    await writeSet();
+    let calls = 0;
+    const draftPhoto = async () => {
+      calls++;
+      throw http(503);
+    };
+    const error = await runEval({ dir, model: "stub-model", deps: deps({ draftPhoto }) }).catch((e) => e);
+    expect(error.message).toBe(
+      `Ollama answered with an error (HTTP 503) for ${MAX_UNAVAILABLE_IN_A_ROW} calls in a row, so the run stopped and nothing was written. Check the Ollama log and run again.`,
+    );
+    expect(error.message).not.toMatch(/could not be reached/);
+    expect(calls).toBe(MAX_UNAVAILABLE_IN_A_ROW);
+  });
+
+  it("still scores invalid output and a timeout as unclear", async () => {
+    await writeSet();
+    const plan = [new OllamaError("invalid_output", "bad", "{}"), new OllamaError("timeout", "slow")];
+    let call = 0;
+    const draftPhoto = async () => {
+      const failure = plan[call++];
+      if (failure) throw failure;
+      return draft("partial");
+    };
+    const results = await runEval({ dir, model: "stub-model", deps: deps({ draftPhoto }) });
+    expect(results.photos.items.slice(0, 2).map((item) => item.got)).toEqual(["unclear", "unclear"]);
+    expect(results.skipped.some((item) => item.reason === "unavailable")).toBe(false);
+  });
+
   it("does not stop when a call gets through between the failures", async () => {
     await writeSet();
     const results = await runEval({ dir, model: "stub-model", deps: deps({ draftPhoto: nth(["down", "down", "ok", "down", "down"]) }) });

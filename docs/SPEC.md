@@ -165,7 +165,7 @@ One `GET /api/events` stream. Each message is a `HubEvent` from the contracts: `
 
 ### Calls
 
-All calls use Ollama's structured output with the JSON schema generated from the Zod schema, then validate again with Zod. Prompts are in `src/lib/ai/prompts.ts`.
+All calls first use Ollama's structured output (`format`) with the JSON schema generated from the Zod schema, then validate again with Zod. Some Ollama builds, such as Homebrew 0.40.2 on the MLX runner, lack `libollama_xgrammar` and answer any request with `format` with a 501 "structured output is unavailable". On that answer the call is sent once more without `format`, with the schema and "reply with one JSON object only, no code fence" added to the user message. The hub remembers this until the app restarts, so later calls skip the first try. A code fence around the reply is trimmed before parsing. The Zod check and the unclear and `invalid_output` rules are the same in both modes. Prompts are in `src/lib/ai/prompts.ts`.
 
 1. **Voice note to fields.** Input audio, or a transcript from whisper.cpp. Output `AiVoiceExtract`: language, transcript, English translation, household head, people, hurt, missing, what happened, needs, hazards and a list of fields the model wasn't sure about. Uncertain fields show the "Please check" marker on the check screen.
 2. **Photos to damage class.** Input one to three photos, the note transcript if there is one, and the DSWD definitions. Output `AiPhotoDraft`: damage class (`none`, `partial`, `total` or `unclear`), confidence, material, hazards, a reason of one sentence naming what is visible, and `need_more`, such as "Roof from the side", when the class is unclear.

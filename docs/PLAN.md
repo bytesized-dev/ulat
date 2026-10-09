@@ -66,7 +66,7 @@ Each person builds their tier 1 issues from `design/screens` and `design/png` ag
 |---|---|
 | CJ | BYT-15 live events, BYT-54 sign in and sessions, BYT-55 hub status. Review and merge PRs as they come |
 | Artkin | BYT-13 reports API with `GET /api/reports` first, then BYT-21, BYT-22, BYT-36, BYT-46, BYT-10, BYT-26, BYT-27 |
-| James | BYT-14 entries API, then BYT-23, BYT-38, BYT-47, BYT-50, BYT-52 |
+| James | BYT-14 entries API, then BYT-23, BYT-38, BYT-47, BYT-50, BYT-60, BYT-52 |
 | Sean | BYT-56 with `GET /api/updates` first, BYT-16 summary queries, then BYT-24, BYT-39, BYT-40, BYT-33 |
 
 ## Phase 2: the real loop, 9:00 to 11:00 PM

@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { NewUpdate } from "@/lib/contracts";
 
-// GET /api/updates has no response contract yet, so this reads only the two
-// fields the home screen shows. Anything that does not fit is ignored.
-const UpdateSummary = z.object({
-  headline: z.string().min(1),
+// GET /api/updates has no read contract yet. The headline rule comes from
+// NewUpdate, and posted_at is the one stored field the home screen adds. Fields
+// beyond these two are ignored.
+const UpdateSummary = NewUpdate.pick({ headline: true }).extend({
   posted_at: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
 });
 export type UpdateSummary = z.infer<typeof UpdateSummary>;

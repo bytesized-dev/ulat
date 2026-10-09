@@ -16,7 +16,7 @@
 
 - One Next.js app, three areas: family at `/`, responder at `/r`, hub at `/hub`.
 - Route handlers under `/api` are the only backend.
-- SQLite file at `data/ulat.db`. Photos and audio at `data/uploads/<yyyy-mm-dd>/<uuid>.<ext>`.
+- SQLite file at `data/ulat.db`. Photos and audio at `data/uploads/<yyyy-mm-dd>/<uuid>.<ext>`. Family voice notes are kept apart, at `data/uploads/voice/<yyyy-mm-dd>/<voice_id>.<ext>`.
 - Ollama on `localhost:11434` with `gemma4:e4b`.
 - Live updates over one server-sent events endpoint.
 - `MOCK_AI=1` replaces every AI call with fixtures from `seed/ai-fixtures.json`, so teammates without the model can build everything.
@@ -130,7 +130,7 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 | `POST /api/auth/staff` | Staff | PIN, sets session |
 | `POST /api/ai/voice` | Family, responder | Audio up to 30 s. Returns `AiVoiceExtract` |
 | `POST /api/ai/text` | Family | Typed note. Returns `AiVoiceExtract` with an empty transcript |
-| `POST /api/reports/voice` | Family | One family recording, no PIN. Multipart with `voice_id` (UUID made on the phone) and `audio`. Same types and size limits as `POST /api/ai/voice`, and the length must be declared. Stores it at `data/uploads/<yyyy-mm-dd>/<voice_id>.<ext>` and returns `{ voice_id }` with no URL. Sending the same `voice_id` again stores nothing new. Nothing serves the audio from this route |
+| `POST /api/reports/voice` | Family | One family recording, no PIN. Multipart with `voice_id` (UUID made on the phone) and `audio`. Same types and size limits as `POST /api/ai/voice`, and the length must be declared. Stores it at `data/uploads/voice/<yyyy-mm-dd>/<voice_id>.<ext>` and returns `{ voice_id }` with no URL. Sending the same `voice_id` again stores nothing new. Because it needs no PIN, the hub holds at most 200 MB of recordings that no report has taken (`MAX_UNLINKED_VOICE_BYTES`) and answers 507 `storage_full` above that, before writing. Each upload first deletes recordings no report has taken that are over an hour old. A recording a report links is never deleted. Nothing serves the audio from this route |
 | `POST /api/reports` | Family, desk | `NewReport`. Returns the code. A `voice_id` is linked to the stored file and set as `voice_path`, once per recording. One that was never uploaded or that another report already holds is ignored: the report is saved without audio, the same 201 comes back, and the `report.created` audit row records `voice` as `unknown` or `used` |
 | `GET /api/reports/[code]` | Family | `ReportStatus`, minimal fields only |
 | `GET /api/reports` | Responder, staff | List with filters, urgent first |
@@ -213,13 +213,13 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 ## 9. Offline behavior on phones
 
 - **Tier 1:** the page keeps the draft in `sessionStorage`. Failed sends show "Try again".
-- **Tier 2:** a service worker caches the app shell, and IndexedDB queues reports and entries with their photos and audio. The queue sends when `/api/health` answers. A family report with a recording uploads the audio first, then posts the report with its `voice_id`, and the queue drops its copy of the audio once the hub has it, so a retry does not send it again. The family "Saved on this phone" screen and the responder Queue tab read this queue.
+- **Tier 2:** a service worker caches the app shell, and IndexedDB queues reports and entries with their photos and audio. The queue sends when `/api/health` answers. A family report with a recording uploads the audio first, then posts the report with its `voice_id`, and the queue keeps its copy of the audio until the hub accepts the report, so a retry or a fixed report sends it again, and the same `voice_id` never makes a second file. The family "Saved on this phone" screen and the responder Queue tab read this queue.
 
 ## 10. Simulation mode
 
 - A setting, on during the drill. Every hub page shows the Simulation pill.
 - `pnpm db:seed` loads `seed/simulation.json`, which matches the canvas. Positions in the seed are percentages of the map area, converted to latitude and longitude using the `map_bbox` setting, so the same seed works for any town: 46 checked houses (14 totally, 23 partially, 9 none), 58 families, 241 people, 6 hurt, 1 missing and 17 reports waiting, across 6 barangays.
-- "Clear data" on Kit setup wipes reports, entries, photos, updates, places, check-ins, sitreps, the `events` audit trail and the `duplicates` flags, and empties the uploads folder of photos and audio. It keeps settings and responders. The rows go in one transaction. The files go after it commits.
+- "Clear data" on Kit setup wipes reports, entries, photos, updates, places, check-ins, sitreps, the `events` audit trail and the `duplicates` flags, and empties the uploads folder of photos and audio, family voice notes included. It keeps settings and responders. The rows go in one transaction. The files go after it commits.
 
 ## 11. Eval
 

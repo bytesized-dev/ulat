@@ -102,9 +102,12 @@ export type FlushResult = { reachable: boolean; sent: SentItem[]; refused: numbe
  * on. If the hub goes away part way, the rest stay waiting for the next try.
  *
  * A report with a recording sends the recording first, under the voice_id the
- * report carries. Once the hub has it, the queue drops its copy, so a retry
- * does not send it again. If the hub answers but refuses the recording, the
- * report goes without it: the report matters more than its audio.
+ * report carries. The queue keeps its copy of the audio until the hub accepts
+ * the report. A retry sends the audio again, which costs the hub nothing, since
+ * the same voice_id never makes a second file. A report the hub refuses keeps
+ * its audio too, so the family can fix it and send it with its recording. If the
+ * hub answers but refuses the recording, the report goes without it: the report
+ * matters more than its audio.
  */
 export async function flushQueue(
   store: QueueStore,
@@ -119,8 +122,7 @@ export async function flushQueue(
 
   const sent: SentItem[] = [];
   let reachable = true;
-  for (const queued of waiting) {
-    let item = queued;
+  for (const item of waiting) {
     let report = item.report;
     const audio = item.attachments.find((a) => a.kind === "audio");
     if (audio && report.voice_id) {
@@ -129,17 +131,15 @@ export async function flushQueue(
         reachable = false;
         break;
       }
-      if (voice.ok) {
-        item = { ...item, attachments: item.attachments.filter((a) => a !== audio) };
-        await store.put(item);
-      } else {
-        report = { ...report, voice_id: null };
-      }
+      // The queue keeps the audio. The hub deletes a recording no report has
+      // taken within an hour, so only an accepted report can let go of it.
+      if (!voice.ok) report = { ...report, voice_id: null };
     }
     const result = await postReport(report, send);
     if (result.ok) {
       try {
-        await upload?.(item, result.code);
+        // The audio went before the report. Photos are what is left to send.
+        await upload?.({ ...item, attachments: item.attachments.filter((a) => a.kind !== "audio") }, result.code);
       } catch {
         // The report is counted already. A file that fails to upload must not send it twice.
       }

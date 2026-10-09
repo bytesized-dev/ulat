@@ -17,3 +17,12 @@ const WAV_TYPES = new Set(["audio/wav", "audio/x-wav", "audio/wave"]);
 
 /** The most bytes a voice note of this mime type may have. Parameters such as codecs are ignored. */
 export const maxAudioBytes = (mime: string) => (WAV_TYPES.has(mime.split(";")[0].trim().toLowerCase()) ? MAX_WAV_BYTES : MAX_COMPRESSED_BYTES);
+
+/**
+ * How many bytes of family recordings no report has taken may sit on the hub.
+ * POST /api/reports/voice has no PIN, so this is what stops one phone from
+ * filling the laptop that holds the database. Above it the route answers 507.
+ */
+export const MAX_UNLINKED_VOICE_BYTES = 200 * 1024 * 1024;
+/** An unlinked recording older than this is deleted on the next upload. */
+export const UNLINKED_VOICE_MAX_AGE_MS = 60 * 60 * 1000;

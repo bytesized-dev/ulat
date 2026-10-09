@@ -5,11 +5,11 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { reports } from "@/db/schema";
 import { NewReport, ReportStatus } from "@/lib/contracts";
-import { findUpload } from "../entries/_lib/uploads";
 import { audit, emit } from "./_lib/audit";
 import { readJsonCapped } from "./_lib/body";
 import { deny, getActor } from "./_lib/auth";
 import { freshCode } from "./_lib/code";
+import { findVoice } from "./_lib/voice-store";
 import { isUrgent, urgentSql } from "./_lib/view";
 
 // POST takes a NewReport from a family phone or the help desk and returns the
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     actor = "staff";
   }
 
-  const stored = body.voice_id ? await findUpload(body.voice_id) : null;
+  const stored = body.voice_id ? await findVoice(body.voice_id) : null;
   const id = randomUUID();
   const now = new Date().toISOString();
   const urgent = isUrgent(body);

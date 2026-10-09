@@ -1,6 +1,6 @@
 import { MAX_VOICE_BODY_BYTES, maxAudioBytes } from "@/lib/audio-limits";
 import { NewVoiceMeta, type VoiceStored } from "@/lib/contracts";
-import { findUpload, storeUpload } from "../../entries/_lib/uploads";
+import { storeVoice } from "../_lib/voice-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 // answer is the voice_id and nothing else: the audio has no address a family
 // can fetch. Only a responder or staff can play it, through /api/files by
 // report id, once POST /api/reports has linked it.
+//
+// Anyone on the Wi-Fi can call this, so the disk use is bounded: see
+// storeVoice for the cap on recordings no report has taken and the hourly sweep.
 
 const reject = (error: string, status = 400) => Response.json({ error }, { status });
 
@@ -29,12 +32,10 @@ export async function POST(req: Request) {
   // Content-Length can lie, so the file is checked against its own format's cap.
   if (audio.size > maxAudioBytes(audio.type)) return reject("too_large", 413);
 
-  const { voice_id } = meta.data;
   // A resend after a lost reply finds the file it already stored. Nothing is overwritten.
-  if (!(await findUpload(voice_id))) {
-    const stored = await storeUpload(audio, "audio", { id: voice_id, maxBytes: maxAudioBytes(audio.type) });
-    if ("error" in stored) return reject(stored.error);
-  }
+  const stored = await storeVoice(audio, meta.data.voice_id);
+  if (!stored.ok) return reject(stored.error, stored.error === "storage_full" ? 507 : 400);
+  const { voice_id } = meta.data;
   const body: VoiceStored = { voice_id };
   return Response.json(body, { status: 201, headers: { "Cache-Control": "no-store" } });
 }

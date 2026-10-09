@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { HubEvent } from "@/lib/contracts";
 
 // One EventSource per URL per tab, shared by every component that asks for it
@@ -106,8 +106,10 @@ export function useLiveEvents(options?: { code?: string | null }): LiveState {
   const code = options?.code ?? null;
   const url = code ? `/api/events?code=${encodeURIComponent(code)}` : "/api/events";
 
-  return useSyncExternalStore(
-    (listener) => {
+  // Stable per URL. React resubscribes whenever this changes, and a resubscribe
+  // closes and reopens the EventSource.
+  const subscribe = useCallback(
+    (listener: () => void) => {
       const channel = acquire(url);
       channel.listeners.add(listener);
       return () => {
@@ -115,6 +117,11 @@ export function useLiveEvents(options?: { code?: string | null }): LiveState {
         release(channel);
       };
     },
+    [url],
+  );
+
+  return useSyncExternalStore(
+    subscribe,
     () => channels.get(url)?.state ?? OFFLINE,
     () => OFFLINE,
   );

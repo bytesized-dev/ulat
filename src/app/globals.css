@@ -5,143 +5,48 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
-  Tokens from DESIGN.md. Never use a hex value in a component. Dark mode is the
-  same token names with the second set of values, applied by next-themes as a
-  class on <html>. The shadcn variables below are pointed at these tokens so the
-  generated ui/ components take the system without per component edits.
+  Tokens from DESIGN.md, merged from design/tokens.css. Never use a hex value in
+  a component. Ulat is light only for now. The shadcn variables below carry the
+  Ulat values so the generated ui/ components take the system without per
+  component edits.
 */
 
 :root {
-  --page: #f5f5f7;
-  --sheet: #ffffff;
-  --field: #f2f2f4;
-  --text: #0a0a0a;
-  --text-2: #656569;
-  --text-3: #a0a0a6;
-  --divider: #e5e5ea;
-  --action: #0a0a0a;
-  --on-action: #ffffff;
-  --action-pressed: #262626;
-  --pill-2: #ebebee;
-  --tint: #d9e5f5;
-  --error: #c4281c;
-  --focus: #0a0a0a;
-
-  /* shadcn mapping */
-  --background: var(--page);
-  --foreground: var(--text);
-  --card: var(--sheet);
-  --card-foreground: var(--text);
-  --popover: var(--sheet);
-  --popover-foreground: var(--text);
-  --primary: var(--action);
-  --primary-foreground: var(--on-action);
-  --secondary: var(--pill-2);
-  --secondary-foreground: var(--text);
-  --muted: var(--field);
-  --muted-foreground: var(--text-2);
-  --accent: var(--field);
-  --accent-foreground: var(--text);
-  --destructive: var(--error);
-  --border: var(--divider);
-  --input: var(--field);
-  --ring: var(--focus);
-  --radius: 14px;
-  --chart-1: var(--text);
-  --chart-2: var(--text-2);
-  --chart-3: var(--text-3);
-  --chart-4: var(--divider);
-  --chart-5: var(--tint);
-  --sidebar: var(--page);
-  --sidebar-foreground: var(--text);
-  --sidebar-primary: var(--action);
-  --sidebar-primary-foreground: var(--on-action);
-  --sidebar-accent: var(--field);
-  --sidebar-accent-foreground: var(--text);
-  --sidebar-border: var(--divider);
-  --sidebar-ring: var(--focus);
-}
-
-.dark {
-  --page: #0a0a0a;
-  --sheet: #161618;
-  --field: #1f1f22;
-  --text: #f5f5f7;
-  --text-2: #9a9aa1;
-  --text-3: #6b6b70;
-  --divider: #26262a;
-  --action: #f5f5f7;
-  --on-action: #0a0a0a;
-  --action-pressed: #d9d9de;
-  --pill-2: #26262a;
-  --tint: #1b2a40;
-  --error: #f97066;
-  --focus: #f5f5f7;
-
+  --radius: 12px;
+  --background: #ffffff;
+  --foreground: #0a0b0d;
+  --card: #ffffff;
+  --card-foreground: #0a0b0d;
+  --popover: #ffffff;
+  --popover-foreground: #0a0b0d;
+  --primary: #0052ff;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0f3;
+  --secondary-foreground: #0a0b0d;
+  --muted: #f7f7f7;
+  --muted-foreground: #5b616e;
+  --accent: #eef0f3;
+  --accent-foreground: #0a0b0d;
+  --destructive: #cf202f;
+  --border: #dee1e6;
+  --input: #dee1e6;
+  --ring: #0052ff;
+  --chart-1: var(--foreground);
+  --chart-2: var(--primary);
+  --chart-3: var(--muted-foreground);
+  --chart-4: var(--border);
+  --chart-5: var(--secondary);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
 @theme inline {
-  /* Design tokens as Tailwind utilities: bg-page, text-text-2, ring-focus, rounded-sheet, and so on. */
-  --color-page: var(--page);
-  --color-sheet: var(--sheet);
-  --color-field: var(--field);
-  --color-text: var(--text);
-  --color-text-2: var(--text-2);
-  --color-text-3: var(--text-3);
-  --color-divider: var(--divider);
-  --color-action: var(--action);
-  --color-on-action: var(--on-action);
-  --color-action-pressed: var(--action-pressed);
-  --color-pill-2: var(--pill-2);
-  --color-tint: var(--tint);
-  --color-error: var(--error);
-  --color-focus: var(--focus);
-
-  /* The shape scale. DESIGN.md has three presets; change all six together.
-     Circles such as avatars stay rounded-full and are not on this scale. */
-  --radius-pill: 9999px;
-  --radius-sheet: 24px;
-  --radius-card: 20px;
-  --radius-guide: 16px;
-  --radius-input: 14px;
-  --radius-tag: 8px;
-
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-heading: var(--font-sans);
-
-  /* The type scale. Five sizes and nothing added casually. */
-  --text-label: 13px;
-  --text-label--line-height: 1.3;
-  --text-small: 15px;
-  --text-small--line-height: 1.4;
-  --text-body: 17px;
-  --text-body--line-height: 1.4;
-  --text-heading: 20px;
-  --text-heading--line-height: 1.25;
-  --text-title: 28px;
-  --text-title--line-height: 1.2;
-
-  /* Layout. The numbers DESIGN.md names, so no component measures its own.
-     Sizes become h-control, w-sidebar, px-gutter. Widths become max-w-auth,
-     max-w-prose, max-w-content. */
-  --spacing-control: 52px;
-  --spacing-input: 48px;
-  --spacing-gutter: 20px;
-  --spacing-sidebar: 272px;
-  /* The smallest thing a thumb is asked to hit. A control drawn smaller
-     takes the hit utility below instead of growing. */
-  --spacing-touch: 44px;
-
-  --container-auth: 480px;
-  --container-prose: 640px;
-  --container-content: 1200px;
-  --container-sidebar: 272px;
-
-  /* One shadow, and only for something that floats over the page: a dialog,
-     a menu, a toast. Nothing that sits on the page has one. */
-  --shadow-lifted: 0 12px 32px rgb(0 0 0 / 0.12);
-
   /* shadcn expects these */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -174,43 +79,136 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Ulat extras: bg-canvas, text-ink, text-body, border-hairline, and so on. */
+  --color-primary-active: #003ecc;
+  --color-primary-disabled: #a8b8cc;
+  --color-primary-soft: #ebf0ff;
+  --color-canvas: #ffffff;
+  --color-surface-soft: #f7f7f7;
+  --color-surface-strong: #eef0f3;
+  --color-surface-dark: #0a0b0d;
+  --color-surface-dark-elevated: #16181c;
+  --color-hairline: #dee1e6;
+  --color-hairline-soft: #eef0f3;
+  --color-ink: #0a0b0d;
+  --color-body: #5b616e;
+  --color-muted-text: #7c828a;
+  --color-muted-soft: #a8acb3;
+  --color-danger: #cf202f;
+  --color-success: #05b169;
+  --color-warning: #f4b000;
+  --color-map-land: #f2f3f5;
+  --color-map-sea: #e1e7ef;
+  --color-map-river: #c5d3e6;
+  --color-map-casing: #e2e5ea;
+  --color-map-boundary: #b4b9c1;
+  --color-map-shade-1: #f6cfd2;
+  --color-map-shade-2: #fae2e4;
+  --color-map-shade-3: #fdf1f2;
+
+  --font-sans: var(--font-inter), -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", Menlo, monospace;
+  --font-heading: var(--font-sans);
+
+  /* The shape scale. Circles such as avatars stay rounded-full. */
   --radius-sm: 8px;
-  --radius-md: 14px;
+  --radius-md: 12px;
   --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
-  --radius-3xl: 28px;
-  --radius-4xl: 32px;
+  --radius-xl: 24px;
+  --radius-pill: 100px;
+
+  /* One shadow, only for floating map controls and the map legend. */
+  --shadow-float: 0 4px 12px rgb(0 0 0 / 0.08);
+
+  /* The type scale from DESIGN.md. text-body is the secondary text colour, so
+     the body sizes are text-body-md and text-body-sm. mono-md and mono-sm are
+     ranges in DESIGN.md (26 to 36, 12 to 14) and are left to the UI kit. */
+  --text-display-xl: 3.5rem;
+  --text-display-xl--line-height: 1.05;
+  --text-display-xl--letter-spacing: -0.0875rem;
+  --text-display-xl--font-weight: 400;
+  --text-display-lg: 2.5rem;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -0.0625rem;
+  --text-display-lg--font-weight: 400;
+  --text-display-md: 2rem;
+  --text-display-md--line-height: 1.13;
+  --text-display-md--letter-spacing: -0.0375rem;
+  --text-display-md--font-weight: 400;
+  --text-title-page: 1.875rem;
+  --text-title-page--line-height: 1.13;
+  --text-title-page--letter-spacing: -0.0375rem;
+  --text-title-page--font-weight: 400;
+  --text-title-bar: 1.375rem;
+  --text-title-bar--line-height: 1.3;
+  --text-title-bar--letter-spacing: -0.0125rem;
+  --text-title-bar--font-weight: 600;
+  --text-title-md: 1.125rem;
+  --text-title-md--line-height: 1.33;
+  --text-title-md--font-weight: 600;
+  --text-title-sm: 1rem;
+  --text-title-sm--line-height: 1.25;
+  --text-title-sm--font-weight: 600;
+  --text-body-md: 1rem;
+  --text-body-md--line-height: 1.5;
+  --text-body-sm: 0.875rem;
+  --text-body-sm--line-height: 1.5;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.5;
+  --text-caption--font-weight: 500;
+  --text-caption-strong: 0.75rem;
+  --text-caption-strong--line-height: 1.5;
+  --text-caption-strong--font-weight: 600;
+  --text-mono-xl: 4rem;
+  --text-mono-xl--line-height: 1;
+  --text-mono-xl--font-weight: 500;
+  --text-mono-lg: 2.75rem;
+  --text-mono-lg--line-height: 1.1;
+  --text-mono-lg--letter-spacing: 0.16em;
+  --text-mono-lg--font-weight: 500;
+
+  /* Layout. The numbers DESIGN.md names, so no component measures its own.
+     Sizes become h-control, w-sidebar, px-gutter. Widths become max-w-auth,
+     max-w-prose, max-w-content. */
+  --spacing-control: 52px;
+  --spacing-input: 48px;
+  --spacing-gutter: 20px;
+  --spacing-sidebar: 240px;
+  /* The smallest thing a thumb is asked to hit. A control drawn smaller
+     takes the hit utility below instead of growing. */
+  --spacing-touch: 44px;
+
+  --container-auth: 480px;
+  --container-prose: 640px;
+  --container-content: 1200px;
+  --container-sidebar: 240px;
 }
 
 @layer base {
   * {
-    @apply border-divider outline-focus/50;
+    @apply border-hairline outline-ring/50;
   }
   html {
     @apply font-sans antialiased;
     color-scheme: light;
   }
-  html.dark {
-    color-scheme: dark;
-  }
   body {
-    @apply bg-page text-text text-body;
-    font-feature-settings: "cv11", "ss01";
+    @apply bg-canvas text-ink text-body-md;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-  /* A text link gets the same ring as a pill: 2 px of --focus, 2 px out. */
+  /* A text link gets the same ring as a pill: 2 px of --ring, 2 px out. */
   a:focus-visible {
-    outline: 2px solid var(--focus);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
-    border-radius: var(--radius-tag);
+    border-radius: var(--radius-sm);
   }
   ::selection {
-    background: var(--tint);
-    color: var(--text);
+    background: var(--color-primary-soft);
+    color: var(--foreground);
   }
 
   /* Almost no motion, and none at all when the person asks for none. */

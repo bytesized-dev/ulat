@@ -1,5 +1,6 @@
 import { Pill } from "@/components/ui/pill";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { barangaysWithData } from "@/lib/hub/barangay-rows";
 import { listedNeeds, NEED_LABELS } from "@/lib/hub/needs";
 import { hazardSentence, type PrintReport } from "@/lib/hub/print";
 import { formatDate, formatTime } from "@/lib/time";
@@ -18,7 +19,8 @@ export function SitrepSheet({ report }: { report: PrintReport }) {
   const { sitrep, town, simulation, hazards, hazardsReadAt } = report;
   const s = sitrep.snapshot;
   const needs = listedNeeds(s.needs);
-  const dense = s.barangays.length > DENSE_AFTER;
+  const barangays = barangaysWithData(s.barangays);
+  const dense = barangays.length > DENSE_AFTER;
   const row = dense ? "h-7" : "h-10";
   const cell = cn("px-0 text-right font-mono text-mono-sm text-ink tabular", row);
   const label = cn("px-0 text-body-sm text-ink", row);
@@ -67,7 +69,7 @@ export function SitrepSheet({ report }: { report: PrintReport }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {s.barangays.map((b) => (
+            {barangays.map((b) => (
               <TableRow key={b.barangay} className="border-hairline-soft hover:bg-transparent">
                 <TableCell className={label}>{b.barangay}</TableCell>
                 <TableCell className={cell}>{b.families}</TableCell>

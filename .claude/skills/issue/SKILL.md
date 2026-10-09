@@ -112,11 +112,11 @@ Evidence before claims. Never say something works without having run it.
 ## 8. Open the pull request
 
 1. `git push -u origin HEAD`
-2. Write the body from `pr-body.md` in this folder to `tmp/byt-<n>/pr.md`, then run `gh pr create --base main --title "BYT-<n> <issue title>" --body-file tmp/byt-<n>/pr.md`. Open it ready for review, not as a draft. CODEOWNERS requests CJ's review automatically.
+2. Write the body from `pr-body.md` in this folder to `tmp/byt-<n>/pr.md`, then run `gh pr create --base main --title "BYT-<n> <issue title>" --body-file tmp/byt-<n>/pr.md`. Open it ready for review, not as a draft. It can merge once the CI `check` job passes. If it touches a path in `.github/CODEOWNERS`, such as the contracts or `package.json`, it also waits for CJ's approval.
 3. If `gh` is not installed or not signed in, push anyway, print the compare link `https://github.com/bytesized-dev/ulat/compare/main...<branch>`, and tell the user to run `gh auth login`.
 4. Set the Linear issue to In Review. Add a Linear comment with the pull request link if the GitHub integration has not linked it already.
 
-Never merge, approve or force push to main. Merging is the reviewer's job.
+Never merge, approve or force push to main. The teammate merges the PR after checking it, or CJ does when the PR needs CJ's review.
 
 ## 9. Report back
 

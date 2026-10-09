@@ -77,6 +77,7 @@ Only the Platform owner adds dependencies. Ask in the PR or in chat.
 - One Linear issue, one branch, one PR. Use the branch name Linear gives you.
 - Conventional commits with the issue ID, for example `feat(family): home screen BYT-21`.
 - Small PRs. Rebase on main before merging. Main must always build.
+- Merge your own PR once the CI `check` job passes. A PR that touches the contracts, the database schema, the dependencies or `.github` also needs CJ's approval. CODEOWNERS lists those paths and requests the review.
 - **Done means** the acceptance criteria in `docs/ISSUES.md` pass, `pnpm typecheck && pnpm test` pass, the screen matches its PNG at 390px for phones or 1440px for the hub, and you ran it yourself.
 - Evidence before assertions. Put the command output or a screenshot in the PR.
 

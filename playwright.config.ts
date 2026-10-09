@@ -7,6 +7,8 @@ import { defineConfig } from "@playwright/test";
 const port = process.env.KERNEL_PORT ?? process.env.PORT ?? "3000";
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${port}`;
 const database = "data/e2e.db";
+// Photos and audio from the test land here, not in the shared data/uploads.
+const uploads = "data/e2e-uploads";
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -21,8 +23,8 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: `rm -f ${database} ${database}-shm ${database}-wal && pnpm db:push && pnpm db:seed && pnpm dev --port ${port}`,
-        env: { DATABASE_PATH: database, MOCK_AI: "1" },
+        command: `rm -rf ${uploads} && rm -f ${database} ${database}-shm ${database}-wal && pnpm db:push && pnpm db:seed && pnpm dev --port ${port}`,
+        env: { DATABASE_PATH: database, UPLOAD_DIR: uploads, MOCK_AI: "1" },
         url: baseURL,
         // A server that is already up has an unknown database, so never reuse it.
         reuseExistingServer: false,

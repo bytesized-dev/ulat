@@ -1,26 +1,11 @@
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { HubSummary } from "@/lib/contracts";
+import { listedNeeds, NEED_LABELS } from "@/lib/hub/needs";
 import { formatDate, formatTime } from "@/lib/time";
-
-const NEED_LABELS: Record<keyof HubSummary["needs"], string> = {
-  water: "Water",
-  food: "Food",
-  tarp: "Tarp",
-  medicine: "Medicine",
-  hygiene_kit: "Hygiene kit",
-  baby_needs: "Baby needs",
-};
 
 const head = "h-10 px-0 text-right text-caption text-muted-text first:text-left";
 const cell = "h-12 px-0 text-right font-mono text-mono-sm text-ink tabular";
 const sectionTitle = "text-title-sm text-ink";
-
-/** Needs with at least one household, in the order of the contract. */
-function listedNeeds(needs: HubSummary["needs"]) {
-  return (Object.keys(NEED_LABELS) as (keyof typeof NEED_LABELS)[])
-    .map((need) => ({ need, households: needs[need] ?? 0 }))
-    .filter((n) => n.households > 0);
-}
 
 type ReportCardProps = {
   number: number;

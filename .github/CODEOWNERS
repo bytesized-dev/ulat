@@ -1,2 +1,9 @@
-# Every change to main needs an approval from CJ.
-* @cjjutba
+# CJ reviews changes to the shared contracts, the database schema, the
+# dependencies and the CI setup. Everything else merges once CI passes.
+/src/lib/contracts/ @cjjutba
+/src/db/ @cjjutba
+/drizzle.config.ts @cjjutba
+/package.json @cjjutba
+/pnpm-lock.yaml @cjjutba
+/pnpm-workspace.yaml @cjjutba
+/.github/ @cjjutba

@@ -166,13 +166,13 @@ export default function KitPage() {
           <Specimen name="TopBar" note="Back, close, and a right slot.">
             <div className="flex flex-col gap-4">
               <Phone>
-                <TopBar title="New report" leading={{ kind: "back", href: routes.family.report }} />
+                <TopBar as="p" title="New report" leading={{ kind: "back", href: routes.family.report }} />
               </Phone>
               <Phone>
                 <CloseTopBarDemo />
               </Phone>
               <Phone>
-                <TopBar title="Your report" />
+                <TopBar as="p" title="Your report" />
               </Phone>
             </div>
           </Specimen>

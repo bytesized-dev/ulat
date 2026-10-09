@@ -124,6 +124,7 @@ export function CloseTopBarDemo() {
   const [saved, setSaved] = React.useState(false);
   return (
     <TopBar
+      as="p"
       title="Edit"
       leading={{ kind: "close", onClick: () => setSaved(false) }}
       trailing={

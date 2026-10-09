@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { PIN_LENGTH } from "./pin-entry";
 
 const keyClass =
-  "flex h-16 items-center justify-center rounded-md text-title-page text-ink outline-none transition-colors hover:bg-surface-soft active:bg-surface-strong focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-soft";
+  "flex h-16 items-center justify-center rounded-md text-title-bar text-ink outline-none transition-colors hover:bg-surface-soft active:bg-surface-strong focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-soft";
 
 type PinPadProps = {
   length: number;
@@ -16,7 +16,7 @@ type PinPadProps = {
 function PinPad({ length, disabled, onDigit, onDelete }: PinPadProps) {
   return (
     <>
-      <div role="img" aria-label={`${length} of ${PIN_LENGTH} digits entered`} className="flex justify-center gap-5 py-2">
+      <div role="img" aria-label={`${length} of ${PIN_LENGTH} digits entered`} className="flex justify-center gap-5 pb-1 pt-2">
         {Array.from({ length: PIN_LENGTH }, (_, i) => (
           <span
             key={i}

@@ -81,13 +81,14 @@ Required by the hackathon rules. This list is complete.
 
 ### Models
 
-- **Gemma 4 E4B** (`gemma4:e4b`) through Ollama, running on the hub laptop. Used for photo to damage class, voice and text to form fields, and translation of updates to Bisaya and Tagalog. The model is used under the Gemma terms of use. Ollama is MIT licensed.
+- **Gemma 4 E4B** (`gemma4:e4b`) through Ollama, running on the hub laptop. Used for photo to damage class, voice and text to form fields, and translation of updates to Bisaya and Tagalog. The model's license, as `ollama show gemma4:e4b --license` reports it, is the Apache License 2.0. Ollama is MIT licensed.
 - **Audio** goes to Gemma natively through Ollama. whisper.cpp is the documented fallback and is not used unless the final audio test switches to it.
 - No other model, and no hosted AI. The app makes no request to any host outside the hub.
 
 ### AI coding tools
 
-- **Claude Code** (Claude Opus 5.5 and Claude Sonnet 5.5), used by every teammate to write code, tests and docs. Branches named `claude/...` and the co-author lines in commits and pull requests mark that work. CJ's work ran through Kernel, which orchestrates Claude Code sessions.
+- **Claude Code**, with Claude Opus 5.5 and Claude Sonnet 5.5, used by all four teammates to write code, tests and docs. CJ's work was orchestrated through Kernel. The co-author lines in commits and pull requests mark that work.
+- No other AI coding tool was used.
 
 ### Reused code
 

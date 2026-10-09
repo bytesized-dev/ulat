@@ -12,6 +12,7 @@ import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { loadDraft, saveDraft } from "./report-draft";
 import { draftFromNote, NOTE_LIMIT, readNote } from "./type-note";
+import { setVoiceAudio } from "./voice-audio";
 
 const HINTS = ["People", "Hurt or missing", "Damage", "Needs"];
 
@@ -45,6 +46,7 @@ function TypeNoteForm() {
       return;
     }
     saveDraft(draftFromNote(loadDraft(), text, result.extract));
+    setVoiceAudio(null);
     router.push(routes.family.check);
   }
 

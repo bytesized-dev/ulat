@@ -56,6 +56,16 @@ describe("timelineItems", () => {
     ]);
   });
 
+  it("counts on the way as done when the responder visited without marking it", () => {
+    const items = timelineItems(view({ steps: steps(T[0], null, T[2], T[3]) as never, result: "total" }));
+    expect(items.map((i) => [i.label, i.time, i.state])).toEqual([
+      ["Received", "2:14 PM", "done"],
+      ["On the way", undefined, "done"],
+      ["Visited", "2:46 PM", "done"],
+      ["Confirmed", "2:48 PM", "done"],
+    ]);
+  });
+
   it("is all done and says Confirmed when the entry is confirmed", () => {
     const items = timelineItems(view({ steps: steps(...T) as never, result: "total" }));
     expect(items.map((i) => [i.label, i.time, i.state])).toEqual([

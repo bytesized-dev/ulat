@@ -4,6 +4,7 @@ import { HubStatusBlock } from "./hub-status-block";
 import { HubStatusProvider } from "./hub-status-provider";
 import { IdleLock } from "./idle-lock";
 import { LowBatteryBanner } from "./low-battery-banner";
+import { routes } from "@/lib/contracts/routes";
 import { hubNav } from "./nav";
 
 type HubPageProps = {
@@ -25,6 +26,7 @@ export function HubPage({ title, active, rail, children }: HubPageProps) {
         nav={hubNav(getReviewCount())}
         activeHref={active}
         status={<HubStatusBlock />}
+        searchAction={routes.hub.entries}
         name="MDRRMO staff"
         initials="MD"
         rail={rail}

@@ -92,10 +92,24 @@ describe("name rule", () => {
     expect(lib.detectDuplicates(db)).toBe(3);
   });
 
-  it("matches a desk full name to a surname household in the same barangay", () => {
+  it("collapses spaces inside a name", () => {
+    report({ household_head: "Ramil   Aquino" });
+    report({ household_head: "ramil aquino household" });
+    expect(lib.detectDuplicates(db)).toBe(1);
+  });
+
+  it("pairs Aquino with Aquino household", () => {
+    report({ household_head: "Aquino" });
+    report({ household_head: "Aquino household", source: "desk" });
+    expect(lib.detectDuplicates(db)).toBe(1);
+  });
+
+  it("does not match on a surname alone", () => {
     report({ household_head: "Santiago household" });
     report({ household_head: "Pedro Santiago", source: "desk" });
-    expect(lib.detectDuplicates(db)).toBe(1);
+    report({ household_head: "Cruz household" });
+    report({ household_head: "Dela Cruz household" });
+    expect(lib.detectDuplicates(db)).toBe(0);
   });
 
   it("does not match two full names that only share a surname", () => {

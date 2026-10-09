@@ -31,6 +31,10 @@ export function MapView({ layout = "phone", legend = [], zoomControls = true, cl
     <div className={cn("flex min-h-0 flex-col", layout === "hub" && "gap-6", className)}>
       <div className={cn("relative min-h-0 flex-1 overflow-hidden", layout === "hub" && "rounded-lg")}>
         <SchematicMap ref={engineRef} {...engine} />
+        {/* ODbL needs this credit wherever the map shows. */}
+        <p className="pointer-events-none absolute bottom-1 left-2 text-caption-strong text-muted-text">
+          © OpenStreetMap contributors
+        </p>
         {layout === "phone" && <MapLegend items={legend} placement="card" />}
         {zoomControls && (
           <ZoomControls

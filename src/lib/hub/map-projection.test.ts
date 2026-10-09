@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mapAssets } from "./map-assets";
-import { type Bbox, fromPercent, inside, toPercent, zoomBbox } from "./map-projection";
+import { type Bbox, fitBbox, fromPercent, inRing, inside, toPercent, zoomBbox } from "./map-projection";
 
 // A stand-in town bbox, about 4 by 3 km, until the real town is picked.
 const bbox: Bbox = [124.0, 10.0, 124.04, 10.03];
@@ -45,6 +45,43 @@ describe("zoomBbox", () => {
 
   it("is the same bbox at factor 1", () => {
     zoomBbox(bbox, 1).forEach((v, i) => expect(v).toBeCloseTo(bbox[i]));
+  });
+});
+
+describe("fitBbox", () => {
+  it("widens a bbox for a wide frame and keeps the whole town in view", () => {
+    const wide = fitBbox(bbox, 3);
+    const nw = toPercent({ lng: bbox[0], lat: bbox[3] }, wide);
+    const se = toPercent({ lng: bbox[2], lat: bbox[1] }, wide);
+    expect(nw.y).toBeCloseTo(0);
+    expect(se.y).toBeCloseTo(100);
+    expect(nw.x).toBeGreaterThan(0);
+    expect(se.x).toBeLessThan(100);
+  });
+
+  it("makes a phone shaped frame taller instead", () => {
+    const tall = fitBbox(bbox, 390 / 844);
+    expect(tall[3] - tall[1]).toBeGreaterThan(bbox[3] - bbox[1]);
+    expect(tall[2] - tall[0]).toBeCloseTo(bbox[2] - bbox[0]);
+  });
+
+  it("leaves the bbox alone before the frame has a size", () => {
+    expect(fitBbox(bbox, 0)).toBe(bbox);
+  });
+});
+
+describe("inRing", () => {
+  const square = [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [0, 0],
+  ];
+
+  it("finds points inside and outside a ring", () => {
+    expect(inRing({ lng: 0.5, lat: 0.5 }, square)).toBe(true);
+    expect(inRing({ lng: 1.5, lat: 0.5 }, square)).toBe(false);
   });
 });
 

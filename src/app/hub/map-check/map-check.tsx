@@ -1,44 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { MapView, type MapPin, shadeByTotals } from "@/components/map";
-import {
-  damagePins,
-  legends,
-  placePins,
-  reportPins,
-  standInBarangays,
-  standInBbox,
-  totalsByBarangay,
-  youPin,
-} from "./stand-in";
+import { type BarangayCollection, type BarangayShading, type LegendItem, MapView, type MapPin } from "@/components/map";
+import type { Bbox } from "@/lib/hub/map-projection";
 
 export type MapCheckView = "hub" | "family" | "responder";
 
-const shading = shadeByTotals(totalsByBarangay);
-
-// Families never see household pins or shading. See docs/SPEC.md 8.
-const pinsFor: Record<MapCheckView, MapPin[]> = {
-  hub: [...reportPins, ...damagePins, ...placePins],
-  family: placePins,
-  responder: [...reportPins, ...damagePins, ...placePins.filter((p) => p.kind === "hazard"), youPin],
-};
-
-export function MapCheck({ view }: { view: MapCheckView }) {
-  const [selected, setSelected] = useState<MapPin | undefined>(damagePins[0]);
+export function MapCheck({
+  view,
+  initialSelectedId,
+  ...map
+}: {
+  view: MapCheckView;
+  bbox: Bbox;
+  barangays: BarangayCollection;
+  shading?: BarangayShading;
+  pins: MapPin[];
+  legend: LegendItem[];
+  initialSelectedId?: string;
+}) {
+  const [selectedId, setSelectedId] = useState(initialSelectedId);
 
   return (
     <MapView
       layout={view === "hub" ? "hub" : "phone"}
-      label="Town map"
-      bbox={standInBbox}
-      barangays={standInBarangays}
-      shading={view === "family" ? undefined : shading}
-      pins={pinsFor[view]}
-      legend={legends[view]}
-      selectedId={selected?.id}
-      onSelect={setSelected}
+      label="Dapitan City map"
+      selectedId={selectedId}
+      onSelect={(pin) => setSelectedId(pin.id)}
       className="h-full"
+      {...map}
     />
   );
 }

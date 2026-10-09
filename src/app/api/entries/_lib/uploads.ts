@@ -38,8 +38,10 @@ export async function storeUpload(file: File, kind: "photo" | "audio"): Promise<
     return { error: `${kind}_size_not_allowed` };
   }
   const data = Buffer.from(await file.arrayBuffer());
-  const path = `${randomUUID()}.${ext}`;
-  await mkdir(uploadDir, { recursive: true });
+  // SPEC section 1: data/uploads/<yyyy-mm-dd>/<uuid>.<ext>. The database keeps the part after data/uploads.
+  const day = new Date().toISOString().slice(0, 10);
+  const path = `${day}/${randomUUID()}.${ext}`;
+  await mkdir(join(uploadDir, day), { recursive: true });
   await writeFile(join(uploadDir, path), data);
   return { path, mime, data };
 }

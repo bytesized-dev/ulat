@@ -26,6 +26,7 @@ vi.mock("@/lib/auth/settings", () => ({ readSetting }));
 
 const globalForStatus = globalThis as unknown as {
   ulatInternetCache?: unknown;
+  ulatStatfsPending?: unknown;
   ulatPhonesSeen?: Map<string, number>;
   ulatStatusTicker?: NodeJS.Timeout;
 };
@@ -42,6 +43,7 @@ beforeEach(() => {
   statfs.mockRejectedValue(new Error("ENOENT"));
   readSetting.mockClear();
   delete globalForStatus.ulatInternetCache;
+  delete globalForStatus.ulatStatfsPending;
   globalForStatus.ulatPhonesSeen?.clear();
 });
 
@@ -99,13 +101,25 @@ describe("readHubStatus", () => {
     expect(execFile).not.toHaveBeenCalled();
   });
 
-  it("gives up on a disk that does not answer", async () => {
+  it("gives up on a disk that does not answer and asks again only after it does", async () => {
     vi.useFakeTimers();
-    statfs.mockReturnValue(new Promise(() => {}));
-    const read = readStorageFreeGb();
-    await vi.advanceTimersByTimeAsync(1_499);
-    await vi.advanceTimersByTimeAsync(1);
-    expect(await read).toBeNull();
+    let answer: (stats: unknown) => void = () => {};
+    statfs.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+    const first = readStorageFreeGb();
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(await first).toBeNull();
+
+    // The first call is still stuck, so these start nothing.
+    expect(await readStorageFreeGb()).toBeNull();
+    expect(await readStorageFreeGb()).toBeNull();
+    expect(statfs).toHaveBeenCalledTimes(1);
+
+    answer({ bavail: 1, bsize: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+    statfs.mockResolvedValue({ bavail: 5_000_000, bsize: 4096 });
+    expect(await readStorageFreeGb()).toBe(20.5);
+    expect(statfs).toHaveBeenCalledTimes(2);
   });
 
   it("reads free space in GB", async () => {
@@ -190,33 +204,28 @@ describe("status ticker", () => {
     }
   });
 
-  it("skips a beat while the previous read is still running", async () => {
+  it("leaves one statfs hanging, not one per beat or request, when the disk never answers", async () => {
     vi.useFakeTimers();
     clearInterval(globalForStatus.ulatStatusTicker);
     delete globalForStatus.ulatStatusTicker;
-
-    // The first Ollama call hangs until release(). Every later one fails fast.
-    let release = () => {};
-    const fetchMock = vi
-      .fn()
-      .mockImplementationOnce(() => new Promise((_, fail) => (release = () => fail(new Error("late")))))
-      .mockRejectedValue(new TypeError("fetch failed"));
-    vi.stubGlobal("fetch", fetchMock);
+    statfs.mockReturnValue(new Promise(() => {}));
 
     const seen: HubEvent[] = [];
     const off = subscribe({ role: "staff" }, (event) => seen.push(event));
     try {
       startStatusTicker();
-      await vi.advanceTimersByTimeAsync(90_000);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(seen).toEqual([]);
+      await vi.advanceTimersByTimeAsync(120_000);
+      await readHubStatus();
+      await readHubStatus();
 
-      release();
-      await vi.advanceTimersByTimeAsync(0);
-      expect(seen).toHaveLength(1);
-      await vi.advanceTimersByTimeAsync(30_000);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-      expect(seen).toHaveLength(2);
+      expect(statfs).toHaveBeenCalledTimes(1);
+      // Four beats, and each one still published with the storage field null.
+      expect(seen.map((e) => (e.type === "hub.status" ? e.status.storage_free_gb : "wrong"))).toEqual([
+        null,
+        null,
+        null,
+        null,
+      ]);
     } finally {
       off();
       clearInterval(globalForStatus.ulatStatusTicker);

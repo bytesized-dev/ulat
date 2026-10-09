@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_FAILURES, resetLimiter } from "./limiter";
+import {
+  SESSION_COOKIE,
+  requireResponder,
+  requireResponderOrStaff,
+  sessionExpiry,
+  signSession,
+} from "./session";
 
 // The PIN check is slow on purpose, so parallel requests overlap the way they
 // do with scrypt on the thread pool.
@@ -10,7 +17,14 @@ const verifyPin = vi.hoisted(() =>
   }),
 );
 
+const jar = vi.hoisted(() => new Map<string, string>());
+const activeResponders = vi.hoisted(() => new Set<string>());
+
 vi.mock("@/lib/pin", () => ({ verifyPin }));
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined) }),
+}));
+vi.mock("./responders", () => ({ isActiveResponder: (id: string) => activeResponders.has(id) }));
 vi.mock("@/lib/auth/settings", () => ({
   readSetting: () => "scrypt$salt$hash",
   readOrCreateSetting: () => "ab".repeat(32),
@@ -38,6 +52,8 @@ const statuses = (responses: Response[]) => responses.map((r) => r.status).sort(
 beforeEach(() => {
   resetLimiter();
   verifyPin.mockClear();
+  jar.clear();
+  activeResponders.clear();
 });
 
 describe("parallel sign in attempts", () => {
@@ -81,5 +97,42 @@ describe("one count per route", () => {
     for (let i = 0; i < MAX_FAILURES; i++) await staff("0000");
     expect((await staff("1234")).status).toBe(429);
     expect((await responder("123456")).status).toBe(200);
+  });
+});
+
+describe("responder guard", () => {
+  const secret = Buffer.from("ab".repeat(32), "hex");
+  const signIn = () => {
+    jar.set(
+      SESSION_COOKIE.responder,
+      signSession({ role: "responder", responder_id: "r1", name: "Mae Santos", exp: sessionExpiry() }, secret),
+    );
+  };
+
+  it("returns the session while the responder is active", async () => {
+    activeResponders.add("r1");
+    signIn();
+    expect(await requireResponder()).toMatchObject({ role: "responder", responder_id: "r1", name: "Mae Santos" });
+  });
+
+  it("returns 401 once the responder is switched off, with the cookie still valid", async () => {
+    activeResponders.add("r1");
+    signIn();
+    activeResponders.delete("r1");
+    const result = await requireResponder();
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(401);
+  });
+
+  it("returns 401 for a responder that no longer exists", async () => {
+    signIn();
+    expect(((await requireResponder()) as Response).status).toBe(401);
+  });
+
+  it("falls through to staff for a switched off responder, and to 401 without one", async () => {
+    signIn();
+    expect(((await requireResponderOrStaff()) as Response).status).toBe(401);
+    jar.set(SESSION_COOKIE.staff, signSession({ role: "staff", exp: sessionExpiry() }, secret));
+    expect(await requireResponderOrStaff()).toMatchObject({ role: "staff" });
   });
 });

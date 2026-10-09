@@ -2,13 +2,12 @@ import { AiPhotoDraft, AiTranslation, AiVoiceExtract } from "../contracts";
 import fixtureFile from "../../../seed/ai-fixtures.json";
 import { logAiCall } from "./audit";
 import { chatJson, OllamaError, type ChatJsonInput } from "./ollama";
-import { PHOTO_SYSTEM, photoUserPrompt, TEXT_SYSTEM, VOICE_SYSTEM } from "./prompts";
+import { PHOTO_SYSTEM, photoUserPrompt, TEXT_SYSTEM, TRANSLATE_SYSTEM, VOICE_SYSTEM } from "./prompts";
+import { findMissingFacts } from "./translate-check";
 
 // Every AI call goes through these four functions. With MOCK_AI=1 they return
-// the fixtures in seed/ai-fixtures.json. Voice, text and photo call Ollama
-// through ./ollama. The translation call (BYT-57) lands later and keeps its
-// signature. The real calls parse the model's output with the same
-// schemas before they return.
+// the fixtures in seed/ai-fixtures.json. Voice, text, photo and translation call Ollama through ./ollama.
+// The real calls parse the model's output with the same schemas before they return.
 
 // Parsed when the module loads, so a broken fixture fails loudly.
 const fixtures = {
@@ -20,10 +19,6 @@ const fixtures = {
 };
 
 const isMock = () => process.env.MOCK_AI === "1";
-
-function notWired(call: string, issue: string): never {
-  throw new Error(`${call} needs Ollama. Set MOCK_AI=1 to use fixtures. The Ollama call lands in ${issue}.`);
-}
 
 /** Call the model, write the raw reply to the audit trail, and pass failures on. */
 async function extract(call: "voice" | "text", request: Omit<ChatJsonInput<typeof AiVoiceExtract>, "schema">) {
@@ -83,9 +78,28 @@ export async function draftPhoto(input: PhotoInput): Promise<AiPhotoDraft> {
   return (await draftPhotoWithRaw(input)).draft;
 }
 
-/** An English headline and message to Bisaya and Tagalog drafts. */
+/**
+ * An English headline and message to Bisaya and Tagalog drafts. Every time,
+ * number and place name in the English has to appear in both drafts as written.
+ * If one does not, this throws invalid_output and staff type the translation.
+ */
 export async function translate(input: { headline: string; message: string }): Promise<AiTranslation> {
-  void input;
   if (isMock()) return structuredClone(fixtures.translation);
-  return notWired("translate", "BYT-57");
+  try {
+    const { value, raw } = await chatJson({
+      schema: AiTranslation,
+      system: TRANSLATE_SYSTEM,
+      user: `Headline: ${input.headline}\nMessage: ${input.message}`,
+    });
+    const missing = findMissingFacts(input, value);
+    if (missing.length) {
+      const list = missing.map((fact) => `${fact.language} ${fact.kind} "${fact.text}"`).join(", ");
+      throw new OllamaError("invalid_output", `The draft changed or dropped: ${list}`, raw);
+    }
+    await logAiCall("translate", { raw });
+    return value;
+  } catch (error) {
+    if (error instanceof OllamaError) await logAiCall("translate", { raw: error.raw, error });
+    throw error;
+  }
 }

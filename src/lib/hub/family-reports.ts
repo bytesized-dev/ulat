@@ -141,7 +141,8 @@ const STATUS_LABELS: Record<Status, { label: string; tone: StatusTone }> = {
   assigned: { label: "Assigned", tone: "primary" },
   on_the_way: { label: "On the way", tone: "primary" },
   visited: { label: "Visited", tone: "success" },
-  cant_assess: { label: "Can't assess", tone: "warning" },
+  // The canvas calls this status "Can't find". Only the hub label changes, the status value stays cant_assess.
+  cant_assess: { label: "Can't find", tone: "warning" },
   merged: { label: "Merged", tone: "muted-soft" },
 };
 

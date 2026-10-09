@@ -103,6 +103,11 @@ describe("family reports list", () => {
 describe("labels", () => {
   it("says why a report could not be assessed", () => {
     expect(statusLabel({ status: "cant_assess", cant_reason: "cant_find" })).toEqual({ label: "Can't find", tone: "warning" });
+    expect(statusLabel({ status: "cant_assess", cant_reason: "road_blocked" }).label).toBe("Road blocked");
+  });
+
+  it("uses the canvas label for a can't assess status with no reason", () => {
+    expect(statusLabel({ status: "cant_assess", cant_reason: null })).toEqual({ label: "Can't find", tone: "warning" });
     expect(statusLabel({ status: "waiting", cant_reason: null })).toEqual({ label: "Waiting", tone: "muted-soft" });
     expect(statusLabel({ status: "on_the_way", cant_reason: null }).label).toBe("On the way");
   });

@@ -186,7 +186,11 @@ export const SafeCheckin = z.object({
 
 const Pin = z.string().regex(/^\d{4,8}$/);
 
-export const ResponderSignIn = z.object({ name: ShortText, pin: Pin });
+/** Trimmed and lower case, the way `responders.email` is stored. */
+export const ResponderSignIn = z.object({
+  email: z.string().trim().toLowerCase().min(1).max(254),
+  password: z.string().min(1).max(200),
+});
 export type ResponderSignIn = z.infer<typeof ResponderSignIn>;
 
 export const StaffSignIn = z.object({ pin: Pin });

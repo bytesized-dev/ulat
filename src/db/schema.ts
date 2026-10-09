@@ -37,6 +37,9 @@ export const responders = sqliteTable("responders", {
   name: text("name").notNull(),
   team: text("team"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  /** Stored in lower case. A responder with no email or no password hash cannot sign in. */
+  email: text("email").unique(),
+  password_hash: text("password_hash"),
 });
 
 export const reports = sqliteTable(

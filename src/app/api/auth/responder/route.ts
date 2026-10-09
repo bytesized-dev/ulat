@@ -1,14 +1,16 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { responders } from "@/db/schema";
 import { attemptKey, beginAttempt, endAttempt, retryAfterSeconds } from "@/lib/auth/limiter";
 import { clearSessionCookie, getSessionSecret, sessionExpiry, setSessionCookie, signSession } from "@/lib/auth/session";
-import { readSetting } from "@/lib/auth/settings";
 import { ResponderSignIn } from "@/lib/contracts";
 import { verifyPin } from "@/lib/pin";
 
-const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+// A well formed hash nobody's password produces. An unknown email, or a
+// responder with no password yet, is checked against it, so the response takes
+// as long as a real check and does not show which emails exist.
+const NO_ACCOUNT_HASH = `scrypt$${"00".repeat(16)}$${"00".repeat(32)}`;
 
 export async function POST(request: Request) {
   // Count the attempt before the first await, or a batch of parallel requests
@@ -24,22 +26,17 @@ export async function POST(request: Request) {
     const body = ResponderSignIn.safeParse(await request.json().catch(() => null));
     if (!body.success) return NextResponse.json({ error: "invalid_body" }, { status: 400 });
 
-    const hash = readSetting("team_pin_hash");
-    if (!hash) return NextResponse.json({ error: "hub_not_set_up" }, { status: 503 });
-
+    // The contract has trimmed and lower cased the email, the way it is stored.
     const responder = db
       .select()
       .from(responders)
-      .where(eq(responders.active, true))
-      .all()
-      .find((r) => sameName(r.name, body.data.name));
-    // The PIN is checked even when the name is unknown, so the response time
-    // does not show which names exist.
-    const pinOk = await verifyPin(body.data.pin, hash);
+      .where(and(eq(responders.active, true), eq(responders.email, body.data.email)))
+      .get();
+    const passwordOk = await verifyPin(body.data.password, responder?.password_hash ?? NO_ACCOUNT_HASH);
 
-    if (!responder || !pinOk) {
+    if (!responder?.password_hash || !passwordOk) {
       result = "wrong";
-      return NextResponse.json({ error: "wrong_name_or_pin" }, { status: 401 });
+      return NextResponse.json({ error: "wrong_email_or_password" }, { status: 401 });
     }
 
     result = "right";

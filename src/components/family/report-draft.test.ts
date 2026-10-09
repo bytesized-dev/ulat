@@ -53,8 +53,22 @@ describe("report draft", () => {
     expect(filled.uncertain_fields).toEqual(voice.uncertain_fields);
 
     const full = applyExtract(start, voice);
-    expect(full.household_head).toBe(voice.household_head ?? "Typed name");
     expect(full.needs).toEqual(voice.needs.length > 0 ? voice.needs : []);
+  });
+
+  it("keeps a head of household the family typed, and fills it from the note only when empty", () => {
+    const named = { ...voice, household_head: "Spoken name", uncertain_fields: ["household_head", "people"] as AiVoiceExtract["uncertain_fields"] };
+
+    const typed = applyExtract({ ...emptyDraft(), household_head: "Typed name" }, named);
+    expect(typed.household_head).toBe("Typed name");
+    // The doubt was about the spoken name, which the family's own replaces.
+    expect(typed.uncertain_fields).toEqual(["people"]);
+
+    const blank = applyExtract({ ...emptyDraft(), household_head: "   " }, named);
+    expect(blank.household_head).toBe("Spoken name");
+    expect(blank.uncertain_fields).toEqual(["household_head", "people"]);
+
+    expect(applyExtract(emptyDraft(), { ...named, household_head: null }).household_head).toBe("");
   });
 
   it("drops the Please check marker once a field is edited", () => {

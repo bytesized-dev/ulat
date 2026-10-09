@@ -106,12 +106,15 @@ export function clearDraft(storage: DraftStorage | null = browserStorage()): voi
 
 /**
  * Fills the draft from a voice or typed note. A field the model left empty
- * keeps what the family already entered.
+ * keeps what the family already entered. A name the family typed on the first
+ * step is theirs: the note only fills the head of household when it is empty,
+ * and then the model's doubt about it no longer applies.
  */
 export function applyExtract(draft: ReportDraft, extract: AiVoiceExtract): ReportDraft {
+  const typedHead = draft.household_head.trim() !== "";
   return {
     ...draft,
-    household_head: extract.household_head ?? draft.household_head,
+    household_head: typedHead ? draft.household_head : (extract.household_head ?? draft.household_head),
     people: extract.people ?? draft.people,
     hurt: extract.hurt ?? draft.hurt,
     missing: extract.missing ?? draft.missing,
@@ -120,7 +123,7 @@ export function applyExtract(draft: ReportDraft, extract: AiVoiceExtract): Repor
     transcript: extract.transcript,
     english: extract.english,
     language: extract.language,
-    uncertain_fields: extract.uncertain_fields,
+    uncertain_fields: typedHead ? extract.uncertain_fields.filter((field) => field !== "household_head") : extract.uncertain_fields,
   };
 }
 

@@ -4,7 +4,8 @@ import { ReportCode } from "@/lib/contracts";
 // The report a family has sent: its code and when it went. The send screen
 // writes it, and the report sent screen and the status screen read it. It sits
 // in localStorage, not with the draft in sessionStorage, so a family that closes
-// the tab can still find their code. The draft is cleared on send.
+// the tab can still find their code. The draft is cleared once the report sent
+// screen opens straight after a send, never when it is opened by its address.
 
 export const SENT_KEY = "ulat.sent-report";
 
@@ -69,4 +70,22 @@ export function clearSentReport(storage: SentStorage | null = browserStorage()):
   } catch {
     // Nothing to clear.
   }
+}
+
+// The code of the report the send screen just posted, until the report sent
+// screen takes it. It lives in memory on purpose: it only has to survive the
+// client-side move from one screen to the next, and a reload or a link opened
+// later must find nothing, so the draft in progress stays.
+let justSent: string | null = null;
+
+/** Called by the send screen once the hub has the report from this draft. */
+export function markSentFromDraft(code: string): void {
+  justSent = code;
+}
+
+/** True once, when `code` is the report the send screen just posted. Then the draft is spent and can go. */
+export function takeSentFromDraft(code: string): boolean {
+  if (justSent !== code) return false;
+  justSent = null;
+  return true;
 }

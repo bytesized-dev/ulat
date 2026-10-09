@@ -16,7 +16,7 @@ import { enqueue } from "./offline-queue";
 import { queueStore } from "./queue-db";
 import { clearDraft, toNewReport } from "./report-draft";
 import { canSend, sendReport, summarizeDraft } from "./send-report";
-import { saveSentReport } from "./sent-report";
+import { markSentFromDraft, saveSentReport } from "./sent-report";
 import { announceQueueChange } from "./use-offline-queue";
 import { useReportDraft } from "./use-report-draft";
 
@@ -70,6 +70,7 @@ function BeforeYouSendForm() {
       return;
     }
     saveSentReport(result.code);
+    markSentFromDraft(result.code);
     // Replace, so Back from the next screen does not offer to send it again.
     router.replace(routes.family.sent);
   }

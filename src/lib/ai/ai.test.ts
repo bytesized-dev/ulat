@@ -452,7 +452,14 @@ describe("POST /api/ai/voice", () => {
     if (file !== null) form.set("audio", file);
     return form;
   };
-  const audioFile = (bytes: number, type: string) => new File([new Uint8Array(bytes)], "note", { type });
+  // The route reads the bytes, not the type, so every test clip starts with a RIFF/WAVE header.
+  const wavBytes = (bytes: number) => {
+    const data = new Uint8Array(bytes);
+    data.set(new TextEncoder().encode("RIFF"), 0);
+    data.set(new TextEncoder().encode("WAVE"), 8);
+    return data;
+  };
+  const audioFile = (bytes: number, type: string) => new File([wavBytes(bytes)], "note", { type });
   const clip = audioFile(1000, "audio/webm;codecs=opus");
 
   it("returns an AiVoiceExtract for an audio upload", async () => {
@@ -460,6 +467,18 @@ describe("POST /api/ai/voice", () => {
     const response = await post(upload(clip));
     expect(response.status).toBe(200);
     expect(AiVoiceExtract.parse(await response.json())).toEqual(extract);
+  });
+
+  it("rejects audio that is not WAV with 400 and never calls the model", async () => {
+    const webm = new File([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...new Array(996).fill(1)])], "note.webm", { type: "audio/webm" });
+    const mp4 = new File([new Uint8Array([0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, ...new Array(992).fill(1)])], "note.wav", { type: "audio/wav" });
+    const short = new File([new TextEncoder().encode("RIFF")], "note.wav", { type: "audio/wav" });
+    for (const file of [webm, mp4, short]) {
+      const response = await post(upload(file));
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({ error: "bad_request", retry: false });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects a missing field, a non-audio file and an empty file with 400", async () => {

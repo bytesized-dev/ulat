@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, PrinterIcon } from "lucide-react";
 import { db } from "@/db/client";
 import { CreateReportButton } from "@/components/hub/reports/create-report-button";
 import { EarlierList } from "@/components/hub/reports/earlier-list";
@@ -46,6 +46,12 @@ export default function HubReportsPage() {
               <DownloadIcon aria-hidden="true" />
               CSV
             </a>
+            {latest ? (
+              <Link href={routes.hub.reportPrint(latest.number)} className={cn(buttonVariants({ variant: "secondary", size: "hub" }))}>
+                <PrinterIcon aria-hidden="true" />
+                Print
+              </Link>
+            ) : null}
             <CreateReportButton />
           </div>
         </div>

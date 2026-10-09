@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,10 +13,27 @@ type SignInFormProps = { names: string[] };
 
 function SignInForm({ names }: SignInFormProps) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState(names[0] ?? "");
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A physical keyboard types the PIN too. Keys are left alone when focus is on
+  // the name list, so its own typing and arrow keys keep working.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (busy || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('[role="combobox"], [role="listbox"]')) return;
+      if (e.key === "Backspace") setPin((p) => removeDigit(p));
+      else if (/^\d$/.test(e.key)) setPin((p) => addDigit(p, e.key));
+      // On a button, Enter already presses that button.
+      else if (e.key === "Enter" && !target?.closest("button")) formRef.current?.requestSubmit();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [busy]);
 
   async function unlock() {
     if (busy || pin.length !== PIN_LENGTH || !name) return;
@@ -52,16 +69,18 @@ function SignInForm({ names }: SignInFormProps) {
   }
 
   return (
+    <main>
     <form
-      className="flex min-h-dvh flex-col px-gutter pb-6"
+      ref={formRef}
+      className="flex min-h-dvh flex-col px-gutter pb-7"
       onSubmit={(e) => {
         e.preventDefault();
         void unlock();
       }}
     >
-      <div className="flex flex-1 flex-col gap-6 pt-20">
+      <div className="flex flex-1 flex-col gap-7 pt-19">
         <h1 className="text-title-page text-ink">Responder sign in</h1>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3 pt-1">
           <Label htmlFor="who" className="text-body-sm font-semibold text-ink">
             Name
           </Label>
@@ -92,6 +111,7 @@ function SignInForm({ names }: SignInFormProps) {
         Unlock
       </Button>
     </form>
+    </main>
   );
 }
 

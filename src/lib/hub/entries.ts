@@ -55,7 +55,7 @@ export type EntryPage = {
 
 /** A LIKE pattern that matches the text as typed, so a % or _ in a name is not a wildcard. */
 const contains = (column: SQL | AnyColumn, text: string) =>
-  sql`${column} like ${`%${text.replace(/[\\%_]/g, "\\$&")}%`} escape '\\'`;
+  sql`${column} like ${likePattern(text)} escape '\\'`;
 
 /** Confirmed entries, newest first. Only confirmed entries reach the hub lists and totals. */
 export function listEntries(db: Db, query: Partial<EntryQuery> = {}, perPage = ENTRIES_PER_PAGE): EntryPage {

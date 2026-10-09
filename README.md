@@ -26,7 +26,7 @@ Without the model: `MOCK_AI=1 pnpm dev`.
 
 - Models: Gemma 4 E4B through Ollama, running on the hub laptop. [whisper.cpp, if used]
 - AI coding tools: Claude Code. [Add any others the team used]
-- Reused code: the team starter kit. [List what was reused]
+- Reused code: CJ's starter kit (starter-kit-web) for the Next.js, Tailwind and shadcn setup, the shadcn components in `src/components/ui`, the time helpers in `src/lib/time`, the ESLint and Vitest config, and the rule tests for hex values, arbitrary values and dashes. Its auth, Postgres, mail and analytics were removed.
 - Data: map data from OpenStreetMap through Protomaps, barangay boundaries from HDX [check license], test photos from Wikimedia Commons with their licenses in `eval/SOURCES.md`
 
 ## Team

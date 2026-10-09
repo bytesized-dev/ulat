@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      MOCK_AI: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The commit message check below reads every commit on the branch.
+          fetch-depth: 0
+      - name: Commit messages carry no dashes as punctuation
+        # AGENTS.md rule 7. The pattern is written as code points so this
+        # file passes the same rule. The test in tests/rules covers files,
+        # this covers the messages.
+        if: github.event_name == 'pull_request'
+        env:
+          LC_ALL: C.UTF-8
+        run: |
+          if git log --format=%B "origin/${{ github.base_ref }}..HEAD" | grep -nP '[\x{2013}\x{2014}]'; then
+            echo "A commit message on this branch uses an en or em dash. Reword it."
+            exit 1
+          fi
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      # Add the Playwright steps back with the first smoke test in tests/e2e:
+      # pnpm exec playwright install --with-deps chromium, then pnpm e2e.

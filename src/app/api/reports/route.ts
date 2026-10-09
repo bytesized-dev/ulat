@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, like, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, or, sql, type SQL } from "drizzle-orm";
+import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { reports } from "@/db/schema";
 import { NewReport, ReportStatus } from "@/lib/contracts";
 import { audit, emit } from "./_lib/audit";
+import { readJsonCapped } from "./_lib/body";
 import { deny, getActor } from "./_lib/auth";
 import { freshCode } from "./_lib/code";
 import { isUrgent, urgentSql } from "./_lib/view";
@@ -13,13 +15,9 @@ import { isUrgent, urgentSql } from "./_lib/view";
 // code. GET lists reports for responders and staff, urgent first.
 
 export async function POST(req: Request) {
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return Response.json({ error: "bad_json" }, { status: 400 });
-  }
-  const parsed = NewReport.safeParse(raw);
+  const read = await readJsonCapped(req);
+  if (!read.ok) return read.response;
+  const parsed = NewReport.safeParse(read.value);
   if (!parsed.success) return Response.json({ error: "bad_report", issues: parsed.error.issues }, { status: 400 });
   const body = parsed.data;
 
@@ -70,6 +68,10 @@ export async function POST(req: Request) {
   return Response.json({ code }, { status: 201 });
 }
 
+// A search word is plain text. % and _ would otherwise match anything.
+const contains = (column: SQLiteColumn, term: string): SQL =>
+  sql`${column} like ${`%${term.replace(/[\\%_]/g, "\\$&")}%`} escape '\\'`;
+
 const Query = z.object({
   page: z.coerce.number().int().min(1).default(1),
   per_page: z.coerce.number().int().min(1).max(100).default(25),
@@ -89,10 +91,10 @@ export async function GET(req: Request) {
 
   const search = q
     ? or(
-        like(reports.household_head, `%${q}%`),
-        like(reports.barangay, `%${q}%`),
-        like(reports.purok, `%${q}%`),
-        like(reports.code, `%${q.toUpperCase()}%`),
+        contains(reports.household_head, q),
+        contains(reports.barangay, q),
+        contains(reports.purok, q),
+        contains(reports.code, q.toUpperCase()),
       )
     : undefined;
   const where = and(

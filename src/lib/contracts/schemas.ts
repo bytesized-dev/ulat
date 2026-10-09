@@ -141,6 +141,14 @@ export const SafeCheckin = z.object({
   source: z.enum(["phone", "desk"]),
 });
 
+const Pin = z.string().regex(/^\d{4,8}$/);
+
+export const ResponderSignIn = z.object({ name: ShortText, pin: Pin });
+export type ResponderSignIn = z.infer<typeof ResponderSignIn>;
+
+export const StaffSignIn = z.object({ pin: Pin });
+export type StaffSignIn = z.infer<typeof StaffSignIn>;
+
 /* ---------- API outputs ---------- */
 
 export const StatusStep = z.enum(["received", "on_the_way", "visited", "confirmed"]);

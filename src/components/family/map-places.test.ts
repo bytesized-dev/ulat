@@ -10,6 +10,11 @@ describe("places", () => {
     expect(places.map((p) => p.id)).toEqual(["a", "b", "c"]);
   });
 
+  it("skips a place MDRRMO hid, which the route still returns to a staff session", () => {
+    const list = parsePlaces({ places: [row("a", "relief"), { ...row("h", "shelter"), visible: false }, { ...row("m", "hazard"), visible: undefined }] });
+    expect(list.map((p) => p.id)).toEqual(["a"]);
+  });
+
   it("filters by kind", () => {
     expect(filterPlaces(places, "all")).toHaveLength(3);
     expect(filterPlaces(places, "shelter").map((p) => p.id)).toEqual(["b"]);

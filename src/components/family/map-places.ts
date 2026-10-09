@@ -5,8 +5,11 @@ import type { MapPin } from "@/components/map";
 // GET /api/places has no read contract yet. The text rules come from NewPlace,
 // and id is the stored field the map adds. Only these fields are read, and
 // places are relief points, shelters and hazards, so no household can reach the map.
+// The route also returns hidden places when the browser has a staff session, so
+// only rows with visible true pass, and a hidden place never reaches a family map.
 const Place = NewPlace.pick({ type: true, name: true, details: true, when_text: true, lat: true, lng: true }).extend({
   id: z.string().min(1),
+  visible: z.literal(true),
 });
 export type Place = z.infer<typeof Place>;
 

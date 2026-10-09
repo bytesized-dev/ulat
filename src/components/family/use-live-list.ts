@@ -12,14 +12,12 @@ import { useLiveEvents } from "@/lib/live/use-live-events";
 export function useLiveList<T>(url: string, parse: (body: unknown) => T[], eventType: Extract<HubEvent["type"], "update.posted" | "place.saved">) {
   const [items, setItems] = useState<T[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [eventKey, setEventKey] = useState<string | null>(null);
+  const [seen, setSeen] = useState<HubEvent | null>(null);
   const { latest, connected } = useLiveEvents();
 
-  // Other events change `latest` too, and they must not cause a refetch.
-  if (latest?.type === eventType) {
-    const key = JSON.stringify(latest);
-    if (key !== eventKey) setEventKey(key);
-  }
+  // Other events change `latest` too, and they must not cause a refetch. Each event
+  // from the stream is a new object, so a repeat of the same one still refetches.
+  if (latest && latest !== seen && latest.type === eventType) setSeen(latest);
 
   const parseRef = useRef(parse);
   useEffect(() => {
@@ -46,7 +44,7 @@ export function useLiveList<T>(url: string, parse: (body: unknown) => T[], event
     const controller = new AbortController();
     load(controller.signal);
     return () => controller.abort();
-  }, [load, eventKey]);
+  }, [load, seen]);
 
   const wasLive = useRef(false);
   const missed = useRef(false);

@@ -37,6 +37,8 @@ function ListSelect({ id, value, options, onChange }: { id: string; value: strin
   );
 }
 
+const SEARCH_FAILED = "Could not reach the hub. Try again.";
+
 const fieldLabel = "text-body-sm font-semibold text-ink";
 
 // Check in on the safe list, and find someone by name. The search reads only
@@ -51,7 +53,8 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
-  const [found, setFound] = useState<{ url: string; people: Found[] } | null>(null);
+  // people is null when the search failed, so it does not read as no results.
+  const [found, setFound] = useState<{ url: string; people: Found[] | null } | null>(null);
   const url = searchUrl(query);
 
   // Wait for a pause in typing, and drop an answer that arrives after a newer search.
@@ -65,7 +68,9 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
           return response.json();
         })
         .then((body) => setFound({ url, people: parseFound(body) }))
-        .catch(() => {});
+        .catch(() => {
+          if (!controller.signal.aborted) setFound({ url, people: null });
+        });
     }, 300);
     return () => {
       clearTimeout(timer);
@@ -73,7 +78,11 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
     };
   }, [url]);
 
-  const people = url && found?.url === url ? found.people : null;
+  const answer = url && found?.url === url ? found : null;
+  const people = answer?.people ?? null;
+  const searchFailed = answer !== null && answer.people === null;
+
+  const alertText = error ?? (searchFailed ? SEARCH_FAILED : null);
 
   async function submit() {
     if (busy) return;
@@ -92,7 +101,7 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
-      <TopBar title="I'm safe" leading={{ kind: "back", href: routes.family.home }} />
+      <TopBar as="p" title="I'm safe" leading={{ kind: "back", href: routes.family.home }} />
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
         <form
           className="flex flex-col gap-5"
@@ -126,8 +135,8 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
             </Label>
             <Textarea id="safe-message" maxLength={240} value={message} onChange={(e) => setMessage(e.target.value)} />
           </div>
-          <p role="alert" className={error ? "text-body-sm text-danger" : "sr-only"}>
-            {error}
+          <p role="alert" className={alertText ? "text-body-sm text-danger" : "sr-only"}>
+            {alertText}
           </p>
           <Button type="submit" disabled={busy || name.trim() === ""}>
             Add me to the safe list
@@ -139,27 +148,28 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
             Find someone
           </h2>
           <SearchPill aria-label="Search by name" value={query} onChange={(e) => setQuery(e.target.value)} />
-          {people && people.length > 0 ? (
-            <ul aria-live="polite">
-              {people.map((person) => (
-                <li key={`${person.name}-${person.at}`} className="flex min-h-16 items-center gap-4 border-b border-hairline-soft py-3 last:border-b-0">
-                  <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-strong text-caption-strong text-ink">
-                    {initials(person.name)}
-                  </span>
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-body-md font-medium text-ink">{person.name}</span>
-                    <span className="text-body-sm text-body">
-                      {person.staying_at}, {formatTime(person.at)}
+          {/* Mounted from the start, so a screen reader announces the first results. */}
+          <div aria-live="polite">
+            {people && people.length > 0 ? (
+              <ul>
+                {people.map((person) => (
+                  <li key={`${person.name}-${person.at}`} className="flex min-h-16 items-center gap-4 border-b border-hairline-soft py-3 last:border-b-0">
+                    <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-strong text-caption-strong text-ink">
+                      {initials(person.name)}
                     </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p role="status" className="text-body-sm text-body">
-              {people ? "No one with that name yet." : null}
-            </p>
-          )}
+                    <span className="flex min-w-0 flex-col">
+                      <span className="text-body-md font-medium text-ink">{person.name}</span>
+                      <span className="text-body-sm text-body">
+                        {person.staying_at}, {formatTime(person.at)}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-body-sm text-body">{people ? "No one with that name yet." : null}</p>
+            )}
+          </div>
         </section>
       </main>
     </div>

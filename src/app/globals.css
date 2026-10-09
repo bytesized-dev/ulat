@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/* Ulat tokens until BYT-7 merges design/tokens.css into this file. Added in BYT-4 for the map, agreed with Platform. */
+@import "../../design/tokens.css";
 
 @custom-variant dark (&:is(.dark *));
 

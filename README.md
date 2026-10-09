@@ -70,12 +70,13 @@ Seeded PINs live in `seed/simulation.json` under `settings`, and the database st
 | `/hub/review`, `/hub/review/family-reports`, `/hub/review/duplicates` | Review of drafted entries, family reports and assigning, possible duplicates | Staff PIN |
 | `/hub/entries`, `/hub/entries/<id>` | All entries and one entry | Staff PIN |
 | `/hub/map`, `/hub/map/add` | Hub map and adding a point | Staff PIN |
-| `/hub/reports` | Situation report, SMS summary and CSV export | Staff PIN |
+| `/hub/reports`, `/hub/reports/<n>/print` | Situation report, SMS summary and CSV export, and the numbered report on one A4 page. The print page exists after you save a report, and "Print" on `/hub/reports` opens the latest one | Staff PIN |
+| `/hub/poster` | The join poster on one A4 page, with a QR code for the hub address. "Print poster" on `/hub` and "Print" on `/hub/setup` open it | Staff PIN |
 | `/hub/desk`, `/hub/safe-list`, `/hub/updates` | Help desk, safe list, post an update | Staff PIN |
 | `/hub/setup`, `/hub/checklist`, `/hub/ai-check` | Kit setup, the before the storm checklist, and the numbers `pnpm eval` wrote | Staff PIN |
 | `/dev/kit`, `/hub/map-check` | Component kit and map check, `pnpm dev` only | None for `/dev/kit`, staff PIN for `/hub/map-check` |
 
-There are no separate print routes. Printing is a browser print from the buttons on `/hub` ("Print poster"), `/hub/setup` ("Print") and `/hub/desk` ("Save and print slip").
+Three screens print, each through the browser's print dialog. The join poster at `/hub/poster` and the situation report at `/hub/reports/<n>/print` are A4 pages with no hub chrome and a Print button. "Save and print slip" on `/hub/desk` prints the family code slip.
 
 ### Other commands
 
@@ -111,6 +112,7 @@ Required by the hackathon rules. This list is complete.
 ### AI coding tools
 
 - **Claude Code**, with Claude Opus 5.5 and Claude Sonnet 5.5, used to write code, tests and docs. The `Co-Authored-By` lines in commits mark that work.
+- **Claude on claude.ai** made the design canvas (https://claude.ai/artifact/DazFfmDpKxWhyxodNk9KwH), the source of every screen. `design/screens` and `design/png` are its exports, and the app screens were built from them.
 - **Kernel** orchestrated CJ's Claude Code sessions in separate git worktrees. Its agent definitions (rowan, kai, noor, ivy and theo) are in `.claude/agents` and run on Claude models.
 - No other AI coding tool appears in the commit history.
 
@@ -130,10 +132,22 @@ Required by the hackathon rules. This list is complete.
 - **Map sprites.** `public/map/sprites/v4`, from protomaps/basemaps-assets, MIT, derived from tangrams/icons.
 - **Barangay boundaries.** `public/map/barangays.geojson`, OCHA, PSA and NAMRIA through the Humanitarian Data Exchange, Philippines Subnational Administrative Boundaries, under CC BY-IGO. Simplified to about 5 m.
 - Sources, dates and sizes for every map file are in [`public/map/README.md`](public/map/README.md), and `scripts/map/fetch-map.sh` rebuilds them. Nothing in the map is fetched at runtime.
-- **App fonts.** Inter and JetBrains Mono (weight 500 only) from Google Fonts, both SIL Open Font License 1.1. `next/font` downloads them at build time and serves them from the hub.
-- **Design exports.** `design/screens` and `design/png` are exports of the design canvas. The HTML files link Google Fonts for viewing only. The app does not use them at runtime.
+- **App fonts.** [Inter](https://github.com/rsms/inter) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (weight 500 only) from Google Fonts, both SIL Open Font License 1.1. `next/font` downloads them at build time and serves them from the hub.
+- **Design exports.** `design/screens` and `design/png` are exports of the design canvas made with Claude. The HTML files link Google Fonts for viewing only. The app does not use them at runtime.
 - **Seed data.** `seed/simulation.json` and `seed/ai-fixtures.json` are simulated. The households, reports, entries and people are invented. The barangay names are real barangays of Dapitan City.
 - **Damage definitions.** The photo prompt uses the DSWD definitions of partially and totally damaged houses from DSWD Memorandum Circular 2020-032.
+
+### Kit tools
+
+The field kit in `infra/` and the map script in `scripts/map` use these programs. None are bundled in the repo or the app. Each license is from the LICENSE or COPYING file of that project.
+
+| Tool | License | Used for |
+|---|---|---|
+| [Caddy](https://github.com/caddyserver/caddy) | Apache-2.0 | HTTPS in front of the app, `infra/Caddyfile` and the start scripts |
+| [dnsmasq](https://thekelleys.org.uk/dnsmasq/doc.html) | GPL v2 or v3, at your option | Local DNS so phones find the hub, `infra/dnsmasq.conf`. Windows and Macs without it use `infra/dns-stub.mjs`, written for Ulat |
+| [Certbot](https://github.com/certbot/certbot) | Apache-2.0 | Gets the Let's Encrypt certificate before the storm, see `infra/README.md` |
+| [Let's Encrypt](https://letsencrypt.org) | A free certificate service, no software copied | Issues the certificate Certbot asks for. Needs the internet once, before the storm |
+| [go-pmtiles](https://github.com/protomaps/go-pmtiles) | BSD-3-Clause | The `pmtiles` command that cut `town.pmtiles`, run by `scripts/map/fetch-map.sh` |
 
 ### npm dependencies
 
@@ -152,6 +166,7 @@ Versions are pinned in `package.json` and `pnpm-lock.yaml`. Licenses are from ea
 | radix-ui | MIT | Component primitives |
 | class-variance-authority | Apache-2.0 | Component variants |
 | cn | MIT | Merges Tailwind class names |
+| qrcode | MIT | Draws the QR code on the join poster as inline SVG, on the server |
 | lucide-react | ISC | Icons |
 | shadcn | MIT | CLI and `shadcn/tailwind.css` theme styles |
 | tw-animate-css | MIT | Animation utilities for Tailwind |
@@ -164,7 +179,7 @@ Dev tools, none of them shipped to the browser:
 |---|---|---|
 | tailwindcss, @tailwindcss/postcss | MIT | Styling and the PostCSS plugin |
 | typescript | Apache-2.0 | Type checking |
-| @types/node, @types/react, @types/react-dom, @types/better-sqlite3 | MIT | Type definitions |
+| @types/node, @types/react, @types/react-dom, @types/better-sqlite3, @types/qrcode | MIT | Type definitions |
 | vitest | MIT | Unit and rule tests |
 | @playwright/test | Apache-2.0 | Smoke tests |
 | eslint, eslint-config-next | MIT | Linting |

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeftIcon } from "lucide-react";
 import { db } from "@/db/client";
+import { EntryActions } from "@/components/hub/entries/entry-actions";
 import { DraftComparison } from "@/components/hub/entries/draft-comparison";
 import { EntryRail } from "@/components/hub/entries/entry-rail";
 import { damageLong, damageTone, entryNumber, statusLabel } from "@/components/hub/entries/labels";
@@ -36,12 +37,15 @@ export default async function EntryPage({ params }: Props) {
 
   return (
     <HubPage title={`Entry ${number}`} active={routes.hub.entries} rail={<EntryRail detail={detail} />}>
-      <div className="flex flex-col gap-9">
+      <div data-entry-print className="flex flex-col gap-9">
         <header className="flex flex-col gap-3">
-          <Link href={routes.hub.entries} className="hit -ml-1 inline-flex w-fit items-center gap-1 rounded-pill text-body-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <ChevronLeftIcon aria-hidden="true" className="size-4" />
-            Entries
-          </Link>
+          <div className="flex items-center justify-between gap-4">
+            <Link href={routes.hub.entries} className="hit -ml-1 inline-flex w-fit items-center gap-1 rounded-pill text-body-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring print:hidden">
+              <ChevronLeftIcon aria-hidden="true" className="size-4" />
+              Entries
+            </Link>
+            <EntryActions entry={entry} />
+          </div>
           <h2 className="text-display-md text-ink">{entry.household_head ?? `Entry ${number}`}</h2>
           <div className="flex flex-wrap gap-2">
             {entry.damage_class ? <Pill dot={damageTone[entry.damage_class]}>{damageLong[entry.damage_class]}</Pill> : null}

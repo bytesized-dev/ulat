@@ -1,0 +1,35 @@
+/* BYTE-31. Print on the entry detail page prints the entry, not the hub. The
+   sidebar and the top bar are left out, and the rail goes under the entry so
+   the page reads as one A4 column. The marker is data-entry-print on the page,
+   so no other hub page changes when it prints. */
+@media print {
+  [data-slot="hub-shell"]:has([data-entry-print]) {
+    display: block;
+    min-height: 0;
+  }
+
+  [data-slot="hub-shell"]:has([data-entry-print]) > aside,
+  [data-slot="hub-shell"]:has([data-entry-print]) > div > header {
+    display: none;
+  }
+
+  [data-slot="hub-shell"]:has([data-entry-print]) > div > div {
+    display: block;
+  }
+
+  [data-slot="hub-shell"]:has([data-entry-print]) aside[aria-label="Details"] {
+    width: auto;
+    border-left: 0;
+    padding: 0 calc(var(--spacing) * 8);
+  }
+
+  [data-entry-print] {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  [data-entry-print] section,
+  [data-slot="hub-shell"]:has([data-entry-print]) aside[aria-label="Details"] section {
+    break-inside: avoid;
+  }
+}

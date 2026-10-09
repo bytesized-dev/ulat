@@ -35,11 +35,23 @@ export type ConfirmEntryResult = "ok" | "unauthorized" | "not_found" | "settled"
  * changed. The save only goes through while the entry still waits for review, so
  * a tab that rendered before another tab settled it gets "settled" and changes nothing.
  */
-export async function confirmEntry(entryId: string, body: EntryConfirm, fetcher: typeof fetch = fetch): Promise<ConfirmEntryResult> {
+export function confirmEntry(entryId: string, body: EntryConfirm, fetcher: typeof fetch = fetch): Promise<ConfirmEntryResult> {
+  return patchEntry(entryId, body, { "x-ulat-expect-status": "needs_review" }, fetcher);
+}
+
+/**
+ * Saves an edit to an entry as staff. It sends no expected status, so the save
+ * goes through in any status and the route audits each field that changed.
+ */
+export function editEntry(entryId: string, body: EntryConfirm, fetcher: typeof fetch = fetch): Promise<ConfirmEntryResult> {
+  return patchEntry(entryId, body, {}, fetcher);
+}
+
+async function patchEntry(entryId: string, body: EntryConfirm, headers: Record<string, string>, fetcher: typeof fetch): Promise<ConfirmEntryResult> {
   try {
     const res = await fetcher(`/api/entries/${entryId}`, {
       method: "PATCH",
-      headers: { "content-type": "application/json", "x-ulat-expect-status": "needs_review" },
+      headers: { "content-type": "application/json", ...headers },
       body: JSON.stringify(body),
     });
     if (res.ok) return "ok";

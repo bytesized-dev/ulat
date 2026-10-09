@@ -40,7 +40,7 @@ function Location({ entry }: { entry: EntryDetail["entry"] }) {
           pins={pins}
           selectedId={pins[0]?.id}
           zoomControls={false}
-          className="h-45"
+          className="h-45 print:hidden"
         />
       ) : (
         <p className="flex h-45 items-center justify-center rounded-lg bg-surface-soft text-body-sm text-body">No location saved</p>

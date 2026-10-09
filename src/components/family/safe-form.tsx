@@ -82,8 +82,6 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
   const people = answer?.people ?? null;
   const searchFailed = answer !== null && answer.people === null;
 
-  const alertText = error ?? (searchFailed ? SEARCH_FAILED : null);
-
   async function submit() {
     if (busy) return;
     setBusy(true);
@@ -135,8 +133,8 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
             </Label>
             <Textarea id="safe-message" maxLength={240} value={message} onChange={(e) => setMessage(e.target.value)} />
           </div>
-          <p role="alert" className={alertText ? "text-body-sm text-danger" : "sr-only"}>
-            {alertText}
+          <p role="alert" className={error ? "text-body-sm text-danger" : "sr-only"}>
+            {error}
           </p>
           <Button type="submit" disabled={busy || name.trim() === ""}>
             Add me to the safe list
@@ -147,8 +145,13 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
           <h2 id="safe-find" className="text-title-md text-ink">
             Find someone
           </h2>
-          <SearchPill aria-label="Search by name" value={query} onChange={(e) => setQuery(e.target.value)} />
-          {/* Mounted from the start, so a screen reader announces the first results. */}
+          <SearchPill aria-label="Search by name" value={query} onChange={(e) => {
+              setQuery(e.target.value);
+              // A new search starts clean, so the last answer or error does not show for it.
+              setFound(null);
+            }}
+          />
+          {/* Mounted from the start, so a screen reader announces the first results or the error. */}
           <div aria-live="polite">
             {people && people.length > 0 ? (
               <ul>
@@ -166,6 +169,8 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
                   </li>
                 ))}
               </ul>
+            ) : searchFailed ? (
+              <p className="text-body-sm text-danger">{SEARCH_FAILED}</p>
             ) : (
               <p className="text-body-sm text-body">{people ? "No one with that name yet." : null}</p>
             )}

@@ -34,4 +34,12 @@ describe("Kit setup actions", () => {
     expect(await setSimulationAction(false)).toEqual({ ok: true });
     expect(setSimulation).toHaveBeenCalledWith(false);
   });
+
+  it("reject a simulation value that is not a boolean", async () => {
+    requireStaff.mockResolvedValue({ role: "staff", exp: Date.now() + 1000 });
+    for (const bad of ["false", 0, null, undefined, {}]) {
+      expect(await setSimulationAction(bad as unknown as boolean)).toEqual({ ok: false, error: "invalid" });
+    }
+    expect(setSimulation).not.toHaveBeenCalled();
+  });
 });

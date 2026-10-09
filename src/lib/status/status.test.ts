@@ -34,7 +34,6 @@ const globalForStatus = globalThis as unknown as {
 const noPmset = () => execFile.mockImplementation((...args: unknown[]) => (args.at(-1) as (e: Error) => void)(new Error("ENOENT")));
 
 beforeEach(() => {
-  vi.stubEnv("MOCK_AI", "0");
   vi.stubEnv("OLLAMA_URL", "http://127.0.0.1:1");
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
   execFile.mockReset();
@@ -127,17 +126,13 @@ describe("readHubStatus", () => {
     expect(await readStorageFreeGb()).toBe(20.5);
   });
 
-  it("finds the model in the Ollama tag list, and trusts MOCK_AI", async () => {
+  it("finds the model in the Ollama tag list", async () => {
     const tags = (names: string[]) =>
       vi.fn().mockResolvedValue(Response.json({ models: names.map((name) => ({ name, model: name })) }));
     vi.stubGlobal("fetch", tags(["llama3:8b", "gemma4:e4b"]));
     expect(await readModelLoaded()).toBe(true);
     vi.stubGlobal("fetch", tags(["llama3:8b"]));
     expect(await readModelLoaded()).toBe(false);
-
-    vi.stubEnv("MOCK_AI", "1");
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("down")));
-    expect(await readModelLoaded()).toBe(true);
   });
 });
 

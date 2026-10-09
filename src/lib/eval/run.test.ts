@@ -1,8 +1,6 @@
-import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { OllamaError } from "@/lib/ai/ollama";
 import type { AiPhotoDraft, AiVoiceExtract } from "@/lib/contracts";
@@ -475,11 +473,4 @@ describe("runEval voice rows", () => {
     expect(voice.items[0].fields).toEqual({ household_head: true, people: true, hurt: true, missing: true, needs: true });
     expect(Object.keys(voice.languages.tl.by_field)).not.toContain("transcript");
   });
-});
-
-describe("scripts/eval.ts", () => {
-  it("refuses to run with MOCK_AI=1", async () => {
-    const run = promisify(execFile)("node_modules/.bin/tsx", ["scripts/eval.ts"], { env: { ...process.env, MOCK_AI: "1" } });
-    await expect(run).rejects.toMatchObject({ code: 1, stderr: expect.stringContaining("MOCK_AI=1") });
-  }, 30_000);
 });

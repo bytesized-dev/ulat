@@ -17,56 +17,54 @@ The laptop that runs Ulat is called the hub. Install and build need the internet
 |---|---|---|
 | Node.js | 24 (`.node-version`). `package.json` allows 22 or newer, but only 24 was tested | Runs the app |
 | pnpm | 12.3.4 (`packageManager` in `package.json`) | Installs and runs scripts |
-| Ollama | 0.40.2 was tested. Skip it to try the app with `MOCK_AI=1` | Runs the local model |
-| Model | `gemma4:e4b`, about 9.5 GB. Skip it with `MOCK_AI=1` | Reads photos and voice notes, translates updates |
-| ffmpeg | Any recent build, `brew install ffmpeg`. Skip it with `MOCK_AI=1` | Turns voice notes into the WAV the model reads |
+| Ollama | 0.40.2 was tested | Runs the local model |
+| Model | `gemma4:e4b`, about 9.5 GB | Reads photos and voice notes, translates updates |
+| ffmpeg | Any recent build, `brew install ffmpeg` | Turns voice notes into the WAV the model reads |
 
 ```
 ollama pull gemma4:e4b
 ```
 
-### Try it in two minutes, without the model
+### Run it in development
 
 ```
 pnpm install
 pnpm db:push
-pnpm demo:reset
-MOCK_AI=1 pnpm dev
+pnpm db:seed
+pnpm dev
 ```
 
-Open http://localhost:3000. `pnpm db:push` creates the SQLite file at `data/ulat.db`. `pnpm demo:reset` wipes data and uploads, loads `seed/simulation.json` (a simulated drill in Dapitan City, 49 entries and 19 family reports) and turns simulation on. With `MOCK_AI=1`, every AI call returns a fixture from `seed/ai-fixtures.json`, so nothing needs Ollama. Pass `-p 4000` to `pnpm dev` to use another port.
+Open http://localhost:3000. `pnpm db:push` creates the SQLite file at `data/ulat.db`. `pnpm db:seed` loads `seed/config.json`: the town, its barangays, the map bounds, the staff PIN and the responder accounts. It adds no reports or entries, so the hub starts empty. Every AI call goes to the real model, so start Ollama first. Pass `-p 4000` to `pnpm dev` to use another port.
 
-Two things only work in `pnpm dev`. The component kit at `/dev/kit` and the map check at `/hub/map-check` return 404 in a production build.
-
-### Run the built app with the real model
+### Run the built app
 
 ```
 pnpm install
 pnpm db:push
-pnpm demo:reset
+pnpm db:seed
 NODE_ENV=production pnpm build
 pnpm start
 ```
 
-Start Ollama (`ollama serve`, or the desktop app) before the app. The app reads `OLLAMA_URL` and defaults to `http://localhost:11434`. `.env.example` lists every setting, and none are required. Use `MOCK_AI=1 pnpm start` to run the built app without Ollama.
+Start Ollama (`ollama serve`, or the desktop app) before the app. The app reads `OLLAMA_URL` and defaults to `http://localhost:11434`. `.env.example` lists every setting, and none are required.
 
 - **Why `NODE_ENV=production` on the build.** If your shell exports `NODE_ENV=development`, `pnpm build` fails while prerendering `/_global-error`. Setting it to production, or running `unset NODE_ENV`, fixes it. `pnpm start` with a non-standard `NODE_ENV` only prints a warning.
 - **Fonts.** `pnpm build` downloads the Inter and JetBrains Mono fonts through `next/font`, so run it while online. The fonts are bundled into the build and served from the hub.
 - **Offline phone queue.** Families can save a report on the phone when the hub is out of reach, and it sends later. That needs the service worker, which the app registers only in a production build served over HTTPS or from `localhost`.
-- **Reset between runs.** Stop the app, run `pnpm demo:reset`, start it again. `pnpm db:seed` loads the seed file without the wipe.
+- **Clearing data.** Clear data on `/hub/setup` deletes every report, entry, update and upload, and keeps the settings and accounts. `pnpm db:seed` never deletes anything, so run it again whenever `seed/config.json` changes.
 
 ### Where to go
 
-Seeded sign ins live in `seed/simulation.json`, and the database stores only their hashes. The staff PIN is `1234`. Each seeded responder has an account and they all use the password `ulat2026`: CJ Jutba `cjjutba@gmail.com`, Artkin Carreon `artkin@gmail.com`, Sean Jacinto `sean@gmail.com` and James Calunsag `james@gmail.com`. After pulling a change that adds columns, run `pnpm db:push` and then `pnpm demo:reset`, because accounts already in your database have no password until the seed reloads.
+Sign ins live in `seed/config.json`, and the database stores only their hashes. The staff PIN is `1234`. Each responder has an account and they all use the password `ulat2026`: CJ Jutba `cjjutba@gmail.com`, Artkin Carreon `artkin@gmail.com`, Sean Jacinto `sean@gmail.com` and James Calunsag `james@gmail.com`. After pulling a change that adds columns, run `pnpm db:push` and then `pnpm db:seed`, because accounts already in your database have no password until the config reloads.
 
 | Route | Who | Sign in |
 |---|---|---|
 | `/` | Families, home | None |
 | `/report`, then `/report/voice` or `/report/type`, `/report/check`, `/report/location`, `/report/send`, `/report/sent` | Families, send a report by voice or typing | None |
-| `/status` | Families, check a report with its 4 character code. `K7P4` is in the seed | None |
+| `/status` | Families, check a report with its 4 character code | None |
 | `/updates`, `/map`, `/safe`, `/safe/done` | Families, updates from the MDRRMO, map of relief points, shelters and hazards, "I'm safe" check in | None |
 | `/r` | Responders, redirects to `/r/sign-in` | Email and password |
-| `/r/queue`, `/r/map`, `/r/new`, `/r/done`, `/r/reports/K7P4` | Responders, visit queue, map, a house nobody reported, done list, one family report. The photo flow lives under `/r/assess/<entry id>` | Responder sign in |
+| `/r/queue`, `/r/map`, `/r/new`, `/r/done`, `/r/reports/<code>` | Responders, visit queue, map, a house nobody reported, done list, one family report. The photo flow lives under `/r/assess/<entry id>` | Responder sign in |
 | `/hub` | MDRRMO staff on the laptop, redirects to `/hub/lock` | Staff PIN |
 | `/hub/review`, `/hub/review/family-reports`, `/hub/review/duplicates` | Review of drafted entries, family reports and assigning, possible duplicates | Staff PIN |
 | `/hub/entries`, `/hub/entries/<id>` | All entries and one entry | Staff PIN |
@@ -75,7 +73,6 @@ Seeded sign ins live in `seed/simulation.json`, and the database stores only the
 | `/hub/poster` | The join poster on one A4 page, with a QR code for the hub address. "Print poster" on `/hub` and "Print" on `/hub/setup` open it | Staff PIN |
 | `/hub/desk`, `/hub/safe-list`, `/hub/updates` | Help desk, safe list, post an update | Staff PIN |
 | `/hub/setup`, `/hub/checklist`, `/hub/ai-check` | Kit setup, the before the storm checklist, and the numbers `pnpm eval` wrote | Staff PIN |
-| `/dev/kit`, `/hub/map-check` | Component kit and map check, `pnpm dev` only | None for `/dev/kit`, staff PIN for `/hub/map-check` |
 
 Three screens print, each through the browser's print dialog. The join poster at `/hub/poster` and the situation report at `/hub/reports/<n>/print` are A4 pages with no hub chrome and a Print button. "Save and print slip" on `/hub/desk` prints the family code slip.
 
@@ -86,12 +83,10 @@ Three screens print, each through the browser's print dialog. The join poster at
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | TypeScript, no emit |
 | `pnpm test` | Vitest unit and rule tests |
-| `pnpm e2e` | Playwright smoke test of the demo loop. `tests/e2e` has no tests yet, so it exits with "No tests found". Run `pnpm exec playwright install chromium` once before the first real test |
-| `pnpm eval` | Runs the AI test set against the real model and writes `eval/results.json`. It refuses to run with `MOCK_AI=1` |
+| `pnpm eval` | Runs the AI test set against the real model and writes `eval/results.json` |
 | `pnpm eval --repeat 100` | Loops the photo set until 100 photo calls are done. Use it for the battery test |
 | `node scripts/check-eval.mjs` | Lists what the eval set is still missing |
-| `pnpm demo:reset` | Wipes data and uploads, reloads the seed and turns simulation on |
-| `pnpm db:seed` | Loads `seed/simulation.json` |
+| `pnpm db:seed` | Loads `seed/config.json`, the settings and responder accounts. Deletes nothing |
 | `pnpm db:push` | Creates or updates the SQLite schema |
 
 The eval method, labels and photo sources are in `eval/README.md`. The eval set is a work in progress. It has 10 photos with one set of labels and no voice recordings yet, so `pnpm eval` has no final numbers.
@@ -135,7 +130,7 @@ Required by the hackathon rules. This list is complete.
 - Sources, dates and sizes for every map file are in [`public/map/README.md`](public/map/README.md), and `scripts/map/fetch-map.sh` rebuilds them. Nothing in the map is fetched at runtime.
 - **App fonts.** [Inter](https://github.com/rsms/inter) and [JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) (weight 500 only) from Google Fonts, both SIL Open Font License 1.1. `next/font` downloads them at build time and serves them from the hub.
 - **Design exports.** `design/screens` and `design/png` are exports of the design canvas made with Claude. The HTML files link Google Fonts for viewing only. The app does not use them at runtime.
-- **Seed data.** `seed/simulation.json` and `seed/ai-fixtures.json` are simulated. The households, reports, entries and people are invented. The barangay names are real barangays of Dapitan City.
+- **Seed config.** `seed/config.json` holds the hub settings and the team's accounts. The barangay names are the real barangays of Dapitan City.
 - **Damage definitions.** The photo prompt uses the DSWD definitions of partially and totally damaged houses from DSWD Memorandum Circular 2020-032.
 
 ### Kit tools
@@ -183,10 +178,10 @@ Dev tools, none of them shipped to the browser:
 | typescript | Apache-2.0 | Type checking |
 | @types/node, @types/react, @types/react-dom, @types/better-sqlite3, @types/qrcode | MIT | Type definitions |
 | vitest | MIT | Unit and rule tests |
-| @playwright/test | Apache-2.0 | Smoke tests |
+| @playwright/test | Apache-2.0 | `npx playwright screenshot` for pull request screenshots |
 | eslint, eslint-config-next | MIT | Linting |
 | drizzle-kit | MIT | `pnpm db:push` |
-| tsx | MIT | Runs `db:seed`, `demo:reset` and `eval` |
+| tsx | MIT | Runs `db:seed` and `eval` |
 | dotenv | BSD-2-Clause | Loads `.env.local` in the test setup |
 
 ## Team

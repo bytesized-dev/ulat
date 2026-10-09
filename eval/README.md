@@ -34,7 +34,7 @@ pnpm eval --repeat 100
 
 ## results.json
 
-`pnpm eval` runs `scripts/eval.ts`, which calls the real `draftPhoto` and `readVoice` and reads the battery before and after the photos. It refuses to run with `MOCK_AI=1`. The math is in `src/lib/eval/metrics.ts` and the run in `src/lib/eval/run.ts`.
+`pnpm eval` runs `scripts/eval.ts`, which calls the real `draftPhoto` and `readVoice` and reads the battery before and after the photos. The math is in `src/lib/eval/metrics.ts` and the run in `src/lib/eval/run.ts`.
 
 - Rates are fractions from 0 to 1, not rounded. A rate with nothing to divide by is `null`.
 - A photo needs both labels, and they must agree, to count toward AI accuracy and the confusion matrix. Photos with one label or none still run, for timing and battery. Every photo or note left out of a score, and why, is listed in `skipped`.

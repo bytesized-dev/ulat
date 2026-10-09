@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import fixtureFile from "../../../seed/ai-fixtures.json";
 import { extractFacts, findMissingFacts } from "./translate-check";
 
 const facts = (headline: string, message: string) =>
@@ -128,8 +127,7 @@ describe("findMissingFacts", () => {
 describe("AM and PM", () => {
   const water = { headline: "Water at the town plaza", message: "3 to 5 PM. Bring a container." };
 
-  it("passes the design example and the MOCK fixture", () => {
-    expect(findMissingFacts(water, fixtureFile.translation)).toEqual([]);
+  it("passes the design example", () => {
     expect(findMissingFacts(water, { ceb: "Tubig sa plaza, 3 hangtod 5 sa hapon.", tl: "Tubig sa plaza, 3 hanggang 5 ng hapon." })).toEqual([]);
   });
 

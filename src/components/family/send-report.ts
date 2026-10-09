@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Need, ReportCode } from "@/lib/contracts";
+import { Need, ReportCode, type NewReport } from "@/lib/contracts";
 import { toNewReport, type ReportDraft } from "./report-draft";
 
 // Pure parts of the send screen: what the family sees in the summary, the
@@ -27,7 +27,8 @@ export function summarizeDraft(draft: ReportDraft) {
   return { household: draft.household_head.trim(), place: place.join(", "), pills };
 }
 
-export type SendResult = { ok: true; code: string } | { ok: false; message: string; retry: boolean };
+/** `unreachable` means the hub never answered, so the report can wait on the phone. */
+export type SendResult = { ok: true; code: string } | { ok: false; message: string; retry: boolean; unreachable?: boolean };
 
 const UNREACHABLE = "Could not reach the hub. Check the Wi-Fi and try again.";
 const CHECK_REPORT = "We could not send your report. Go back and check it.";
@@ -46,6 +47,26 @@ export function canSend(draft: ReportDraft): boolean {
 
 const Created = z.object({ code: ReportCode });
 
+/** Posts a NewReport to the hub. Never throws. */
+export async function postReport(body: NewReport, send: typeof fetch = fetch): Promise<SendResult> {
+  try {
+    const res = await send("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    // The proxy answers 502 or 504 when the hub app behind it is down or too slow.
+    if (res.status === 502 || res.status === 504) return { ok: false, message: UNREACHABLE, retry: true, unreachable: true };
+    if (!res.ok) return { ok: false, ...failure(res.status) };
+    const created = Created.safeParse(await res.json().catch(() => null));
+    // The hub answered without a code, so there is nothing to show. Treat it as a failed send.
+    if (!created.success) return { ok: false, ...failure(500) };
+    return { ok: true, code: created.data.code };
+  } catch {
+    return { ok: false, message: UNREACHABLE, retry: true, unreachable: true };
+  }
+}
+
 /**
  * Sends the draft to the hub as a NewReport with consent true. Never throws, and
  * never touches the draft, so a failed send leaves it for another try.
@@ -53,18 +74,5 @@ const Created = z.object({ code: ReportCode });
 export async function sendReport(draft: ReportDraft, send: typeof fetch = fetch): Promise<SendResult> {
   const body = toNewReport(draft);
   if (!body.success) return { ok: false, message: CHECK_REPORT, retry: false };
-  try {
-    const res = await send("/api/reports", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body.data),
-    });
-    if (!res.ok) return { ok: false, ...failure(res.status) };
-    const created = Created.safeParse(await res.json().catch(() => null));
-    // The hub answered without a code, so there is nothing to show. Treat it as a failed send.
-    if (!created.success) return { ok: false, ...failure(500) };
-    return { ok: true, code: created.data.code };
-  } catch {
-    return { ok: false, message: UNREACHABLE, retry: true };
-  }
+  return postReport(body.data, send);
 }

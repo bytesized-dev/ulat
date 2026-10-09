@@ -75,7 +75,8 @@ describe("sendReport", () => {
       throw new TypeError("Failed to fetch");
     });
     const result = await sendReport(draft, send as unknown as typeof fetch);
-    expect(result).toEqual({ ok: false, message: "Could not reach the hub. Check the Wi-Fi and try again.", retry: true });
+    expect(result).toEqual({ ok: false, message: "Could not reach the hub. Check the Wi-Fi and try again.", retry: true, unreachable: true });
+    expect(await sendReport(draft, reply(502, {}) as unknown as typeof fetch)).toMatchObject({ ok: false, unreachable: true });
   });
 
   it("leaves the draft as it was after a failure", async () => {

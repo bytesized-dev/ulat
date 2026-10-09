@@ -128,7 +128,7 @@ function WhoseHouseholdForm({ barangays, requestedSource = null }: WhoseHousehol
   );
 
   const headField = (
-    <Field id="household-head" label={neighbor ? "Their name" : "Head of household"} error={errorFor("household_head")}>
+    <Field id="household-head" label={neighbor ? "Neighbor's name" : "Head of household"} error={errorFor("household_head")}>
       <Input
         {...fieldProps("household_head", "household-head")}
         ref={(node) => {
@@ -178,7 +178,7 @@ function WhoseHouseholdForm({ barangays, requestedSource = null }: WhoseHousehol
 
           <section aria-labelledby="location" className="flex flex-col gap-4.5">
             <h2 id="location" className="text-title-md text-ink">
-              {neighbor ? "Their location" : "Your location"}
+              {neighbor ? "Neighbor's location" : "Your location"}
             </h2>
             {barangayField}
             {purokField}

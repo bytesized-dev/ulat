@@ -27,8 +27,8 @@ describe("firstMissing", () => {
     expect(firstMissing(family, [])?.field).toBe("barangay");
   });
 
-  it("asks a neighbor's report for their name, the barangay, then the reporter's name", () => {
-    expect(firstMissing({ ...neighbor, household_head: "", barangay: "", reporter_name: "" }, barangays)).toEqual({ field: "household_head", message: "Enter their name" });
+  it("asks a neighbor's report for the neighbor's name, the barangay, then the reporter's name", () => {
+    expect(firstMissing({ ...neighbor, household_head: "", barangay: "", reporter_name: "" }, barangays)).toEqual({ field: "household_head", message: "Enter the neighbor's name" });
     expect(firstMissing({ ...neighbor, barangay: "", reporter_name: "" }, barangays)?.field).toBe("barangay");
     expect(firstMissing({ ...neighbor, reporter_name: " " }, barangays)).toEqual({ field: "reporter_name", message: "Enter your name" });
   });

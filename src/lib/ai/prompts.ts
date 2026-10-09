@@ -1,7 +1,8 @@
 /**
  * Prompts for the hub model. See docs/SPEC.md section 5.
  * Call Ollama with `format` set to the JSON schema of the matching Zod schema
- * (z.toJSONSchema in Zod 4), then parse the reply with the same schema.
+ * (z.toJSONSchema in Zod 4), then parse the reply with the same schema. When
+ * Ollama has no structured output, ./ollama puts the schema in the user message.
  * One house or one note per call. Never ask the model to count across houses.
  */
 

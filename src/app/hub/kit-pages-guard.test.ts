@@ -33,7 +33,8 @@ beforeEach(() => {
 
 describe("kit pages", () => {
   for (const [name, load] of Object.entries(pages)) {
-    it(`/hub/${name} redirects before it reads anything`, async () => {
+    // The first import loads the whole hub page tree, which takes 5 to 8 seconds under load.
+    it(`/hub/${name} redirects before it reads anything`, { timeout: 30_000 }, async () => {
       const page = (await load()).default;
       await expect(page()).rejects.toThrow("NEXT_REDIRECT /hub/lock");
       expect(requireStaffPage).toHaveBeenCalledOnce();

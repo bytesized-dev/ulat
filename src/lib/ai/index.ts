@@ -69,6 +69,7 @@ export async function draftPhotoWithRaw(input: PhotoInput): Promise<{ draft: AiP
     media: input.photos.map((photo) => photo.data),
     // The same photos should give the same class every time.
     options: { temperature: 0 },
+    schemaHint: "Use null for need_more when damage_class is not unclear.",
   });
   return { draft: value, raw };
 }

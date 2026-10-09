@@ -11,7 +11,8 @@ vi.mock("@/lib/hub/duplicates", () => ({ detectDuplicates: spies.detect, listOpe
 vi.mock("@/lib/hub/family-reports", () => ({ countReview: spies.count }));
 vi.mock("@/lib/hub/map-pins", () => ({ getMapBbox: spies.bbox }));
 
-it("/hub/review/duplicates redirects before it reads anything", async () => {
+// The first import loads the whole hub page tree, which takes 5 to 8 seconds under load.
+it("/hub/review/duplicates redirects before it reads anything", { timeout: 30_000 }, async () => {
   const page = (await import("./page")).default;
   await expect(page({ searchParams: Promise.resolve({}) })).rejects.toThrow("NEXT_REDIRECT /hub/lock");
   expect(requireStaffPage).toHaveBeenCalledOnce();

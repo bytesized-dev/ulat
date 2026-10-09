@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { PosterSheet } from "../../components/hub/print/poster-sheet";
+import { SitrepSheet } from "../../components/hub/print/sitrep-sheet";
 import { freshDb } from "./test-setup";
 
 type Fresh = Awaited<ReturnType<typeof freshDb>>;
@@ -25,6 +26,10 @@ beforeAll(async () => {
   setSetting("hub_address", "https://hub.dapitan.example");
   const sitreps = await import("./sitreps");
   sitreps.createSitrep(db, new Date(THREE_PM));
+  // Report 2 is made during a drill. The switch is turned off afterwards.
+  setSetting("simulation", "true");
+  sitreps.createSitrep(db, new Date(THREE_PM));
+  setSetting("simulation", "false");
 });
 
 describe("getPrintReport", () => {
@@ -36,12 +41,38 @@ describe("getPrintReport", () => {
   });
 
   it("returns null for a number with no report, which the page answers with a 404", () => {
-    expect(lib.getPrintReport(db, "2")).toBeNull();
+    expect(lib.getPrintReport(db, "3")).toBeNull();
     expect(lib.getPrintReport(db, "999")).toBeNull();
   });
 
   it("returns null for a number that is not a plain positive integer", () => {
     for (const n of ["0", "-1", "1.5", "abc", "", "01", "1e3", " 1"]) expect(lib.getPrintReport(db, n)).toBeNull();
+  });
+});
+
+describe("the Simulation badge", () => {
+  const sheet = (n: string) => renderToStaticMarkup(createElement(SitrepSheet, { report: lib.getPrintReport(db, n)! }));
+
+  it("is read from the saved report, so a drill report keeps it after the switch is turned off", () => {
+    expect(db.select().from(schema.settings).where(eq(schema.settings.key, "simulation")).get()?.value).toBe("false");
+    expect(lib.getPrintReport(db, "2")?.simulation).toBe(true);
+    expect(sheet("2")).toContain("Simulation");
+  });
+
+  it("is not on a report made outside a drill, even when the switch is turned on later", () => {
+    setSetting("simulation", "true");
+    expect(lib.getPrintReport(db, "1")?.simulation).toBe(false);
+    expect(sheet("1")).not.toContain("Simulation");
+    setSetting("simulation", "false");
+  });
+});
+
+describe("the hazards section", () => {
+  it("says the hazards are read now, when, and that the report does not keep them", () => {
+    const report = lib.getPrintReport(db, "1", new Date("2026-10-11T01:30:00.000Z"))!;
+    const markup = renderToStaticMarkup(createElement(SitrepSheet, { report }));
+    expect(markup).toContain("Hazards now");
+    expect(markup).toContain("Read when you open this page, at 9:30 AM, 11 Oct 2026. Not saved with the report.");
   });
 });
 
@@ -53,8 +84,13 @@ describe("readPoster", () => {
       wifiName: "ULAT-HUB",
       hubAddress: "https://hub.dapitan.example",
       hubHost: "hub.dapitan.example",
-      wifiPassword: null,
     });
+  });
+
+  it("falls back to the default Wi-Fi name", () => {
+    db.delete(schema.settings).where(eqKey("wifi_name")).run();
+    expect(lib.readPoster(db).wifiName).toBe("ULAT-HUB");
+    setSetting("wifi_name", "ULAT-HUB");
   });
 
   it("has no address, and no QR code, when the setting is missing", () => {
@@ -91,6 +127,12 @@ describe("the poster QR code", () => {
   it("changes when the address changes", () => {
     expect(html("https://hub.one.example")).not.toBe(html("https://hub.two.example"));
     expect(lib.qrPath("https://hub.one.example").d).not.toBe(lib.qrPath("https://hub.two.example").d);
+  });
+
+  it("leaves the quiet zone of 4 empty cells on every side", () => {
+    const { size } = lib.qrPath("https://hub.dapitan.example");
+    expect(lib.QR_QUIET_ZONE).toBe(4);
+    expect(html("https://hub.dapitan.example")).toContain(`viewBox="-4 -4 ${size + 8} ${size + 8}"`);
   });
 
   it("is a square grid of ink cells with no remote reference", () => {

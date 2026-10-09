@@ -10,10 +10,8 @@ const stepNote = "text-body-sm text-body";
 
 /** The join poster for the evacuation center on one A4 sheet. */
 export function PosterSheet({ poster }: { poster: PosterData }) {
-  const wifi = poster.wifiName ? `Join Wi-Fi ${poster.wifiName}` : "Join the hub Wi-Fi";
-
   const steps = [
-    { title: wifi, note: poster.wifiPassword ? `Password ${poster.wifiPassword}` : null },
+    { title: `Join Wi-Fi ${poster.wifiName}`, note: null },
     { title: "Scan the code", note: poster.hubHost ? `Or open ${poster.hubHost}` : null },
     { title: "Tell us what happened", note: "Speak or type" },
   ];
@@ -42,11 +40,9 @@ export function PosterSheet({ poster }: { poster: PosterData }) {
           ))}
         </ol>
 
-        <div className="flex size-60 shrink-0 items-center justify-center rounded-xl bg-surface-soft p-6">
+        <div className="flex size-60 shrink-0 items-center justify-center rounded-xl bg-surface-soft p-4">
           {poster.hubAddress ? (
-            <div className="w-full rounded-lg bg-canvas p-3">
-              <QrCode value={poster.hubAddress} label={`QR code for ${poster.hubHost}`} />
-            </div>
+            <QrCode value={poster.hubAddress} label={`QR code for ${poster.hubHost}`} className="rounded-lg" />
           ) : (
             <div className="flex flex-col items-center gap-2 text-center">
               <p className="text-body-sm text-body">No hub address saved yet.</p>

@@ -15,7 +15,7 @@ const DENSE_AFTER = 10;
 
 /** The numbered situation report on one A4 sheet. The totals are the saved snapshot. */
 export function SitrepSheet({ report }: { report: PrintReport }) {
-  const { sitrep, town, simulation, hazards } = report;
+  const { sitrep, town, simulation, hazards, hazardsReadAt } = report;
   const s = sitrep.snapshot;
   const needs = listedNeeds(s.needs);
   const dense = s.barangays.length > DENSE_AFTER;
@@ -130,8 +130,11 @@ export function SitrepSheet({ report }: { report: PrintReport }) {
 
       <section aria-labelledby="hazards" className="flex flex-col gap-1">
         <h2 id="hazards" className={sectionTitle}>
-          Hazards
+          Hazards now
         </h2>
+        <p className="text-caption text-muted-text">
+          {`Read when you open this page, at ${formatTime(hazardsReadAt)}, ${formatDate(hazardsReadAt)}. Not saved with the report.`}
+        </p>
         <p className="text-body-sm text-body">{hazards.length === 0 ? "None listed." : hazardSentence(hazards)}</p>
       </section>
 

@@ -35,9 +35,9 @@ All photos come from Wikimedia Commons and were resized to 1600 px wide. The pag
 | photos/p042.jpg | https://commons.wikimedia.org/wiki/File:Low9JustAintRight1.jpg | Photo by Infrogmation of New Orleans | CC BY 2.5 |
 | photos/p043.jpg | https://commons.wikimedia.org/wiki/File:8Ward27FebHouseOnCar3.jpg | Infrogmation | CC BY 2.5 |
 | photos/p044.jpg | https://commons.wikimedia.org/wiki/File:Hurricane_Eloise_beach_house2_damage.jpg | NOAA Photo Library | Public domain |
-| photos/p046.jpg | https://commons.wikimedia.org/wiki/File:Hurricane_Irene_damage_to_road,_homes_in_Bethel,_VT_(6106625390).jpg | U. S. Fish and Wildlife Service - Northeast Region | Public domain |
+| photos/p046.jpg | https://commons.wikimedia.org/wiki/File:Hurricane_Irene_damage_to_road,_homes_in_Bethel,_VT_(6106625390).jpg | U. S. Fish and Wildlife Service, Northeast Region | Public domain |
 | photos/p047.jpg | https://commons.wikimedia.org/wiki/File:Damage_to_a_house_in_Haiti_after_Hurricane_Matthew_(30988304274).jpg | CDC Global | CC BY 2.0 |
-| photos/p048.jpg | https://commons.wikimedia.org/wiki/File:A_house_that_was_badly_damaged_by_Hurricane_Irma,_covered_in_a_tarpaulin_supplied_by_UK_aid_(37294440575).jpg | DFID - UK Department for International Development | CC BY 2.0 |
+| photos/p048.jpg | https://commons.wikimedia.org/wiki/File:A_house_that_was_badly_damaged_by_Hurricane_Irma,_covered_in_a_tarpaulin_supplied_by_UK_aid_(37294440575).jpg | DFID, UK Department for International Development | CC BY 2.0 |
 | photos/p050.jpg | https://commons.wikimedia.org/wiki/File:Destroyed_houses_in_Panama_City,_FL.jpg | VOA | Public domain |
 | photos/p051.jpg | https://commons.wikimedia.org/wiki/File:Tour,_(by_Secretary_Alphonso_Jackson_and_other_HUD_officials,)_of_Hurricane_Katrina_damage_in_Ward_Nine,_New_Orleans,_Louisiana_-_DPLA_-_d81b60e5928153caafedf43ac137bdd3.JPG | Department of Housing and Urban Development. Office of the C | Public domain |
 | photos/p053.jpg | https://commons.wikimedia.org/wiki/File:EF2_damage_Franklin,_GA_2021.jpg | National Weather Service Peachtree City GA | Public domain |
@@ -69,7 +69,7 @@ All photos come from Wikimedia Commons and were resized to 1600 px wide. The pag
 | photos/p100.jpg | https://commons.wikimedia.org/wiki/File:US_Navy_070413-N-4790M-014_Residents_try_to_salvage_materials_from_houses_destroyed_by_an_earthquake_and_resulting_tsunami.jpg | U.S. Navy photo by Mass Communication Specialist 2nd Class A | Public domain |
 | photos/p101.jpg | https://commons.wikimedia.org/wiki/File:US_Navy_070413-N-4790M-015_Residents_try_to_salvage_materials_from_houses_destroyed_by_an_earthquake_and_resulting_tsunami.jpg | U.S. Navy photo by Mass Communication Specialist 2nd Class A | Public domain |
 | photos/p103.jpg | https://commons.wikimedia.org/wiki/File:US_Navy_110315-N-2653B-107_An_upended_house_is_among_debris_in_Ofunato,_Japan,_following_a_9.0_magnitude_earthquake_and_subsequent_tsunami.jpg | U.S. Navy photo by Mass Communication Specialist 1st Class M | Public domain |
-| photos/p105.jpg | https://commons.wikimedia.org/wiki/File:UKISAR_in_2011_Japan_earthquake_11_House_turned_upside-down_by_the_force_of_tsunami.jpg | DFID - UK Department for International Development | CC BY 2.0 |
+| photos/p105.jpg | https://commons.wikimedia.org/wiki/File:UKISAR_in_2011_Japan_earthquake_11_House_turned_upside-down_by_the_force_of_tsunami.jpg | DFID, UK Department for International Development | CC BY 2.0 |
 | photos/p106.jpg | https://commons.wikimedia.org/wiki/File:KesennumaBrokenHouse.jpg | Douglas P. Perkins | CC BY 3.0 |
 | photos/p107.jpg | https://commons.wikimedia.org/wiki/File:KesennumaBrokenHouse2.jpg | Douglas P. Perkins | CC BY 3.0 |
 | photos/p111.jpg | https://commons.wikimedia.org/wiki/File:House_and_Car_Destroyed_by_Tsunami_(4479275920).jpg | U.S. Geological Survey from Reston, VA, USA | Public domain |

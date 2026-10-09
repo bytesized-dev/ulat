@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { CameraIcon, PlayIcon } from "lucide-react";
+import { CameraIcon, ChevronRightIcon, PlayIcon } from "lucide-react";
 import { routes } from "@/lib/contracts";
 import { useMounted } from "@/lib/use-mounted";
 import { Button } from "@/components/ui/button";
@@ -12,8 +13,15 @@ import { Row } from "@/components/ui/row";
 import { StatusDot } from "@/components/ui/status-dot";
 import { TopBar } from "@/components/ui/top-bar";
 import { householdRows, isBlankDraft, NEED_OPTIONS, needsCheck, setCount, setNeed, whatHappened } from "./check-report";
+import { EditFieldSheet, type EditableField } from "./edit-field-sheet";
 import type { ReportDraft } from "./report-draft";
 import { updateDraft, useReportDraft } from "./use-report-draft";
+import { WhatWeHeardSheet } from "./what-we-heard-sheet";
+
+type CheckReportFormProps = {
+  /** The barangays from the hub's settings, for the edit sheet. */
+  barangays: string[];
+};
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -37,9 +45,11 @@ function PleaseCheck() {
 // Step 3 of 4. The family reads what the hub understood and fixes the numbers
 // and needs here. Every change goes straight into the draft, so Back and Continue
 // both keep it, and the send screen reads the same draft.
-function CheckReportForm() {
+function CheckReportForm({ barangays }: CheckReportFormProps) {
   const draft = useReportDraft();
   const mounted = useMounted();
+  const [editing, setEditing] = useState<EditableField | null>(null);
+  const [hearing, setHearing] = useState(false);
 
   const household = householdRows(draft);
   const change = (next: ReportDraft) => updateDraft(next);
@@ -75,10 +85,10 @@ function CheckReportForm() {
           <>
             <Section title="Household">
               <div className="flex flex-col">
-                <Row label="Head of household" value={household.head} chevron={false} className="border-b-0" />
+                <Row label="Head of household" value={household.head} onClick={() => setEditing("household_head")} className="border-b-0" />
                 {needsCheck(draft, "household_head") ? <PleaseCheck /> : null}
-                <Row label="Barangay" value={household.barangay} chevron={false} className="border-b-0" />
-                <Row label="Location" value={household.location} chevron={false} className="border-b-0" />
+                <Row label="Barangay" value={household.barangay} onClick={() => setEditing("barangay")} className="border-b-0" />
+                <Row label="Location" value={household.location} href={routes.family.location} className="border-b-0" />
               </div>
             </Section>
 
@@ -92,7 +102,7 @@ function CheckReportForm() {
 
             <Section title="Damage">
               <div className="flex flex-col">
-                <Row label="What happened" value={whatHappened(draft)} chevron={false} className="border-b-0" />
+                <Row label="What happened" value={whatHappened(draft)} onClick={() => setEditing("what_happened")} className="border-b-0" />
                 {needsCheck(draft, "what_happened") ? <PleaseCheck /> : null}
                 <Row label="Photo" value="Add a photo" trailing={<CameraIcon aria-hidden="true" className="size-5 text-muted-soft" />} className="border-b-0" />
               </div>
@@ -113,13 +123,18 @@ function CheckReportForm() {
               ) : null}
             </Section>
 
-            {draft.voice_id ? (
-              <div className="flex min-h-16 items-center gap-4">
+            {draft.spoken ? (
+              <button
+                type="button"
+                onClick={() => setHearing(true)}
+                className="flex min-h-16 items-center gap-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
                 <span aria-hidden="true" className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-surface-dark text-canvas">
                   <PlayIcon className="size-4 fill-current" />
                 </span>
                 <span className="flex-1 text-body-md font-medium text-ink">Your voice note</span>
-              </div>
+                <ChevronRightIcon aria-hidden="true" className="size-5 shrink-0 text-muted-soft" />
+              </button>
             ) : null}
           </>
         )}
@@ -136,8 +151,21 @@ function CheckReportForm() {
           </Button>
         )}
       </footer>
+
+      <EditFieldSheet
+        field={editing}
+        draft={draft}
+        barangays={barangays}
+        onSave={(next) => {
+          change(next);
+          setEditing(null);
+        }}
+        onClose={() => setEditing(null)}
+      />
+      <WhatWeHeardSheet open={hearing} draft={draft} onClose={() => setHearing(false)} />
     </div>
   );
 }
 
 export { CheckReportForm };
+export type { CheckReportFormProps };

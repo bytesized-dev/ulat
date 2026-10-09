@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { entries, events, photos, reports } from "@/db/schema";
-import { EntryConfirm } from "@/lib/contracts";
+import { EntryConfirm, EntryStatus } from "@/lib/contracts";
 import { audit, emit } from "../_lib/audit";
 import { authorize } from "../_lib/auth";
 import { REVIEW_REASONS, reviewReasons } from "../_lib/review";
@@ -40,6 +40,12 @@ export async function PATCH(req: Request, { params }: Ctx) {
   if (!body.success) return Response.json({ error: "bad_body", issues: body.error.issues }, { status: 400 });
   const confirm = body.data;
 
+  // Opt in: a caller that acts on what it rendered sends the status it saw, and
+  // the save is refused when the entry has moved on. Without it nothing changes.
+  const expectHeader = req.headers.get("x-ulat-expect-status");
+  const expected = expectHeader === null ? null : EntryStatus.safeParse(expectHeader);
+  if (expected && !expected.success) return Response.json({ error: "bad_expect_status" }, { status: 400 });
+
   const entry = db.select().from(entries).where(eq(entries.id, id)).get();
   if (!entry) return Response.json({ error: "not_found" }, { status: 404 });
   const report = entry.report_id ? db.select().from(reports).where(eq(reports.id, entry.report_id)).get() : undefined;
@@ -60,7 +66,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
   const status = reasons.length > 0 ? "needs_review" : "confirmed";
   const now = new Date().toISOString();
 
-  db.transaction((tx) => {
+  const settled = db.transaction((tx) => {
+    // Read again inside the transaction, so a save in another tab cannot slip in between.
+    if (expected && tx.select({ status: entries.status }).from(entries).where(eq(entries.id, id)).get()?.status !== expected.data) return false;
     for (const field of FIELDS) {
       const from = entry[field];
       const to = confirm[field];
@@ -97,7 +105,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
     } else {
       audit(tx, id, "entry.needs_review", actor.id, { reasons });
     }
+    return true;
   });
+  if (!settled) return Response.json({ error: "not_in_review" }, { status: 409 });
 
   if (status === "confirmed") {
     emit({ type: "entry.confirmed", entry_id: id, report_code: report?.code ?? null });

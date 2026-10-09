@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const PING_MS = 20_000;
 
 export async function GET(request: Request) {
-  const result = viewerFromRequest(request);
+  const result = await viewerFromRequest(request);
   if (!result.ok) return Response.json({ error: "bad_code" }, { status: 400 });
   const { viewer } = result;
 

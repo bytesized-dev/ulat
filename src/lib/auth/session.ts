@@ -143,11 +143,15 @@ function unauthorized() {
  * rejects inactive responders, and this ends a session that outlives a switch
  * off, so it does not wait for the 12 h cookie to run out.
  */
-async function activeResponderSession() {
-  const session = await currentSession("responder");
+export async function readActiveResponder(token: string | undefined) {
+  const session = await readSession("responder", token);
   if (!session) return null;
   const { isActiveResponder } = await import("./responders");
   return isActiveResponder(session.responder_id) ? session : null;
+}
+
+async function activeResponderSession() {
+  return readActiveResponder((await cookies()).get(SESSION_COOKIE.responder)?.value);
 }
 
 export async function requireResponder(): Promise<ResponderSession | Response> {

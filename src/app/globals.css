@@ -98,10 +98,14 @@
   --color-danger: #cf202f;
   --color-success: #05b169;
   --color-warning: #f4b000;
-  --color-map-land: #f2f3f5;
-  --color-map-sea: #e1e7ef;
-  --color-map-river: #c5d3e6;
-  --color-map-casing: #e2e5ea;
+  --color-map-land: #cef5dc;
+  --color-map-urban: #f6f3f2;
+  --color-map-park: #a0e5b9;
+  --color-map-sea: #83d5ea;
+  --color-map-river: #83d5ea;
+  --color-map-road: #97aec3;
+  --color-map-road-casing: #718ca9;
+  --color-map-road-minor: #c7d3dd;
   --color-map-boundary: #b4b9c1;
   --color-map-shade-1: #f6cfd2;
   --color-map-shade-2: #fae2e4;

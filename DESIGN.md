@@ -44,14 +44,22 @@ Paste `design/tokens.css` into `src/app/globals.css`. Components use the token n
 
 ### Map colors
 
-| Token | Value |
-|---|---|
-| `map-land` | #F2F3F5 |
-| `map-sea` | #E1E7EF |
-| `map-river` | #C5D3E6 |
-| `map-road` | #FFFFFF on a #E2E5EA casing |
-| `map-boundary` | #B4B9C1, dashed |
-| `map-shade-1` to `map-shade-3` | #F6CFD2, #FAE2E4, #FDF1F2 for most to least totally damaged |
+A familiar street map palette, so people read the town at a glance: green land, blue water, gray built-up areas.
+
+| Token | Value | Use |
+|---|---|---|
+| `map-land` | #CEF5DC | Natural land and vegetation |
+| `map-urban` | #F6F3F2 | Built-up areas |
+| `map-park` | #A0E5B9 | Parks, cemeteries, sports grounds |
+| `map-sea` | #83D5EA | Sea |
+| `map-river` | #83D5EA | Rivers and lakes |
+| `map-road` | #97AEC3 | Main roads |
+| `map-road-casing` | #718CA9 | Thin outline on main roads, so they read against built-up areas |
+| `map-road-minor` | #C7D3DD | Streets and paths |
+| `map-boundary` | #B4B9C1, dashed | Barangay lines |
+| `map-shade-1` to `map-shade-3` | #F6CFD2, #FAE2E4, #FDF1F2 for most to least totally damaged | Drawn under roads and labels, so shaded barangays keep their streets |
+
+Place labels use `body`. Pins keep a 2px `canvas` ring so blue relief dots stay clear on water.
 
 Pins: totally damaged is a `danger` dot, partially is a `warning` dot, not visited is a white dot with a dashed ink border, relief points are `primary` dots, shelters are `body` rounded squares, hazards are ink triangles, "you" is a `primary` dot with a soft halo.
 

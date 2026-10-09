@@ -20,7 +20,7 @@ const restrictRawDates = {
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "data/**", "playwright-report/**", "test-results/**", ".claude/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "data/**", "playwright-report/**", "test-results/**", ".claude/**", "public/map/**"]),
   {
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/lib/time/**"],

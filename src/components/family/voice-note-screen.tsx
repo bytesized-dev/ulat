@@ -14,6 +14,7 @@ import { applyExtract, loadDraft } from "./report-draft";
 import { updateDraft } from "./use-report-draft";
 import { useReducedMotion } from "./use-reduced-motion";
 import { useVoiceRecorder } from "./use-voice-recorder";
+import { setVoiceAudio } from "./voice-audio";
 import { formatTimer, MAX_NOTE_SECONDS, readVoiceNote } from "./voice-note";
 import { VoiceWaveform } from "./voice-waveform";
 
@@ -63,7 +64,8 @@ function VoiceNoteScreen() {
         return;
       }
       // Saved now, so Back from the check screen finds the note again.
-      updateDraft(applyExtract(loadDraft(), result.extract));
+      updateDraft({ ...applyExtract(loadDraft(), result.extract), spoken: true });
+      setVoiceAudio(audio);
       setTranscript(result.extract.transcript);
     },
   });

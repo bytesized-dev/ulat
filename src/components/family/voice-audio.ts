@@ -4,13 +4,20 @@
 // words without a player, and the report goes without audio.
 
 let note: Blob | null = null;
+let length: number | null = null;
 let url: string | null = null;
 
 /** Keeps the recording the family just made and drops the one before it. */
-export function setVoiceAudio(audio: Blob | null): void {
+export function setVoiceAudio(audio: Blob | null, durationMs?: number): void {
   if (url) URL.revokeObjectURL(url);
   url = null;
   note = audio;
+  length = audio && durationMs !== undefined ? durationMs : null;
+}
+
+/** How long the recording ran, in milliseconds. Null when there is no recording or its length is not known. */
+export function voiceAudioDuration(): number | null {
+  return note ? length : null;
 }
 
 /** The recording itself, for the send screen. Null when there is none. */

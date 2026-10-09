@@ -26,8 +26,8 @@ type Session = {
 export type StartResult = "recording" | "blocked" | "failed" | "busy" | "cancelled";
 
 type Options = {
-  /** Called with the finished recording, after stop or at the time limit. Not after cancel. */
-  onFinish: (audio: Blob) => void;
+  /** Called with the finished recording and how long it ran, after stop or at the time limit. Not after cancel. */
+  onFinish: (audio: Blob, durationMs: number) => void;
 };
 
 function useVoiceRecorder({ onFinish }: Options) {
@@ -109,7 +109,9 @@ function useVoiceRecorder({ onFinish }: Options) {
       };
       recorder.onstop = () => {
         release(s);
-        if (!s.cancelled) finish.current(new Blob(s.chunks, { type: recorder.mimeType || mimeType || "audio/webm" }));
+        if (s.cancelled) return;
+        const durationMs = Math.min(Date.now() - startedAt, MAX_NOTE_SECONDS * 1000);
+        finish.current(new Blob(s.chunks, { type: recorder.mimeType || mimeType || "audio/webm" }), durationMs);
       };
 
       s.timer = window.setInterval(() => {

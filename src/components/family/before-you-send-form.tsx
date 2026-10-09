@@ -11,7 +11,7 @@ import { Pill } from "@/components/ui/pill";
 import { ProgressSteps } from "@/components/ui/progress-steps";
 import { Row } from "@/components/ui/row";
 import { TopBar } from "@/components/ui/top-bar";
-import { newClientId } from "./client-id";
+import { newClientId } from "@/lib/client-id";
 import { enqueue } from "./offline-queue";
 import { queueStore } from "./queue-db";
 import { clearDraft, toNewReport } from "./report-draft";

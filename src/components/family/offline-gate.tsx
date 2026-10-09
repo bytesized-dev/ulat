@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { routes } from "@/lib/contracts";
-import { QUEUE_EVENT } from "./offline-queue";
+import { QUEUE_EVENT, type QueuedReport } from "./offline-queue";
+import { queueStore } from "./queue-db";
+import { draftFromReport, saveDraft } from "./report-draft";
 import { SavedOnPhone } from "./saved-on-phone";
-import { useOfflineQueue } from "./use-offline-queue";
+import { refreshQueue, useOfflineQueue } from "./use-offline-queue";
 
 /** Registers the service worker that keeps the app shell for a phone that loses the hub. */
 function useServiceWorker() {
@@ -18,33 +20,55 @@ function useServiceWorker() {
   }, []);
 }
 
-// Wraps every page. When reports are waiting and the hub cannot be reached, the
-// saved screen covers whatever route the family is on. Home puts it away until
-// the next report is saved. When the hub comes back and the reports go out, a
-// family looking at the screen is taken to the report sent screen.
+// Wraps the family pages only. /hub and /r share this origin and its IndexedDB
+// but must never show a family's saved reports. When reports are waiting and
+// the hub cannot be reached, or the hub refused one, the saved screen covers
+// whatever family route the phone is on. Home puts it away until the next
+// report is saved. A family that saved a report here is taken to the report
+// sent screen once the hub takes it, whether or not the saved screen showed.
 function OfflineGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { items, waiting, reachable, busy, sent, retry } = useOfflineQueue();
+  const { items, waiting, refused, reachable, busy, sent, retry } = useOfflineQueue();
   const [dismissed, setDismissed] = useState(false);
   useServiceWorker();
 
+  // True from the moment this page saves a report until the sent screen takes over or the family leaves.
+  const expecting = useRef(false);
   useEffect(() => {
-    const show = () => setDismissed(false);
-    window.addEventListener(QUEUE_EVENT, show);
-    return () => window.removeEventListener(QUEUE_EVENT, show);
+    const saved = () => {
+      expecting.current = true;
+      setDismissed(false);
+    };
+    window.addEventListener(QUEUE_EVENT, saved);
+    return () => window.removeEventListener(QUEUE_EVENT, saved);
   }, []);
 
-  const visible = waiting && !reachable && !dismissed;
+  // A refused report stays on screen even though the hub answers, so the family can fix it.
+  const visible = (refused || (waiting && !reachable)) && !dismissed;
 
-  // Only a family still looking at the saved screen is moved on to the sent screen.
-  const watching = useRef(false);
+  // Only a report sent after this page started looking counts, never an earlier one.
+  const handled = useRef(sent);
   useEffect(() => {
-    if (visible) watching.current = true;
-    else if (sent && watching.current) {
-      watching.current = false;
+    if (sent === handled.current) return;
+    handled.current = sent;
+    if (sent && expecting.current) {
+      expecting.current = false;
       router.replace(routes.family.sent);
     }
-  }, [visible, sent, router]);
+  }, [sent, router]);
+
+  async function fix(item: QueuedReport) {
+    // The draft holds the report again, then the queue lets go of it, so it cannot be lost between the two.
+    saveDraft(draftFromReport(item.report));
+    try {
+      await queueStore().remove(item.id);
+    } catch {
+      // The report is in the draft. A copy left in the queue shows again on the next visit.
+    }
+    expecting.current = false;
+    await refreshQueue();
+    router.push(routes.family.check);
+  }
 
   return (
     <>
@@ -55,8 +79,9 @@ function OfflineGate({ children }: { children: React.ReactNode }) {
             items={items}
             busy={busy}
             onRetry={() => void retry()}
+            onFix={(item) => void fix(item)}
             onHome={() => {
-              watching.current = false;
+              expecting.current = false;
               setDismissed(true);
             }}
           />

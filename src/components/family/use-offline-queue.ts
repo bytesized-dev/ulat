@@ -42,6 +42,11 @@ async function refresh() {
   }
 }
 
+/** Reads the queue again without trying to send, for a change the page made itself. */
+export function refreshQueue(): Promise<void> {
+  return refresh();
+}
+
 let running = false;
 
 /** Reads the queue and, when something waits, asks the hub to take it. */
@@ -95,5 +100,10 @@ let stop = () => {};
 /** The phone's offline queue. A report that goes out is remembered like any sent report, so the family sees its code. */
 export function useOfflineQueue() {
   const snapshot = useSyncExternalStore(subscribe, () => state, () => SERVER_STATE);
-  return { ...snapshot, waiting: snapshot.items.some((item) => item.state === "waiting"), retry };
+  return {
+    ...snapshot,
+    waiting: snapshot.items.some((item) => item.state === "waiting"),
+    refused: snapshot.items.some((item) => item.state === "refused"),
+    retry,
+  };
 }

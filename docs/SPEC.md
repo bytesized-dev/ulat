@@ -101,10 +101,10 @@ Drizzle with SQLite. IDs are UUID strings unless noted. Timestamps are ISO strin
 |---|---|
 | `settings` | `key` primary, `value`. Keys: `town`, `barangays` (JSON list), `map_bbox` (west, south, east, north), `team_pin_hash`, `staff_pin_hash`, `simulation` (`true` or `false`), `wifi_name`, `hub_address` |
 | `responders` | `id`, `name`, `team`, `active` |
-| `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `voice_path`, `transcript`, `transcript_en`, `language`, `photo_path`, `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `created_at`, `updated_at` |
+| `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `voice_path`, `transcript`, `transcript_en`, `language`, `photo_path`, `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `client_id` (nullable and unique, set by a phone so a resend of the same tap finds the report it already made), `created_at`, `updated_at` |
 | `entries` | `id`, `number` (integer, shown as 0231), `report_id` (nullable), `responder_id`, `barangay`, `purok`, `household_head`, `lat`, `lng`, `gps_accuracy_m`, `families` (default 1, more when families share a house), `people`, `hurt`, `missing`, `needs` (JSON), `material`, `hazards` (JSON), `damage_class` (`none`, `partial`, `total`), `ai_class`, `ai_confidence`, `ai_reason`, `ai_need_more`, `note_path`, `note_transcript`, `note_en`, `status` (`draft`, `needs_review`, `confirmed`), `review_reason`, `confirmed_by`, `confirmed_at`, `created_at` |
 | `photos` | `id`, `entry_id` or `report_id`, `path`, `label`, `taken_at` |
-| `events` | `id`, `entity` (`report`, `entry`, `update`, `place`, `safe`, `ai`), `entity_id`, `type`, `actor`, `data` (JSON), `at`. This is the audit trail. Model calls log as entity `ai` with a fresh UUID per call, type `ai.voice`, `ai.text` and so on, with `.failed` added on a timeout or a schema failure, and the raw output in `data` |
+| `events` | `id`, `entity` (`report`, `entry`, `update`, `place`, `safe`, `ai`), `entity_id`, `type`, `actor`, `data` (JSON), `at`. This is the audit trail. Model calls log as type `ai.voice`, `ai.text`, `ai.photo` or `ai.translate`, with `.failed` added on a timeout or a schema failure, and the raw output in `data`. Voice, text and translate calls use entity `ai` with a fresh UUID per call. The photo draft belongs to an entry, so it logs as entity `entry` with the entry id and shows in that entry's history |
 | `places` | `id`, `type` (`relief`, `shelter`, `hazard`), `name`, `details`, `when_text`, `lat`, `lng`, `visible`, `created_at` |
 | `updates` | `id`, `type` (`water_food`, `shelter`, `hazard`, `notice`), `headline`, `message`, `message_ceb`, `message_tl`, `place_id`, `expires_at`, `seen_count`, `posted_at` |
 | `safe_checkins` | `id`, `name`, `barangay`, `staying_at`, `message`, `source` (`phone`, `desk`), `at` |
@@ -175,8 +175,9 @@ All calls use Ollama's structured output with the JSON schema generated from the
 
 - One house or one note per call. Never send several houses together.
 - Never ask for totals. Code computes them.
-- Time out after 60 seconds and fall back to `unclear` with a retry button.
-- Store every raw model output in `events` for the audit trail.
+- Time out after 60 seconds. A photo falls back to `unclear` with a retry button. Voice, text and translate return 504 `timeout` with `retry: true`.
+- Validate every model output with the Zod schemas. Only `AiPhotoDraft` has an `unclear` value, so an invalid photo draft becomes `unclear`. Voice, text and translate return 502 `invalid_output` with `retry: true`, and the person retries or types the fields.
+- Store every raw model output in `events` for the audit trail, including output that failed validation.
 - Confidence shows as words: high is "Fairly sure", medium and low are "Not very sure".
 - An entry goes to `needs_review` when the responder picks a different class than the AI, when the AI says `unclear` and the responder picks without a new photo, or when the hurt count differs from the linked family report.
 
@@ -186,7 +187,7 @@ All calls use Ollama's structured output with the JSON schema generated from the
 - **Priority per barangay:** sort by hurt plus missing, then totally damaged, then reports waiting. High when hurt plus missing is 2 or more. Medium when it is 1 or more, or totally damaged is 2 or more. Otherwise low.
 - **Needs** count households in confirmed entries that list each need.
 - **Duplicates** (tier 3): flag two reports, or a report and an entry, in the same barangay whose household names match after lowercasing and trimming, within 50 m when both have GPS.
-- **Phones connected** counts open event streams plus distinct client IPs seen in the last two minutes.
+- **Phones connected** counts distinct client IPs seen in the last two minutes. The IP is the first entry of the `X-Forwarded-For` header, which Caddy sets, and loopback addresses are skipped. An open event stream refreshes its IP on every ping, so it is not counted separately. Without Caddy in front, as under plain `pnpm dev`, there is no header and the count reads 0.
 - **Battery** on macOS comes from `pmset -g batt`. Elsewhere it shows "Unknown".
 
 ## 7. Situation report and SMS
@@ -214,7 +215,7 @@ All calls use Ollama's structured output with the JSON schema generated from the
 
 - A setting, on during the drill. Every hub page shows the Simulation pill.
 - `pnpm db:seed` loads `seed/simulation.json`, which matches the canvas. Positions in the seed are percentages of the map area, converted to latitude and longitude using the `map_bbox` setting, so the same seed works for any town: 46 checked houses (14 totally, 23 partially, 9 none), 58 families, 241 people, 6 hurt, 1 missing and 17 reports waiting, across 6 barangays.
-- "Clear data" on Kit setup wipes reports, entries, photos, updates, places, check-ins and sitreps, and keeps settings and responders.
+- "Clear data" on Kit setup wipes reports, entries, photos, updates, places, check-ins, sitreps, the `events` audit trail and the `duplicates` flags, and empties the uploads folder of photos and audio. It keeps settings and responders. The rows go in one transaction. The files go after it commits.
 
 ## 11. Eval
 

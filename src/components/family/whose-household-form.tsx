@@ -1,24 +1,26 @@
 "use client";
 
-import { useEffect, useLayoutEffect } from "react";
-import Link from "next/link";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { HomeIcon, UsersIcon } from "lucide-react";
 import { routes } from "@/lib/contracts";
 import { useMounted } from "@/lib/use-mounted";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProgressSteps } from "@/components/ui/progress-steps";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchSelect } from "@/components/ui/search-select";
 import { TopBar } from "@/components/ui/top-bar";
 import { HouseholdOption } from "./household-option";
 import type { ReportDraft } from "./report-draft";
 import { useReportDraft, updateDraft } from "./use-report-draft";
+import { firstMissing, type StartError, type StartField } from "./whose-household";
 
 type WhoseHouseholdFormProps = {
   /** The barangays from the hub's settings. */
   barangays: string[];
-  /** The choices for where a neighbor can be found. */
+  /** The places a neighbor can pick for where to find them, shown under the field. */
   whereToFind: string[];
   /** The household the link asked for, as in /report?for=neighbor. */
   requestedSource?: ReportDraft["source"] | null;
@@ -27,57 +29,47 @@ type WhoseHouseholdFormProps = {
 type FieldProps = {
   id: string;
   label: string;
+  /** What is wrong with the field, shown under it. */
+  error?: string;
   children: React.ReactNode;
 };
 
-function Field({ id, label, children }: FieldProps) {
+function Field({ id, label, error, children }: FieldProps) {
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id} className="text-body-sm font-semibold leading-normal text-ink">
         {label}
       </Label>
       {children}
+      {error ? (
+        <p id={`${id}-error`} className="text-body-sm text-danger">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-type ListSelectProps = {
-  id: string;
-  value: string;
-  options: string[];
-  onChange: (value: string) => void;
-};
-
-function ListSelect({ id, value, options, onChange }: ListSelectProps) {
-  return (
-    <Select value={value} onValueChange={onChange} disabled={options.length === 0}>
-      <SelectTrigger id={id}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent position="popper">
-        {options.map((name) => (
-          <SelectItem key={name} value={name}>
-            {name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
+// A focused field scrolls into view above the footer, never under it: the
+// margin is a little more than the footer is tall.
+const CLEAR_OF_FOOTER = "scroll-mb-36";
 
 // Step 1 of 4. Every change goes straight into the report draft, so leaving
-// and coming back keeps the answers. The barangay shown is the saved one when
-// it is still on the hub's list, and the first one otherwise. The same goes for
-// where to find a neighbor.
+// and coming back keeps the answers. Nothing is picked for the family: the
+// barangay stays empty until they choose one. Continue checks the required
+// fields, shows the first one that is empty and moves focus to it.
 function WhoseHouseholdForm({ barangays, whereToFind, requestedSource = null }: WhoseHouseholdFormProps) {
+  const router = useRouter();
   const draft = useReportDraft();
   const mounted = useMounted();
+  const [error, setError] = useState<StartError | null>(null);
+  const fields = useRef<Record<StartField, HTMLElement | null>>({ household_head: null, barangay: null, reporter_name: null });
   // Until the page hydrates the draft is the empty server one, so the layout
   // follows the link: /report?for=neighbor starts as a neighbor's report.
   const source = mounted ? draft.source : (requestedSource ?? draft.source);
   const neighbor = source === "neighbor";
-  const barangay = barangays.includes(draft.barangay) ? draft.barangay : (barangays[0] ?? "");
-  const reporterWhere = whereToFind.includes(draft.reporter_where) ? draft.reporter_where : (whereToFind[0] ?? "");
+  // A saved barangay the hub no longer lists shows as not chosen.
+  const barangay = barangays.includes(draft.barangay) ? draft.barangay : "";
 
   // The link sets the household once, when the page opens, and the family can
   // still change it. A layout effect keeps the saved draft from showing the
@@ -86,26 +78,70 @@ function WhoseHouseholdForm({ barangays, whereToFind, requestedSource = null }: 
     if (mounted && requestedSource) updateDraft({ source: requestedSource });
   }, [mounted, requestedSource]);
 
-  // The selects show the first choice before anyone picks one, so save it too.
-  // Otherwise the draft would say nothing for what the family sees. This waits
-  // for hydration, because until then the draft is the empty server one and
-  // would overwrite a choice saved earlier. Where to find you only counts for
-  // a neighbor's report.
+  // Focus follows the message, once it is on screen. Each tap on Continue sets
+  // a new error, so the same field is focused again if it is still empty.
   useEffect(() => {
-    if (!mounted) return;
-    if (barangay !== draft.barangay) updateDraft({ barangay });
-    if (neighbor && reporterWhere !== draft.reporter_where) updateDraft({ reporter_where: reporterWhere });
-  }, [mounted, neighbor, barangay, draft.barangay, reporterWhere, draft.reporter_where]);
+    if (error) fields.current[error.field]?.focus();
+  }, [error]);
+
+  function change(field: StartField | null, update: Partial<ReportDraft>) {
+    updateDraft(update);
+    if (field && error?.field === field) setError(null);
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const missing = firstMissing({ ...draft, source, barangay }, barangays);
+    setError(missing);
+    if (!missing) router.push(routes.family.voice);
+  }
+
+  function fieldProps(field: StartField, id: string) {
+    const invalid = error?.field === field;
+    return {
+      id,
+      "aria-invalid": invalid || undefined,
+      "aria-describedby": invalid ? `${id}-error` : undefined,
+      className: CLEAR_OF_FOOTER,
+    };
+  }
+
+  const errorFor = (field: StartField) => (error?.field === field ? error.message : undefined);
 
   const barangayField = (
-    <Field id="barangay" label="Barangay">
-      <ListSelect id="barangay" value={barangay} options={barangays} onChange={(value) => updateDraft({ barangay: value })} />
+    <Field id="barangay" label="Barangay" error={errorFor("barangay")}>
+      <SearchSelect
+        {...fieldProps("barangay", "barangay")}
+        ref={(node) => {
+          fields.current.barangay = node;
+        }}
+        title="Barangay"
+        placeholder="Choose barangay"
+        options={barangays}
+        value={barangay}
+        onValueChange={(value) => change("barangay", { barangay: value })}
+      />
     </Field>
   );
 
   const purokField = (
     <Field id="purok" label="Purok">
-      <Input id="purok" value={draft.purok} placeholder="Purok 3" autoComplete="off" onChange={(event) => updateDraft({ purok: event.target.value })} />
+      <Input id="purok" className={CLEAR_OF_FOOTER} value={draft.purok} maxLength={60} autoComplete="off" onChange={(event) => change(null, { purok: event.target.value })} />
+    </Field>
+  );
+
+  const headField = (
+    <Field id="household-head" label={neighbor ? "Their name" : "Head of household"} error={errorFor("household_head")}>
+      <Input
+        {...fieldProps("household_head", "household-head")}
+        ref={(node) => {
+          fields.current.household_head = node;
+        }}
+        value={draft.household_head}
+        maxLength={120}
+        autoComplete="off"
+        onChange={(event) => change("household_head", { household_head: event.target.value })}
+      />
     </Field>
   );
 
@@ -114,66 +150,89 @@ function WhoseHouseholdForm({ barangays, whereToFind, requestedSource = null }: 
       <TopBar title="New report" as="p" leading={{ kind: "back", href: routes.family.home }} />
       <ProgressSteps step={1} className="px-gutter pb-1.5" />
 
-      <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
-        <h1 className="text-title-page text-ink">Whose household?</h1>
+      <form noValidate onSubmit={handleSubmit} className="flex flex-1 flex-col">
+        <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
+          <h1 className="text-title-page text-ink">Whose household?</h1>
 
-        <div role="radiogroup" aria-label="Household" className="flex flex-col">
-          <HouseholdOption
-            name="who"
-            icon={<HomeIcon />}
-            label="My household"
-            checked={!neighbor}
-            onChange={() => updateDraft({ source: "family" })}
-          />
-          <HouseholdOption
-            name="who"
-            icon={<UsersIcon />}
-            label="A neighbor's"
-            checked={neighbor}
-            onChange={() => updateDraft({ source: "neighbor" })}
-          />
-        </div>
+          <div role="radiogroup" aria-label="Household" className="flex flex-col">
+            <HouseholdOption
+              name="who"
+              icon={<HomeIcon />}
+              label="My household"
+              checked={!neighbor}
+              onChange={() => {
+                setError(null);
+                updateDraft({ source: "family" });
+              }}
+            />
+            <HouseholdOption
+              name="who"
+              icon={<UsersIcon />}
+              label="A neighbor's"
+              checked={neighbor}
+              onChange={() => {
+                setError(null);
+                updateDraft({ source: "neighbor" });
+              }}
+            />
+          </div>
 
-        {neighbor ? (
-          <>
-            <section aria-labelledby="their-house" className="flex flex-col gap-4.5">
-              <h2 id="their-house" className="text-title-md text-ink">
-                Their house
-              </h2>
-              {barangayField}
-              {purokField}
-              <Field id="household-head" label="Their name">
-                <Input id="household-head" value={draft.household_head} autoComplete="off" onChange={(event) => updateDraft({ household_head: event.target.value })} />
-              </Field>
-            </section>
+          {headField}
 
+          <section aria-labelledby="location" className="flex flex-col gap-4.5">
+            <h2 id="location" className="text-title-md text-ink">
+              {neighbor ? "Their location" : "Your location"}
+            </h2>
+            {barangayField}
+            {purokField}
+          </section>
+
+          {neighbor ? (
             <section aria-labelledby="you" className="flex flex-col gap-4.5">
               <h2 id="you" className="text-title-md text-ink">
                 You
               </h2>
-              <Field id="reporter-name" label="Your name">
-                <Input id="reporter-name" value={draft.reporter_name} autoComplete="name" onChange={(event) => updateDraft({ reporter_name: event.target.value })} />
+              <Field id="reporter-name" label="Your name" error={errorFor("reporter_name")}>
+                <Input
+                  {...fieldProps("reporter_name", "reporter-name")}
+                  ref={(node) => {
+                    fields.current.reporter_name = node;
+                  }}
+                  value={draft.reporter_name}
+                  maxLength={120}
+                  autoComplete="name"
+                  onChange={(event) => change("reporter_name", { reporter_name: event.target.value })}
+                />
               </Field>
               <Field id="reporter-where" label="Where to find you">
-                <ListSelect id="reporter-where" value={reporterWhere} options={whereToFind} onChange={(value) => updateDraft({ reporter_where: value })} />
+                <Input
+                  id="reporter-where"
+                  className={CLEAR_OF_FOOTER}
+                  value={draft.reporter_where}
+                  maxLength={120}
+                  autoComplete="off"
+                  onChange={(event) => change(null, { reporter_where: event.target.value })}
+                />
+                {whereToFind.length > 0 ? (
+                  <div role="group" aria-label="Common places" className="flex flex-wrap gap-2">
+                    {whereToFind.map((place) => (
+                      <Chip key={place} pressed={draft.reporter_where === place} onPressedChange={(on) => change(null, { reporter_where: on ? place : "" })}>
+                        {place}
+                      </Chip>
+                    ))}
+                  </div>
+                ) : null}
               </Field>
             </section>
-          </>
-        ) : (
-          <div className="flex flex-col gap-4.5">
-            {barangayField}
-            {purokField}
-          </div>
-        )}
-      </main>
+          ) : null}
+        </main>
 
-      <footer className="px-gutter pt-3 pb-7">
-        <Button asChild className="w-full">
-          <Link href={routes.family.voice}>
+        <footer className="sticky bottom-0 border-t border-hairline bg-canvas px-gutter pt-3 pb-7">
+          <Button type="submit" className="w-full">
             Continue
-          </Link>
-        </Button>
-      </footer>
+          </Button>
+        </footer>
+      </form>
     </div>
   );
 }

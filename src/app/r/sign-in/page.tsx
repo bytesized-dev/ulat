@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignInForm } from "@/components/responder/sign-in-form";
@@ -19,7 +19,6 @@ export default async function ResponderSignInPage() {
     .select({ name: responders.name })
     .from(responders)
     .where(eq(responders.active, true))
-    .orderBy(asc(responders.name))
     .all()
     .map((r) => r.name);
 

@@ -62,12 +62,12 @@ function SignInForm({ names }: SignInFormProps) {
       <div className="flex flex-1 flex-col gap-6 pt-20">
         <h1 className="text-title-page text-ink">Responder sign in</h1>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="who" className="text-caption-strong text-ink">
+          <Label htmlFor="who" className="text-body-sm font-semibold text-ink">
             Name
           </Label>
           <Select value={name} onValueChange={setName} disabled={busy}>
             <SelectTrigger id="who">
-              <SelectValue />
+              <SelectValue>{name}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {names.map((n) => (

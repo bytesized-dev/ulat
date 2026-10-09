@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MicIcon, PauseIcon, PlayIcon, SquareIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDuration, MAX_NOTE_SECONDS } from "./capture";
@@ -28,22 +28,44 @@ function NoteRecorder({ note, seconds, onChange }: NoteRecorderProps) {
   const recorder = useRef<MediaRecorder | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
+  const asking = useRef(false);
+  const unmounted = useRef(false);
 
-  const url = useMemo(() => (note ? URL.createObjectURL(note) : null), [note]);
-  useEffect(() => () => (url ? URL.revokeObjectURL(url) : undefined), [url]);
+  // The object URL is made and revoked in the same effect, so a render that
+  // React throws away never leaves one behind.
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!note) return queueMicrotask(() => setUrl(null));
+    const made = URL.createObjectURL(note);
+    queueMicrotask(() => setUrl(made));
+    return () => URL.revokeObjectURL(made);
+  }, [note]);
 
-  useEffect(
-    () => () => {
+  // Leaving the screen mid-recording stops the recorder and releases the mic.
+  // Its onstop is cleared first, because it would set state on a gone component.
+  useEffect(() => {
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
       if (timer.current) clearInterval(timer.current);
-      recorder.current?.stream.getTracks().forEach((t) => t.stop());
-    },
-    [],
-  );
+      const rec = recorder.current;
+      if (!rec) return;
+      rec.onstop = null;
+      if (rec.state !== "inactive") rec.stop();
+      rec.stream.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
 
   async function start() {
+    // A second tap while the permission prompt is open would start a second recorder.
+    if (asking.current) return;
+    asking.current = true;
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // The responder left while the prompt was open. Nothing is recording, so
+      // the mic is released here.
+      if (unmounted.current) return stream.getTracks().forEach((t) => t.stop());
       const mime = pickMime();
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       const chunks: Blob[] = [];
@@ -65,9 +87,24 @@ function NoteRecorder({ note, seconds, onChange }: NoteRecorderProps) {
         setElapsed(s);
         if (s >= MAX_NOTE_SECONDS) rec.stop();
       }, 250);
-    } catch {
-      setError("Microphone is off. Allow it in your browser settings to record a note.");
+    } catch (e) {
+      const name = e instanceof DOMException ? e.name : "";
+      setError(
+        name === "NotAllowedError"
+          ? "Microphone is off. Allow it in your browser settings to record a note."
+          : name === "NotFoundError"
+            ? "No microphone found on this phone."
+            : "Could not start the microphone. Try again.",
+      );
+    } finally {
+      asking.current = false;
     }
+  }
+
+  function recordAgain() {
+    audio.current?.pause();
+    setPlaying(false);
+    onChange(null, 0);
   }
 
   function stop() {
@@ -118,7 +155,7 @@ function NoteRecorder({ note, seconds, onChange }: NoteRecorderProps) {
       {url ? (
         <audio ref={audio} src={url} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} />
       ) : null}
-      <Button type="button" variant="tertiary" size="hub" onClick={() => onChange(null, 0)}>
+      <Button type="button" variant="tertiary" size="hub" onClick={recordAgain}>
         Record again
       </Button>
     </div>

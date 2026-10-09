@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { HubPage } from "@/components/hub/hub-page";
 import { ReviewDetail } from "@/components/hub/review/review-detail";
 import { ReviewLive } from "@/components/hub/review/review-live";
 import { ReviewRail } from "@/components/hub/review/review-rail";
 import { ReviewTabs } from "@/components/hub/segment-links";
 import { db } from "@/db/client";
-import { readSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts/routes";
 import { countReview } from "@/lib/hub/family-reports";
 import { listReviewEntries, listReviewPhotos } from "@/lib/hub/review";
+import { requireStaffPage } from "@/lib/hub/staff-page";
 
 export const metadata: Metadata = { title: "Review" };
 
@@ -22,9 +20,7 @@ type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default async function ReviewPage({ searchParams }: { searchParams: SearchParams }) {
   // The list names households and responders, so the page is staff only.
-  // src/proxy.ts redirects first; this check does not rely on it.
-  const session = await readSession("staff", (await cookies()).get(SESSION_COOKIE.staff)?.value);
-  if (!session) redirect(routes.hub.lock);
+  await requireStaffPage();
 
   const params = await searchParams;
   const entries = listReviewEntries(db);

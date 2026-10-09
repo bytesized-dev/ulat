@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Checks the AI test set in eval/ before it goes to CJ: photo and voice counts, that every file has
-// a source row and two labels, which photos the labelers disagree on, and voice rows with empty fields.
+// a source row and two labels, which photos the labelers disagree on, and voice rows that pnpm eval
+// would skip. The rules match src/lib/eval/run.ts, so a row that passes here is not dropped there.
 // Reads files only. Exits 1 when something blocks the eval.
 //
 // Usage: node scripts/check-eval.mjs
@@ -10,11 +11,14 @@ import { join } from "node:path";
 
 const EVAL = "eval";
 const CLASSES = new Set(["total", "partial", "none"]);
-// Language codes follow the Language enum in src/lib/contracts/schemas.ts.
+// Language codes as in VOICE_LANGUAGES in src/lib/eval/metrics.ts. run.ts matches them exactly, so
+// "EN" is a row it drops.
 const LANGUAGES = new Set(["tl", "ceb", "mixed", "en"]);
 const LANGUAGE_NAMES = { tl: "Tagalog", ceb: "Bisaya", mixed: "Taglish", en: "English" };
 // Same values as the Need enum. A row lists several separated by semicolons, or none.
 const NEEDS = new Set(["water", "food", "tarp", "medicine", "hygiene_kit", "baby_needs"]);
+// Columns run.ts requires in voice.csv.
+const VOICE_COLUMNS = ["file", "language", "household_head", "people", "hurt", "missing", "what_happened", "needs"];
 const PHOTO_RANGE = [40, 60];
 const VOICE_RANGE = [10, 15];
 
@@ -26,8 +30,9 @@ function files(dir) {
   return existsSync(path) ? readdirSync(path).filter((f) => !f.startsWith(".")).map((f) => `${dir}/${f}`) : [];
 }
 
-// Minimal CSV reader with quoted fields. Returns objects keyed by the header row.
-function readCsv(name) {
+// Minimal CSV reader with quoted fields. Returns objects keyed by the header row. A missing column
+// is a problem, as in parseCsv in src/lib/eval/csv.ts, and the file then yields no rows.
+function readCsv(name, required) {
   const path = join(EVAL, name);
   if (!existsSync(path)) {
     errors.push(`${name} is missing`);
@@ -58,6 +63,11 @@ function readCsv(name) {
   if (row.some((v) => v.trim())) rows.push(row);
   const [header = [], ...body] = rows;
   const keys = header.map((h) => h.trim());
+  const absent = header.length ? required.filter((k) => !keys.includes(k)) : [];
+  if (absent.length) {
+    for (const k of absent) errors.push(`${name} is missing the "${k}" column`);
+    return [];
+  }
   return body.map((r) => Object.fromEntries(keys.map((k, i) => [k, (r[i] ?? "").trim()])));
 }
 
@@ -95,7 +105,7 @@ function duplicates(label, names) {
 // Photos
 const photos = files("photos");
 const sources = readSources();
-const labels = readCsv("labels.csv");
+const labels = readCsv("labels.csv", ["file", "label_a", "label_b"]);
 
 checkRange("photos", photos.length, PHOTO_RANGE);
 duplicates("rows in labels.csv", labels.map((l) => l.file));
@@ -112,20 +122,22 @@ let agreed = 0;
 const disagreements = [];
 for (const { file, label_a, label_b } of labels) {
   if (photos.length && !photos.includes(file)) warnings.push(`labels.csv lists ${file} but it is not in eval/photos`);
-  for (const [who, value] of [["label_a", label_a], ["label_b", label_b]]) {
+  // run.ts reads labels case-insensitively (parseLabel), so "Total" counts there and here.
+  const [a, b] = [label_a, label_b].map((v) => v.toLowerCase());
+  for (const [who, value, norm] of [["label_a", label_a, a], ["label_b", label_b, b]]) {
     if (!value) errors.push(`labels.csv: ${file} has no ${who}`);
-    else if (!CLASSES.has(value)) errors.push(`labels.csv: ${file} ${who} "${value}" is not total, partial or none`);
+    else if (!CLASSES.has(norm)) errors.push(`labels.csv: ${file} ${who} "${value}" is not total, partial or none`);
   }
-  if (label_a && label_b && CLASSES.has(label_a) && CLASSES.has(label_b)) {
-    if (label_a === label_b) agreed++;
-    else disagreements.push(`${file} (${label_a} vs ${label_b})`);
+  if (CLASSES.has(a) && CLASSES.has(b)) {
+    if (a === b) agreed++;
+    else disagreements.push(`${file} (${a} vs ${b})`);
   }
 }
 const labeled = agreed + disagreements.length;
 
 // Voice notes
 const voice = files("voice");
-const voiceRows = readCsv("voice.csv");
+const voiceRows = readCsv("voice.csv", VOICE_COLUMNS);
 
 checkRange("voice notes", voice.length, VOICE_RANGE);
 duplicates("rows in voice.csv", voiceRows.map((v) => v.file));
@@ -134,15 +146,13 @@ missingFrom("voice notes with no row in voice.csv", voice, voiceRows.map((v) => 
 const perLanguage = {};
 for (const row of voiceRows) {
   if (voice.length && !voice.includes(row.file)) warnings.push(`voice.csv lists ${row.file} but it is not in eval/voice`);
-  const lang = row.language.toLowerCase();
-  if (!LANGUAGES.has(lang)) errors.push(`voice.csv: ${row.file} language "${row.language}" is not tl, ceb, mixed or en`);
+  const lang = row.language;
+  if (!LANGUAGES.has(lang)) errors.push(`voice.csv: ${row.file} language "${lang}" is not tl, ceb, mixed or en, in lower case`);
   else perLanguage[lang] = (perLanguage[lang] ?? 0) + 1;
   for (const need of row.needs.split(";").map((n) => n.trim()).filter(Boolean)) {
     if (!NEEDS.has(need)) errors.push(`voice.csv: ${row.file} need "${need}" is not one of ${[...NEEDS].join(", ")}`);
   }
-  for (const field of ["household_head", "people", "hurt", "missing"]) {
-    if (!row[field]) errors.push(`voice.csv: ${row.file} has no ${field}`);
-  }
+  // run.ts takes a blank household_head, people, hurt or missing as "not stated", so only a bad number fails.
   for (const field of ["people", "hurt", "missing"]) {
     if (row[field] && !/^\d+$/.test(row[field])) errors.push(`voice.csv: ${row.file} ${field} "${row[field]}" is not a whole number`);
   }

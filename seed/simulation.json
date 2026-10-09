@@ -81,34 +81,36 @@
   "simulation": true,
   "wifi_name": "ULAT-HUB",
   "hub_address": "https://hub.[your-domain]",
-  "team_pin": "123456",
   "staff_pin": "1234"
  },
  "responders": [
   {
    "id": "r1",
-   "name": "Mae Santos",
-   "team": "Sinonoc"
+   "name": "CJ Jutba",
+   "team": "Sinonoc",
+   "email": "cjjutba@gmail.com",
+   "password": "ulat2026"
   },
   {
    "id": "r2",
-   "name": "Jun Reyes",
-   "team": "Sinonoc"
+   "name": "Artkin Carreon",
+   "team": "Sinonoc",
+   "email": "artkin@gmail.com",
+   "password": "ulat2026"
   },
   {
    "id": "r3",
-   "name": "Carlo Mendoza",
-   "team": "Dawo (Pob.)"
+   "name": "Sean Jacinto",
+   "team": "Dawo (Pob.)",
+   "email": "sean@gmail.com",
+   "password": "ulat2026"
   },
   {
    "id": "r4",
-   "name": "Ana Villanueva",
-   "team": "Banonong (Pob.)"
-  },
-  {
-   "id": "r5",
-   "name": "Lito Bautista",
-   "team": "Linabo (Pob.)"
+   "name": "James Calunsag",
+   "team": "Banonong (Pob.)",
+   "email": "james@gmail.com",
+   "password": "ulat2026"
   }
  ],
  "entries": [
@@ -1267,7 +1269,7 @@
     "tarp",
     "medicine"
    ],
-   "responder_id": "r5",
+   "responder_id": "r2",
    "confirmed_at": "2026-10-10T14:58:00+08:00",
    "status": "confirmed",
    "report_code": null
@@ -1294,7 +1296,7 @@
     "water",
     "food"
    ],
-   "responder_id": "r5",
+   "responder_id": "r2",
    "confirmed_at": "2026-10-10T14:02:00+08:00",
    "status": "confirmed",
    "report_code": null
@@ -1322,7 +1324,7 @@
     "food",
     "tarp"
    ],
-   "responder_id": "r5",
+   "responder_id": "r2",
    "confirmed_at": "2026-10-10T13:51:00+08:00",
    "status": "confirmed",
    "report_code": null
@@ -1348,7 +1350,7 @@
    "needs": [
     "water"
    ],
-   "responder_id": "r5",
+   "responder_id": "r2",
    "confirmed_at": "2026-10-10T11:53:00+08:00",
    "status": "confirmed",
    "report_code": null
@@ -1375,7 +1377,7 @@
     "water",
     "food"
    ],
-   "responder_id": "r5",
+   "responder_id": "r2",
    "confirmed_at": "2026-10-10T13:50:00+08:00",
    "status": "confirmed",
    "report_code": null

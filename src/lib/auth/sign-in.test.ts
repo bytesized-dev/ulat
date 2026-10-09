@@ -63,3 +63,23 @@ describe("parallel sign in attempts", () => {
     expect((await staff("1234")).status).toBe(200);
   });
 });
+
+describe("one count per route", () => {
+  it("does not let a responder sign in clear the staff count", async () => {
+    for (let round = 0; round < 3; round++) {
+      for (let i = 0; i < MAX_FAILURES - 1; i++) {
+        const wrong = await staff("0000");
+        if (round === 0) expect(wrong.status).toBe(401);
+      }
+      expect((await responder("123456")).status).toBe(200);
+    }
+    // Each round left the staff bucket 4 wrong tries deeper than a reset would.
+    expect((await staff("0000")).status).toBe(429);
+  });
+
+  it("keeps the responder and staff counts apart", async () => {
+    for (let i = 0; i < MAX_FAILURES; i++) await staff("0000");
+    expect((await staff("1234")).status).toBe(429);
+    expect((await responder("123456")).status).toBe(200);
+  });
+});

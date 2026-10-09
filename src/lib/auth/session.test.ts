@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { BLOCK_MS, MAX_FAILURES, beginAttempt, blockedSeconds, clientKey, endAttempt, resetLimiter } from "./limiter";
+import { BLOCK_MS, MAX_FAILURES, attemptKey, beginAttempt, blockedSeconds, clientKey, endAttempt, resetLimiter } from "./limiter";
 import { sessionExpiry, signSession, verifySession, type ResponderSession, type StaffSession } from "./session";
 
 const secret = Buffer.from("a".repeat(64), "hex");
@@ -99,6 +99,12 @@ describe("sign in limiter", () => {
     expect(beginAttempt("lan-1", now)).toBe(false);
     endAttempt("lan-1", "none", now);
     expect(beginAttempt("lan-1", now)).toBe(true);
+  });
+
+  it("keys buckets by route and address", () => {
+    const headers = new Headers({ "x-forwarded-for": "192.168.1.20" });
+    expect(attemptKey("staff", headers)).toBe("staff:192.168.1.20");
+    expect(attemptKey("responder", headers)).toBe("responder:192.168.1.20");
   });
 
   it("reads the address Caddy added to x-forwarded-for", () => {

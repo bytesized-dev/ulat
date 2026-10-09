@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { locale, product, theme } from "@/config";
+import { OfflineGate } from "@/components/family/offline-gate";
 import "./globals.css";
 
 // next/font downloads both families at build time and serves them from
@@ -34,7 +35,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang={locale.lang} className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="min-h-dvh bg-canvas text-ink">{children}</body>
+      <body className="min-h-dvh bg-canvas text-ink">
+        <OfflineGate>{children}</OfflineGate>
+      </body>
     </html>
   );
 }

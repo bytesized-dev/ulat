@@ -11,8 +11,12 @@ import { Pill } from "@/components/ui/pill";
 import { ProgressSteps } from "@/components/ui/progress-steps";
 import { Row } from "@/components/ui/row";
 import { TopBar } from "@/components/ui/top-bar";
+import { enqueue } from "./offline-queue";
+import { queueStore } from "./queue-db";
+import { clearDraft, toNewReport } from "./report-draft";
 import { canSend, sendReport, summarizeDraft } from "./send-report";
 import { saveSentReport } from "./sent-report";
+import { announceQueueChange } from "./use-offline-queue";
 import { useReportDraft } from "./use-report-draft";
 
 const PROMISES = [
@@ -40,6 +44,22 @@ function BeforeYouSendForm() {
     setBusy(true);
     setError(null);
     const result = await sendReport(draft);
+    if (!result.ok && result.unreachable) {
+      // The hub is out of reach. Keep the report on the phone, where the saved
+      // screen takes over and sends it when the hub is back.
+      const body = toNewReport(draft);
+      if (body.success) {
+        try {
+          await enqueue(queueStore(), body.data);
+          clearDraft();
+          announceQueueChange();
+          setBusy(false);
+          return;
+        } catch {
+          // Nothing could be saved, so show the plain failure and keep the draft.
+        }
+      }
+    }
     if (!result.ok) {
       setError({ message: result.message, retry: result.retry });
       setBusy(false);

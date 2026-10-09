@@ -126,7 +126,7 @@ export const photos = sqliteTable("photos", {
 });
 
 /** Which kind of row an audit event or a duplicate flag points at. */
-export const eventEntities = ["report", "entry", "update", "place", "safe"] as const;
+export const eventEntities = ["report", "entry", "update", "place", "safe", "ai"] as const;
 export const duplicateSides = ["report", "entry"] as const;
 export const duplicateStatuses = ["open", "merged", "kept", "mistake"] as const;
 

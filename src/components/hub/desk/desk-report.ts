@@ -86,12 +86,16 @@ export function validateHousehold(form: HouseholdForm): HouseholdErrors {
   return errors;
 }
 
+/** A spot picked on the map. */
+export type Spot = { lat: number; lng: number };
+
 /**
  * The NewReport for a form that passed validateHousehold. The desk is staff
  * filing for a family in person, so the source is desk and the consent is
- * the staff member's, taken at the desk.
+ * the staff member's, taken at the desk. The spot is where staff picked the
+ * house on the map, or null when they did not.
  */
-export function toNewReport(form: HouseholdForm, heard: HeardNote | null): NewReport {
+export function toNewReport(form: HouseholdForm, heard: HeardNote | null, spot: Spot | null = null): NewReport {
   const text = (value: string) => value.trim() || null;
   return {
     source: "desk",
@@ -100,8 +104,8 @@ export function toNewReport(form: HouseholdForm, heard: HeardNote | null): NewRe
     reporter_where: null,
     barangay: form.barangay,
     purok: text(form.purok),
-    lat: null,
-    lng: null,
+    lat: spot?.lat ?? null,
+    lng: spot?.lng ?? null,
     people: parseCount(form.people) ?? 0,
     hurt: parseCount(form.hurt) ?? 0,
     missing: parseCount(form.missing) ?? 0,

@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync, readdirSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -383,6 +383,75 @@ describe("entries API", () => {
       const res = await entries.POST(withNote(new File([PNG], "note.webm", { type: "audio/webm" })));
       expect(res.status).toBe(201);
       expect(stored()).toBe(before + 3);
+    });
+  });
+
+  describe("client_id", () => {
+    const onDisk = () =>
+      existsSync(process.env.UPLOAD_DIR!)
+        ? (readdirSync(process.env.UPLOAD_DIR!, { recursive: true }) as string[]).filter((f) => /\.\w+$/.test(f)).length
+        : 0;
+    const rowsFor = (client_id: string) => db.select().from(schema.entries).where(eq(schema.entries.client_id, client_id)).all();
+    const trail = (id: string) => db.select().from(schema.events).where(eq(schema.events.entity_id, id)).all().map((e) => e.type);
+
+    it("returns the same entry with 200 for a repeat, and stores no files and no draft again", async () => {
+      const client_id = "3f6c2a1e-9b0d-4c55-8a7e-1d2f3a4b5c6d";
+      const first = await entries.POST(postForm(2, { client_id }));
+      const filesAfterFirst = onDisk();
+      const again = await entries.POST(postForm(2, { client_id }));
+      const body = await again.json();
+
+      expect(first.status).toBe(201);
+      expect(again.status).toBe(200);
+      expect(body.id).toBe((await first.json()).id);
+      expect(body).toMatchObject({ status: "draft", entry: { id: body.id, client_id } });
+      expect(rowsFor(client_id)).toHaveLength(1);
+      expect(onDisk()).toBe(filesAfterFirst);
+      expect(db.select().from(schema.photos).where(eq(schema.photos.entry_id, body.id)).all()).toHaveLength(2);
+      expect(trail(body.id)).toEqual(["entry.created", "ai.photo"]);
+    });
+
+    it("makes one entry and one set of files for two requests at once, and neither is a 500", async () => {
+      const client_id = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+      const before = onDisk();
+      const [a, b] = await Promise.all([entries.POST(postForm(2, { client_id })), entries.POST(postForm(2, { client_id }))]);
+      const [x, y] = [await a.json(), await b.json()];
+
+      expect([a.status, b.status].sort()).toEqual([200, 201]);
+      expect(x.id).toBe(y.id);
+      expect(rowsFor(client_id)).toHaveLength(1);
+      expect(onDisk()).toBe(before + 2);
+      expect(db.select().from(schema.photos).where(eq(schema.photos.entry_id, x.id)).all()).toHaveLength(2);
+      expect(trail(x.id)).toEqual(["entry.created", "ai.photo"]);
+    });
+
+    it("keeps different client_ids apart, and entries without one never collide", async () => {
+      const a = await create(1, { client_id: "11111111-2222-4333-8444-555555555555" });
+      const b = await create(1, { client_id: "66666666-7777-4888-8999-000000000000" });
+      expect(a.res.status).toBe(201);
+      expect(b.res.status).toBe(201);
+      expect(a.body.id).not.toBe(b.body.id);
+      const [c, d] = [await create(1), await create(1)];
+      expect([c.res.status, d.res.status]).toEqual([201, 201]);
+      expect(c.body.id).not.toBe(d.body.id);
+    });
+
+    it("refuses a client_id that is not a uuid", async () => {
+      expect((await entries.POST(postForm(1, { client_id: "not-a-uuid" }))).status).toBe(400);
+    });
+
+    it("answers 409 and shows nothing for a client_id another responder used", async () => {
+      const client_id = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+      db.insert(schema.responders).values({ id: "r3", name: "Cris", team: "C", active: true }).run();
+      db.insert(schema.entries)
+        .values({ id: "other-entry", number: 9001, responder_id: "r3", barangay: "Poblacion", client_id, created_at: new Date().toISOString() })
+        .run();
+      const before = onDisk();
+      const res = await entries.POST(postForm(1, { client_id }));
+      expect(res.status).toBe(409);
+      expect(await res.json()).toEqual({ error: "client_id_taken" });
+      expect(onDisk()).toBe(before);
+      expect(rowsFor(client_id)).toHaveLength(1);
     });
   });
 

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { responders } from "@/db/schema";
-import { beginAttempt, clientKey, endAttempt, retryAfterSeconds } from "@/lib/auth/limiter";
+import { attemptKey, beginAttempt, endAttempt, retryAfterSeconds } from "@/lib/auth/limiter";
 import { clearSessionCookie, getSessionSecret, sessionExpiry, setSessionCookie, signSession } from "@/lib/auth/session";
 import { readSetting } from "@/lib/auth/settings";
 import { ResponderSignIn } from "@/lib/contracts";
@@ -13,7 +13,7 @@ const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().t
 export async function POST(request: Request) {
   // Count the attempt before the first await, or a batch of parallel requests
   // is all checked before any of them is counted.
-  const key = clientKey(request.headers);
+  const key = attemptKey("responder", request.headers);
   if (!beginAttempt(key)) {
     const wait = retryAfterSeconds(key);
     return NextResponse.json({ error: "too_many_tries", retry_after: wait }, { status: 429, headers: { "Retry-After": String(wait) } });

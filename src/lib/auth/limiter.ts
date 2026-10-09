@@ -1,6 +1,6 @@
 /**
- * A small in-memory limiter for the PIN routes, one bucket per client
- * address. The routes call beginAttempt before their first await, so an
+ * A small in-memory limiter for the PIN routes, one bucket per route and
+ * client address. The routes call beginAttempt before their first await, so an
  * attempt counts while its scrypt check is still running. Failures plus
  * attempts in flight never pass MAX_FAILURES, which keeps a batch of parallel
  * requests from all being checked. After MAX_FAILURES wrong tries the bucket is
@@ -24,6 +24,11 @@ const buckets = (globalForLimiter.ulatAuthBuckets ??= new Map<string, Bucket>())
 export function clientKey(headers: Headers): string {
   const forwarded = headers.get("x-forwarded-for")?.split(",").at(-1)?.trim();
   return forwarded || "direct";
+}
+
+/** One bucket per route, so a right PIN on one route never clears the other's count. */
+export function attemptKey(route: "responder" | "staff", headers: Headers): string {
+  return `${route}:${clientKey(headers)}`;
 }
 
 /** Seconds left on a block, or 0 when the bucket is not blocked. */

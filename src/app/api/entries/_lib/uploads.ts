@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 
 // Photos and audio live under data/uploads. The extension comes from the mime
@@ -44,6 +44,11 @@ export async function storeUpload(file: File, kind: "photo" | "audio"): Promise<
   await mkdir(join(uploadDir, day), { recursive: true });
   await writeFile(join(uploadDir, path), data);
   return { path, mime, data };
+}
+
+/** Deletes files stored for a request that did not become an entry. Never throws. */
+export async function discardUploads(stored: Pick<Stored, "path">[]): Promise<void> {
+  await Promise.all(stored.map((f) => rm(join(uploadDir, f.path), { force: true }).catch(() => undefined)));
 }
 
 /** Reads a stored file by the relative path kept in the database. */

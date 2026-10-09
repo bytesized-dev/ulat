@@ -46,7 +46,7 @@ function newReport() {
     .get();
 }
 
-function newEntry(status: "needs_review" | "confirmed" = "needs_review", reportId: string | null = null) {
+function newEntry(status: "draft" | "needs_review" | "confirmed" = "needs_review", reportId: string | null = null) {
   return db
     .insert(schema.entries)
     .values({

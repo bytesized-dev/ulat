@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Database from "better-sqlite3";
@@ -289,6 +289,44 @@ describe("entries API", () => {
     const rows = db.select().from(schema.events).where(eq(schema.events.entity_id, "rep1")).all();
     expect(rows.map((r) => r.type)).toEqual(["report.status_changed"]);
     expect(rows[0]).toMatchObject({ actor: "r1", data: { status: "visited", entry_id: body.id } });
+  });
+
+  describe("files of a refused upload", () => {
+    const stored = () => (readdirSync(process.env.UPLOAD_DIR!, { recursive: true }) as string[]).filter((f) => /\.\w+$/.test(f)).length;
+    const withNote = (note: File) => {
+      const form = new FormData();
+      form.set("meta", meta());
+      for (let i = 0; i < 2; i++) form.append("photos", new File([PNG], `p${i}.png`, { type: "image/png" }));
+      form.set("note", note);
+      return new TestRequest("http://hub/api/entries", { method: "POST", body: form, headers: resp });
+    };
+
+    it("deletes the photos already stored when the note is refused", async () => {
+      await create(1);
+      const before = stored();
+      const res = await entries.POST(withNote(new File(["x"], "note.exe", { type: "application/x-msdownload" })));
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "audio_type_not_allowed" });
+      expect(stored()).toBe(before);
+    });
+
+    it("deletes the earlier photos when a later photo is refused", async () => {
+      const before = stored();
+      const form = new FormData();
+      form.set("meta", meta());
+      form.append("photos", new File([PNG], "ok.png", { type: "image/png" }));
+      form.append("photos", new File(["x"], "bad.exe", { type: "application/x-msdownload" }));
+      const res = await entries.POST(new TestRequest("http://hub/api/entries", { method: "POST", body: form, headers: resp }));
+      expect(res.status).toBe(400);
+      expect(stored()).toBe(before);
+    });
+
+    it("keeps the files of a note that is accepted", async () => {
+      const before = stored();
+      const res = await entries.POST(withNote(new File([PNG], "note.webm", { type: "audio/webm" })));
+      expect(res.status).toBe(201);
+      expect(stored()).toBe(before + 3);
+    });
   });
 
   describe("report counts", () => {

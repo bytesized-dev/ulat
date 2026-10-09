@@ -7,7 +7,7 @@ import { draftEntry } from "@/lib/ai/draft-entry";
 import { ConfirmedDamageClass, NewEntryMeta } from "@/lib/contracts";
 import { audit } from "./_lib/audit";
 import { authorize } from "./_lib/auth";
-import { MAX_PHOTOS, storeUpload, type Stored } from "./_lib/uploads";
+import { discardUploads, MAX_PHOTOS, storeUpload, type Stored } from "./_lib/uploads";
 
 // POST creates a draft from photos, an optional voice note, GPS and an optional
 // report code, then runs the photo pipeline. GET lists confirmed entries.
@@ -46,49 +46,64 @@ export async function POST(req: Request) {
     if (!report) return Response.json({ error: "report_not_found" }, { status: 404 });
   }
 
+  // Each file is stored as it is checked. Any failure before the entry row exists
+  // deletes what was stored, so a bad part never leaves a file with no row.
+  const stored: Stored[] = [];
+  const reject = async (error: string) => {
+    await discardUploads(stored);
+    return Response.json({ error }, { status: 400 });
+  };
   const storedPhotos: Stored[] = [];
   for (const file of photoFiles) {
-    const stored = await storeUpload(file, "photo");
-    if ("error" in stored) return Response.json({ error: stored.error }, { status: 400 });
-    storedPhotos.push(stored);
+    const photo = await storeUpload(file, "photo");
+    if ("error" in photo) return reject(photo.error);
+    stored.push(photo);
+    storedPhotos.push(photo);
   }
   let notePath: string | null = null;
   if (noteFile instanceof File && noteFile.size > 0) {
-    const stored = await storeUpload(noteFile, "audio");
-    if ("error" in stored) return Response.json({ error: stored.error }, { status: 400 });
-    notePath = stored.path;
+    const note = await storeUpload(noteFile, "audio");
+    if ("error" in note) return reject(note.error);
+    stored.push(note);
+    notePath = note.path;
   }
 
   const id = randomUUID();
   const now = new Date().toISOString();
-  const number = db.transaction((tx) => {
-    const next = (tx.select({ n: sql<number>`coalesce(max(${entries.number}), 0)` }).from(entries).get()?.n ?? 0) + 1;
-    tx.insert(entries)
-      .values({
-        id,
-        number: next,
-        report_id: report?.id ?? null,
-        responder_id: actor.id,
-        barangay: meta.data.barangay,
-        purok: meta.data.purok,
-        household_head: meta.data.household_head,
-        // Prefilled from the linked report so the responder confirms or corrects
-        // the family's counts. They only count once confirmed.
-        ...(report ? { people: report.people, hurt: report.hurt, missing: report.missing, needs: report.needs } : {}),
-        lat: meta.data.lat,
-        lng: meta.data.lng,
-        gps_accuracy_m: meta.data.gps_accuracy_m,
-        note_path: notePath,
-        status: "draft",
-        created_at: now,
-      })
-      .run();
-    storedPhotos.forEach((p, i) =>
-      tx.insert(photos).values({ entry_id: id, path: p.path, label: meta.data.photo_labels[i] ?? null, taken_at: now }).run(),
-    );
-    audit(tx, id, "entry.created", actor.id, { number: next, report_code: meta.data.report_code, photos: storedPhotos.length, note: !!notePath });
-    return next;
-  });
+  let number: number;
+  try {
+    number = db.transaction((tx) => {
+      const next = (tx.select({ n: sql<number>`coalesce(max(${entries.number}), 0)` }).from(entries).get()?.n ?? 0) + 1;
+      tx.insert(entries)
+        .values({
+          id,
+          number: next,
+          report_id: report?.id ?? null,
+          responder_id: actor.id,
+          barangay: meta.data.barangay,
+          purok: meta.data.purok,
+          household_head: meta.data.household_head,
+          // Prefilled from the linked report so the responder confirms or corrects
+          // the family's counts. They only count once confirmed.
+          ...(report ? { people: report.people, hurt: report.hurt, missing: report.missing, needs: report.needs } : {}),
+          lat: meta.data.lat,
+          lng: meta.data.lng,
+          gps_accuracy_m: meta.data.gps_accuracy_m,
+          note_path: notePath,
+          status: "draft",
+          created_at: now,
+        })
+        .run();
+      storedPhotos.forEach((p, i) =>
+        tx.insert(photos).values({ entry_id: id, path: p.path, label: meta.data.photo_labels[i] ?? null, taken_at: now }).run(),
+      );
+      audit(tx, id, "entry.created", actor.id, { number: next, report_code: meta.data.report_code, photos: storedPhotos.length, note: !!notePath });
+      return next;
+    });
+  } catch (error) {
+    await discardUploads(stored);
+    throw error;
+  }
 
   // The draft is saved. The real model can take up to 60 seconds, so the
   // response does not wait for it: the /drafting screen waits for the

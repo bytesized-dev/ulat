@@ -24,17 +24,6 @@ const action = (page: Page, name: string | RegExp) =>
     page.getByRole("button", { name, exact: typeof name === "string" }),
   );
 
-/** Steps a counter on the check screen to the target from wherever it starts. */
-async function setCounter(page: Page, label: string, target: number) {
-  const value = page.getByRole("group", { name: label, exact: true }).locator("output");
-  for (let guard = 0; guard < 100; guard++) {
-    const now = Number(await value.innerText());
-    if (now === target) return;
-    await page.getByRole("button", { name: `${now < target ? "More" : "Fewer"}, ${label}`, exact: true }).click();
-  }
-  throw new Error(`${label} never reached ${target}`);
-}
-
 const houseCount = (page: Page) => page.getByText(/^\s*\d+\s*houses checked\s*$/);
 const totallyCount = (page: Page) => page.getByText(/^\s*\d+\s*totally\s*$/);
 const numberIn = async (text: string | null) => Number((text ?? "").replace(/\D/g, ""));
@@ -135,11 +124,10 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(responder.getByText("Check the draft")).toBeVisible();
     await expect(responder.getByText("Most of the roof is gone and two back walls collapsed.")).toBeVisible();
     await expect(responder.getByRole("radio", { name: "Totally damaged" })).toBeChecked();
-    // The photos say nothing about who lives there, so the responder counts. A hurt
-    // count that differs from the family report sends the entry to review and out of the totals.
-    // They are set to the report's numbers from any starting value, 0 now or prefilled later.
-    await setCounter(responder, "People", 5);
-    await setCounter(responder, "Hurt", 1);
+    // The entry starts from the family report, so the counts are there before any tap.
+    // Confirming them unchanged keeps the hurt count equal to the report, so the entry counts.
+    await expect(responder.getByRole("group", { name: "People", exact: true }).locator("output")).toHaveText("5");
+    await expect(responder.getByRole("group", { name: "Hurt", exact: true }).locator("output")).toHaveText("1");
     await expect(responder.getByText("Matches report")).toBeVisible();
     await action(responder, "Confirm entry").click();
 

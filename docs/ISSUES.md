@@ -62,6 +62,10 @@ Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Milesto
 | BYT-51 | Edit sheet and what we heard sheet | Artkin | 3 Tier 2 | family | High | 1 |
 | BYT-53 | House with no report and can't assess | James | 3 Tier 2 | responder | High | 1.5 |
 | BYT-57 | AI: translate updates to Bisaya and Tagalog | CJ | 3 Tier 2 | ai | High | 0.5 |
+| BYT-65 | Store a family report photo | CJ | 3 Tier 2 | platform | High | 1.5 |
+| BYT-66 | Check your report: step 3 UI and a working photo | Artkin | 3 Tier 2 | family | High | 3 |
+| BYT-67 | Family report detail: show the family's photo | James | 3 Tier 2 | responder | High | 0.5 |
+| BYT-68 | Responder sign in: email and password in a clean layout | Artkin | 3 Tier 2 | responder | High | 3 |
 | BYT-32 | Possible duplicates | Sean | 4 Tier 3 | hub | Medium | 1.5 |
 | BYT-41 | Lock screen and low battery | Sean | 4 Tier 3 | hub | Medium | 1 |
 | BYT-43 | Printable situation report and join poster | Sean | 4 Tier 3 | hub | Medium | 1 |
@@ -711,6 +715,111 @@ On `/report/type`, Continue sits on "Reading your note" for 15 to 60 seconds. `g
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has a screenshot or output
 
 Out of scope: going to the check screen before the extract comes back. That becomes a separate family app issue only if typed notes still feel slow on a phone after this fix.
+
+---
+
+## BYT-65 Store a family report photo
+
+- **Owner:** CJ. CJ also reviews, including the changes to `send-report.ts` and `offline-queue.ts` in Artkin's area.
+- **Milestone:** 3 Tier 2
+- **Label:** platform
+- **Priority:** High, tier 2
+- **Estimate:** 1.5 h
+- **Depends on:** BYT-61 (PR #95)
+- **Spec:** 1, 2, 3, 4, 9, 10
+
+No family photo can reach the hub. `NewReport` has no photo field, `/api/reports` has no photo route, and nothing writes `reports.photo_path`. This builds the hub side and the send path the way BYT-61 does for the voice note: the phone makes an id, uploads the file, then posts the report with that id. No AI runs on this photo, because family reports never change the totals.
+
+**Acceptance criteria**
+
+- [ ] `NewPhotoMeta` and `PhotoStored` in the contracts, and `NewReport.photo_id` as a nullable UUID
+- [ ] `POST /api/reports/photo`, no PIN, multipart with `photo_id` and `photo`. JPEG, PNG, WebP or HEIC up to 10 MB. Returns `{ photo_id }` with no URL, and a repeated `photo_id` stores nothing new
+- [ ] Uses the BYT-61 store, generalized from `voice-store.ts`: the same caps, 507 `storage_full` and sweep
+- [ ] `POST /api/reports` links a `photo_id` once, setting `reports.photo_path` and writing a `photos` row with that id and the `report_id`, so `GET /api/files/[photo_id]` serves it to responders and staff
+- [ ] An unknown or used `photo_id` is ignored like a bad `voice_id`, and the audit row records why
+- [ ] `sendReport` uploads an optional photo first, and the report still goes if the hub refuses the photo
+- [ ] `enqueue` keeps the photo as an attachment, and `flushQueue` uploads it before the report
+- [ ] Clear data deletes family photos
+- [ ] SPEC sections 1, 2, 3, 4, 9 and 10 describe the photo
+- [ ] `pnpm typecheck && pnpm test` pass, and the PR has the output
+
+---
+
+## BYT-66 Check your report: step 3 UI and a working photo
+
+- **Owner:** Artkin
+- **Milestone:** 3 Tier 2
+- **Label:** family
+- **Priority:** High, tier 2
+- **Estimate:** 3 h
+- **Depends on:** BYT-65 for the upload only. The layout work can start now.
+- **Spec:** 2
+- **Screens:**
+  - Family: check your report: `design/screens/family/check-your-report.html`, `design/png/family/check-your-report.png`, route `/report/check`
+
+Step 3 cleanup, the same kind of fix BYT-62 makes for step 1. This issue's layout overrides the design wherever they disagree. Keep the design's copy. Linear has the full checklist.
+
+**Acceptance criteria**
+
+- [ ] Household, People and Damage use one list style: a hairline divider between rows, one row height, one heading gap
+- [ ] "Not set" uses the `muted` token, so an empty field doesn't read like an answer
+- [ ] The Photo row is a button with "Add a photo" in primary. It opens `<input type="file" accept="image/*">` with no `capture`
+- [ ] The phone shrinks the photo to 1600px JPEG and keeps it in IndexedDB with the draft
+- [ ] With a photo, the row shows a thumbnail with Change and Remove. One photo per report
+- [ ] Before you send passes the photo to `sendReport` and `enqueue`
+- [ ] Continue is in a sticky footer with a hairline top border and room for the home indicator
+- [ ] The voice note row shows the recording's length
+- [ ] `pnpm typecheck && pnpm test` pass, and the PR has screenshots at 390px before and after, and with a photo
+
+---
+
+## BYT-67 Family report detail: show the family's photo
+
+- **Owner:** James
+- **Milestone:** 3 Tier 2
+- **Label:** responder
+- **Priority:** High, tier 2
+- **Estimate:** 0.5 h
+- **Depends on:** BYT-65
+- **Spec:** 2
+- **Screens:**
+  - Responder: family report: `design/screens/responder/family-report.html`, `design/png/responder/family-report.png`, route `/r/reports/[code]`
+
+No design covers the photo, so keep it small and match the note block.
+
+**Acceptance criteria**
+
+- [ ] A report with a photo shows it below the family's note as a thumbnail, loaded from `GET /api/files/[photo_id]`
+- [ ] Tapping it opens the photo full size, with a labeled close button
+- [ ] A report with no photo shows no empty slot
+- [ ] `pnpm typecheck && pnpm test` pass, and the PR has screenshots at 390px with and without a photo
+
+---
+
+## BYT-68 Responder sign in: email and password in a clean layout
+
+- **Owner:** Artkin. Responder app area, James reviews the responder files and CJ the crossings.
+- **Milestone:** 3 Tier 2
+- **Label:** responder
+- **Priority:** High, tier 2
+- **Estimate:** 3 h
+- **Spec:** 1, 3, 4
+- **Screens:**
+  - Responder: unlock: `design/screens/responder/unlock.html`, `design/png/responder/unlock.png`, route `/r/sign-in`
+
+The responder sign in page looks unfinished. At 1440px the name list, the keypad and the Unlock button stretch to the edges of the window. At 390px and 425px there is a tall empty gap between the keypad and the button. This issue replaces the name list and PIN pad with an email and password form in one narrow centered column, and gives each teammate a test account. This issue's layout overrides the design wherever they disagree. Keep the heading "Responder sign in". Linear has the full checklist.
+
+**Acceptance criteria**
+
+- [ ] One column no wider than `max-w-sm`, centered at 1440px. Heading, Email, Password, error line, then Sign in right under the fields, not pinned to the bottom
+- [ ] Email and Password use the shared `Input` and `Label`. Password has a show or hide button with an `aria-label` and a 44px target
+- [ ] Enter submits. Sign in is disabled until both fields have text and reads "Signing in" while it waits
+- [ ] A wrong try shows "Wrong email or password. Try again.", clears the password and keeps the email
+- [ ] `pin-pad.tsx` and `pin-entry.ts` are deleted
+- [ ] `responders` gets `email` and `password_hash`, and `ResponderSignIn` becomes `{ email, password }`. The route checks the password per account and no longer reads `team_pin_hash`
+- [ ] The seed has four responders with the password `ulat2026`: CJ Jutba `cjjutba@gmail.com`, Artkin Carreon `artkin@gmail.com`, Sean Jacinto `sean@gmail.com`, James Calunsag `james@gmail.com`. They replace r1 to r4, and r5's records move to r2
+- [ ] The e2e test, README, SPEC and the privacy line in AGENTS.md describe email and password, not the team PIN
+- [ ] `pnpm typecheck && pnpm test` pass, and the PR has screenshots at 390px and 1440px of the empty form, the filled form and a wrong password
 
 ---
 

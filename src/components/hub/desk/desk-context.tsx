@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { z } from "zod";
 import type { Need } from "@/lib/contracts";
@@ -85,11 +85,14 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
   const [heard, setHeard] = useState<HeardNote | null>(null);
   const [transcript, setTranscript] = useState("");
   const [unsure, setUnsure] = useState<string[]>([]);
+  // A note read after staff moved to the safe list side belongs to nothing, so it is dropped.
+  const modeRef = useRef<DeskMode>("household");
 
   const { start, stop, cancel, elapsedMs } = useDeskRecorder({
     onFinish: async (audio) => {
       setPhase("reading");
       const result = await readVoiceNote(audio);
+      if (modeRef.current !== "household") return;
       if (!result.ok) {
         setHeard(null);
         setPhase("unclear");
@@ -108,6 +111,7 @@ export function DeskProvider({ children }: { children: React.ReactNode }) {
   const setMode = useCallback(
     (next: DeskMode) => {
       if (next !== "household") cancel();
+      modeRef.current = next;
       setModeState(next);
       setNotice(null);
       if (next !== "household") setPhase("idle");

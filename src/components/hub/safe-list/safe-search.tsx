@@ -26,7 +26,8 @@ export function SafeSearch({ initial, total }: SafeSearchProps) {
   const router = useRouter();
   const live = useLiveEvents();
   const [q, setQ] = useState("");
-  const [found, setFound] = useState<SafeRow[] | null>(null);
+  // The rows come with the name they were found for, so rows for an older name never show.
+  const [found, setFound] = useState<{ q: string; rows: SafeRow[] | null } | null>(null);
 
   const searching = isSearchable(q);
   const checkin = live.latest?.type === "safe.checked_in" ? live.latest : null;
@@ -40,10 +41,11 @@ export function SafeSearch({ initial, total }: SafeSearchProps) {
   // A new check-in repeats the search on screen.
   useEffect(() => {
     if (!searching) return;
+    const term = q.trim();
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      const next = await fetchSafe(q, fetch, controller.signal);
-      if (!controller.signal.aborted && next) setFound(next);
+      const next = await fetchSafe(term, fetch, controller.signal);
+      if (!controller.signal.aborted) setFound({ q: term, rows: next });
     }, DEBOUNCE_MS);
     return () => {
       clearTimeout(timer);
@@ -51,7 +53,16 @@ export function SafeSearch({ initial, total }: SafeSearchProps) {
     };
   }, [q, searching, checkin]);
 
-  const rows = searching && found ? found : initial;
+  const answered = searching && found?.q === q.trim() ? found : null;
+  const current = answered?.rows ?? null;
+  const rows = searching ? (current ?? []) : initial;
+  const empty = !searching
+    ? "No one has checked in yet"
+    : !answered
+      ? "Searching"
+      : current
+        ? "No one by that name"
+        : "Could not reach the hub. Try again.";
 
   return (
     <div className="flex flex-col gap-9">
@@ -69,9 +80,9 @@ export function SafeSearch({ initial, total }: SafeSearchProps) {
           </Button>
         </div>
       </div>
-      <SafeTable rows={rows} empty={searching ? "No one by that name" : "No one has checked in yet"} />
+      <SafeTable rows={rows} empty={empty} />
       <p role="status" className="sr-only">
-        {searching && found ? `${found.length} found` : ""}
+        {current ? `${current.length} found` : ""}
       </p>
     </div>
   );

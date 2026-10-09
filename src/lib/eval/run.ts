@@ -46,7 +46,7 @@ export type SkipReason =
   | "labelers_disagree"
   | "language_unknown"
   | "expected_invalid"
-  /** Ollama could not be reached, so the model did no work on it. */
+  /** Ollama could not be reached or answered with an error, so the model did no work on it. */
   | "unavailable";
 
 export type Skipped = {
@@ -84,16 +84,17 @@ const parseLabel = (value: string): PhotoClass | "missing" | "invalid" => {
 
 /**
  * Same rule as the app: a reply that is invalid or too slow reads as
- * "unclear". Ollama being down (no connection) is not a verdict on the model,
- * so it is an error and stays out of the scores.
+ * "unclear". Ollama failing to serve the call (no connection, a 5xx, 408 or
+ * 429) is not a verdict on the model, so it is an error and stays out of the
+ * scores. `status` is the HTTP status when Ollama answered, null when the
+ * connection failed.
  */
-function failureKind(error: unknown): { kind: string; asUnclear: boolean; unavailable: boolean } {
+function failureKind(error: unknown): { kind: string; asUnclear: boolean; unavailable: boolean; status: number | null } {
   if (error instanceof OllamaError) {
-    // Only a failed connection counts. An Ollama that answered with an error is up.
-    const unavailable = error.kind === "unavailable" && error.status === null;
-    return { kind: error.kind, asUnclear: !unavailable, unavailable };
+    const unavailable = error.kind === "unavailable";
+    return { kind: error.kind, asUnclear: !unavailable, unavailable, status: error.status };
   }
-  return { kind: error instanceof Error ? error.message : "unknown", asUnclear: false, unavailable: false };
+  return { kind: error instanceof Error ? error.message : "unknown", asUnclear: false, unavailable: false, status: null };
 }
 
 /** The run stops after this many calls in a row that could not reach Ollama. */
@@ -144,16 +145,23 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
   let attempts = 0;
   let unavailable = 0;
   let unavailableInARow = 0;
+  let answeredWithError = false;
 
   // Ollama being down is not a verdict on the model. The call is listed as
   // skipped and stays out of timing and out of the houses, and a run that keeps
   // hitting it stops, so one dead server cannot fill the numbers with 0 s calls.
-  const skipUnavailable = (kind: Skipped["kind"], file: string) => {
+  // "Could not be reached" is only for a failed connection. An Ollama that
+  // answered with an error is up, so the message says what it answered.
+  const skipUnavailable = (kind: Skipped["kind"], file: string, error: unknown) => {
+    const { status } = failureKind(error);
     unavailable++;
+    if (status !== null) answeredWithError = true;
     skipped.push({ kind, file, reason: "unavailable", ran: false });
     if (++unavailableInARow >= MAX_UNAVAILABLE_IN_A_ROW) {
       throw new Error(
-        `Ollama could not be reached for ${MAX_UNAVAILABLE_IN_A_ROW} calls in a row, so the run stopped and nothing was written. Start Ollama and run again.`,
+        status === null
+          ? `Ollama could not be reached for ${MAX_UNAVAILABLE_IN_A_ROW} calls in a row, so the run stopped and nothing was written. Start Ollama and run again.`
+          : `Ollama answered with an error (HTTP ${status}) for ${MAX_UNAVAILABLE_IN_A_ROW} calls in a row, so the run stopped and nothing was written. Check the Ollama log and run again.`,
       );
     }
   };
@@ -213,7 +221,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
     const result = await timed(deps, () => deps.draftPhoto({ photos: [{ data, mime, label: "" }] }));
     const failure = result.error ? failureKind(result.error) : null;
     if (failure?.unavailable) {
-      skipUnavailable("photo", row.file);
+      skipUnavailable("photo", row.file, result.error);
       continue;
     }
     unavailableInARow = 0;
@@ -247,7 +255,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
       attempts++;
       const result = await timed(deps, () => deps.draftPhoto({ photos: [{ data, mime, label: "" }] }));
       if (result.error && failureKind(result.error).unavailable) {
-        skipUnavailable("photo", file);
+        skipUnavailable("photo", file, result.error);
         continue;
       }
       unavailableInARow = 0;
@@ -316,7 +324,7 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
     const result = await timed(deps, () => deps.readVoice({ audio, mime }));
     const failure = result.error ? failureKind(result.error) : null;
     if (failure?.unavailable) {
-      skipUnavailable("voice", row.file);
+      skipUnavailable("voice", row.file, result.error);
       continue;
     }
     unavailableInARow = 0;
@@ -357,7 +365,11 @@ export async function runEval(options: { dir: string; model: string; deps: EvalD
   }
 
   if (attempts > 0 && unavailable === attempts) {
-    throw new Error("Every call failed because Ollama could not be reached. Start Ollama and run again.");
+    throw new Error(
+      answeredWithError
+        ? "Every call failed because Ollama was down or answered with an error. Check the Ollama log and run again."
+        : "Every call failed because Ollama could not be reached. Start Ollama and run again.",
+    );
   }
 
   const photosRun = photoItems.length;

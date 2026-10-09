@@ -15,6 +15,25 @@ export const mapAssets = {
   barangays: "/map/barangays.geojson",
 } as const;
 
+/**
+ * The map colors, by role, as token names from DESIGN.md. The MapLibre style
+ * reads each one's value from the page at runtime, so no hex lives in code.
+ */
+export const mapTokens = {
+  land: "map-land",
+  urban: "map-urban",
+  park: "map-park",
+  sea: "map-sea",
+  river: "map-river",
+  road: "map-road",
+  roadMinor: "map-road-minor",
+  boundary: "map-boundary",
+  shade1: "map-shade-1",
+  shade2: "map-shade-2",
+  shade3: "map-shade-3",
+  label: "body",
+} as const;
+
 /** The property on each barangay feature that holds its name, as the seed spells it. */
 export const barangayNameProperty = "name";
 

@@ -20,6 +20,8 @@ type LockFormProps = {
 /**
  * The locked screen. Opening it locks the hub: it clears the staff cookie, so
  * the Lock hub link in the sidebar locks too and the back button can't skip the PIN.
+ * A link to this page from another site can sign staff out, but all that costs
+ * them is typing the PIN again. It gives the sender no access.
  */
 export function LockForm({ next }: LockFormProps) {
   const [pin, setPin] = useState("");

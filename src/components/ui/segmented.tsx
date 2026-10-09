@@ -20,9 +20,9 @@ type SegmentedProps<T extends string> = Omit<React.ComponentProps<"div">, "onCha
 // and its label is drawn as the segment.
 function Segmented<T extends string>({ name, options, value, onValueChange, size = "hub", className, ...props }: SegmentedProps<T>) {
   return (
-    <div data-slot="segmented" role="radiogroup" className={cn("inline-flex gap-1 rounded-pill bg-surface-strong p-1", className)} {...props}>
+    <div data-slot="segmented" role="radiogroup" className={cn("inline-flex max-w-full gap-1 overflow-x-auto rounded-pill bg-surface-strong p-1", className)} {...props}>
       {options.map((option) => (
-        <label key={option.value} className={cn("hit relative flex items-center justify-center rounded-pill", size === "phone" ? "h-11" : "h-9")}>
+        <label key={option.value} className={cn("hit relative flex shrink-0 items-center justify-center rounded-pill whitespace-nowrap", size === "phone" ? "h-11" : "h-9")}>
           <input
             type="radio"
             name={name}

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/ui/logo";
 import { StaffSignIn } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +79,9 @@ export function LockForm({ next }: LockFormProps) {
           void unlock();
         }}
       >
-        <p className="text-title-md font-bold">Ulat</p>
+        <div className="self-start rounded-lg bg-canvas p-3">
+          <Logo priority className="w-16" />
+        </div>
         <h1 className="mb-1 text-display-lg">Hub locked</h1>
         <div>
           <Label htmlFor="pin" className="sr-only">

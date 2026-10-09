@@ -14,14 +14,14 @@ type SegmentLinksProps = {
 // choice is a real link that works with the back button and without script.
 function SegmentLinks({ links, className, ...props }: SegmentLinksProps) {
   return (
-    <nav className={cn("inline-flex gap-1 rounded-pill bg-surface-strong p-1", className)} {...props}>
+    <nav className={cn("inline-flex max-w-full gap-1 overflow-x-auto rounded-pill bg-surface-strong p-1", className)} {...props}>
       {links.map((link) => (
         <Link
           key={link.href}
           href={link.href}
           aria-current={link.current ? "page" : undefined}
           className={cn(
-            "hit flex h-9 items-center gap-1.5 rounded-pill px-4 text-body-sm font-semibold text-body outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            "hit flex h-9 shrink-0 items-center gap-1.5 rounded-pill px-4 whitespace-nowrap text-body-sm font-semibold text-body outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             link.current && "bg-surface-dark text-canvas hover:text-canvas",
           )}
         >

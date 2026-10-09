@@ -66,12 +66,12 @@ export function SafeSearch({ initial, total }: SafeSearchProps) {
 
   return (
     <div className="flex flex-col gap-9">
-      <div className="flex items-center justify-between gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-6">
         <h2 className="text-display-lg text-ink">
           <span className="tabular">{total}</span> safe
         </h2>
-        <div className="flex items-center gap-3">
-          <SearchPill size="hub" aria-label="Search the safe list" placeholder="Search a name" value={q} onChange={(event) => setQ(event.target.value)} className="w-60" />
+        <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+          <SearchPill size="hub" aria-label="Search the safe list" placeholder="Search a name" value={q} onChange={(event) => setQ(event.target.value)} className="w-full sm:w-60" />
           <Button asChild size="hub">
             <Link href={routes.hub.desk}>
               <PlusIcon aria-hidden="true" />

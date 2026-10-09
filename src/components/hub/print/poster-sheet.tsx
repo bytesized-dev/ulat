@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { IconPlate } from "@/components/ui/icon-plate";
+import { Logo } from "@/components/ui/logo";
 import { routes } from "@/lib/contracts/routes";
 import type { PosterData } from "@/lib/hub/print";
 import { PrintSheet } from "./print-sheet";
@@ -19,7 +20,7 @@ export function PosterSheet({ poster }: { poster: PosterData }) {
   return (
     <PrintSheet aria-labelledby="poster-title" className="gap-10 p-16">
       <header className="flex items-center justify-between gap-4">
-        <span className="text-title-md font-bold text-primary">Ulat</span>
+        <Logo priority className="w-24" />
         <span className="text-body-sm text-body">{`MDRRMO, ${poster.town}`}</span>
       </header>
 

@@ -72,6 +72,9 @@ export async function POST(req: Request) {
         barangay: meta.data.barangay,
         purok: meta.data.purok,
         household_head: meta.data.household_head,
+        // Prefilled from the linked report so the responder confirms or corrects
+        // the family's counts. They only count once confirmed.
+        ...(report ? { people: report.people, hurt: report.hurt, missing: report.missing, needs: report.needs } : {}),
         lat: meta.data.lat,
         lng: meta.data.lng,
         gps_accuracy_m: meta.data.gps_accuracy_m,

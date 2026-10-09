@@ -17,6 +17,10 @@ if (-not $HubDomain -or -not $HubIp) { throw "Set -HubDomain and -HubIp, for exa
 if (-not $Caddy -or -not (Test-Path $Caddy)) { throw "Caddy not found. Put caddy.exe on PATH or pass -Caddy with its path." }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw "node not found." }
 if (-not $NoApp -and -not (Get-Command pnpm -ErrorAction SilentlyContinue)) { throw "pnpm not found." }
+# Voice notes go through ffmpeg before the model (src/lib/ai/audio.ts). The rest of the app runs without it.
+if (-not $NoApp -and -not $env:FFMPEG_PATH -and -not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+  Write-Warning "ffmpeg not found, so every voice note will fail. Install it with: winget install Gyan.FFmpeg"
+}
 
 $full = Join-Path $CertDir "fullchain.pem"
 $key = Join-Path $CertDir "privkey.pem"

@@ -8,8 +8,10 @@ import { draftPhoto, readText, readVoice } from "./index";
 import { chatJson, OllamaError, resetStructuredOutputProbe } from "./ollama";
 import { z } from "zod";
 
-// Ollama is replaced by a mocked fetch and the database by an in-memory file,
-// so nothing here needs a model, audio or the hub's data/ulat.db.
+// Ollama is replaced by a mocked fetch, ffmpeg by a pass through and the
+// database by an in-memory file, so nothing here needs a model, audio or the
+// hub's data/ulat.db.
+vi.mock("./audio", () => ({ toWav: async (audio: Buffer) => audio }));
 vi.mock("../../db/client", async () => {
   const { default: Database } = await import("better-sqlite3");
   const { drizzle } = await import("drizzle-orm/better-sqlite3");

@@ -19,6 +19,7 @@ The laptop that runs Ulat is called the hub. Install and build need the internet
 | pnpm | 12.3.4 (`packageManager` in `package.json`) | Installs and runs scripts |
 | Ollama | 0.40.2 was tested. Skip it to try the app with `MOCK_AI=1` | Runs the local model |
 | Model | `gemma4:e4b`, about 9.5 GB. Skip it with `MOCK_AI=1` | Reads photos and voice notes, translates updates |
+| ffmpeg | Any recent build, `brew install ffmpeg`. Skip it with `MOCK_AI=1` | Turns voice notes into the WAV the model reads |
 
 ```
 ollama pull gemma4:e4b
@@ -106,7 +107,7 @@ Required by the hackathon rules. This list is complete.
 ### Models
 
 - **Gemma 4 E4B** (`gemma4:e4b`) through Ollama, running on the hub laptop. Used for photo to damage class, voice and text to form fields, and translation of updates to Bisaya and Tagalog. The code calls Ollama's `/api/chat` and nothing else. The model's license, as `ollama show gemma4:e4b --license` reports it, is the Apache License 2.0. Ollama is MIT licensed.
-- **Audio** goes to Gemma natively through Ollama. whisper.cpp is not in the code and not installed. It is the documented fallback in `docs/SPEC.md`, used only if the final recording test fails.
+- **Audio** goes to Gemma natively through Ollama. Ollama reads only WAV, so the hub converts each recording to 16 kHz mono WAV with ffmpeg first. whisper.cpp is not in the code and not installed. It is the documented fallback in `docs/SPEC.md`, used only if the final recording test fails.
 - No other model, and no hosted AI. The app makes no request to any host outside the hub.
 
 ### AI coding tools
@@ -139,7 +140,7 @@ Required by the hackathon rules. This list is complete.
 
 ### Kit tools
 
-The field kit in `infra/` and the map script in `scripts/map` use these programs. None are bundled in the repo or the app. Each license is from the LICENSE or COPYING file of that project.
+The field kit in `infra/`, the map script in `scripts/map` and the voice note conversion use these programs. None are bundled in the repo or the app. Each license is from the LICENSE or COPYING file of that project.
 
 | Tool | License | Used for |
 |---|---|---|
@@ -148,6 +149,7 @@ The field kit in `infra/` and the map script in `scripts/map` use these programs
 | [Certbot](https://github.com/certbot/certbot) | Apache-2.0 | Gets the Let's Encrypt certificate before the storm, see `infra/README.md` |
 | [Let's Encrypt](https://letsencrypt.org) | A free certificate service, no software copied | Issues the certificate Certbot asks for. Needs the internet once, before the storm |
 | [go-pmtiles](https://github.com/protomaps/go-pmtiles) | BSD-3-Clause | The `pmtiles` command that cut `town.pmtiles`, run by `scripts/map/fetch-map.sh` |
+| [FFmpeg](https://ffmpeg.org) | LGPL 2.1 or later, with optional parts under GPL 2 or later | Converts each voice note to 16 kHz WAV for the model, `src/lib/ai/audio.ts`. The app runs it as a separate program on the hub |
 
 ### npm dependencies
 

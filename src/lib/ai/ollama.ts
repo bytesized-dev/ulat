@@ -59,6 +59,7 @@ export function resetStructuredOutputProbe() {
   promptMode = false;
 }
 
+// A bare 501 counts on purpose, so a reworded error message still triggers the fallback.
 function lacksStructuredOutput(error: OllamaError) {
   return error.status === 501 || /structured output is unavailable/i.test(error.raw ?? "");
 }
@@ -140,6 +141,7 @@ export async function chatJson<S extends z.ZodType>(
       content = await chat(input, true);
     } catch (error) {
       if (!(error instanceof OllamaError) || !lacksStructuredOutput(error)) throw error;
+      // Set before the retry on purpose: Ollama said it has no format, even if this retry fails.
       promptMode = true;
       content = await chat(input, false);
     }

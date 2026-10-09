@@ -8,11 +8,13 @@ import { freshDb } from "./test-setup";
 let getReviewCount: () => number;
 let countReview: typeof import("./family-reports").countReview;
 let db: Awaited<ReturnType<typeof freshDb>>["db"];
+let schemaRef: Awaited<ReturnType<typeof freshDb>>["schema"];
 
 beforeAll(async () => {
   const fresh = await freshDb("review-count");
   db = fresh.db;
   const { schema } = fresh;
+  schemaRef = schema;
   ({ getReviewCount } = await import("./review-count"));
   ({ countReview } = await import("./family-reports"));
 
@@ -46,5 +48,17 @@ describe("getReviewCount", () => {
     const review = countReview(db);
     expect(review.family_reports).toBe(1);
     expect(getReviewCount()).toBe(review.second_look + review.duplicates);
+  });
+
+  it("flags new duplicates first, so the badge counts them before anyone opens the tab", () => {
+    const before = getReviewCount();
+    const now = "2026-10-09T09:00:00.000Z";
+    for (const code of ["W6K4", "W6K5"]) {
+      db.insert(schemaRef.reports)
+        .values({ code, source: "family", household_head: "Ramil Aquino", barangay: "Santa Cruz", status: "waiting", created_at: now, updated_at: now })
+        .run();
+    }
+    expect(getReviewCount()).toBe(before + 1);
+    expect(getReviewCount()).toBe(before + 1);
   });
 });

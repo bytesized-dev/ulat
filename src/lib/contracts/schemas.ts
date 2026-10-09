@@ -89,6 +89,8 @@ export const NewReport = z.object({
   transcript: z.string().max(2000).nullable(),
   english: z.string().max(2000).nullable(),
   language: Language.nullable(),
+  /** Made once on the phone when the family taps Send. The hub returns the same code for a repeat. */
+  client_id: z.string().uuid().optional(),
   consent: z.literal(true),
 });
 export type NewReport = z.infer<typeof NewReport>;

@@ -1,4 +1,4 @@
-import { index, integer, real, sqliteTable, text, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import type { z } from "zod";
 import {
   CantAssessReason,
@@ -67,10 +67,12 @@ export const reports = sqliteTable(
     cant_reason: text("cant_reason", { enum: values(CantAssessReason.options) }),
     cant_note: text("cant_note"),
     merged_into: text("merged_into").references((): AnySQLiteColumn => reports.id),
+    /** Set by a phone so a resend of the same tap finds the report it already made. Null for seed and desk reports. */
+    client_id: text("client_id"),
     created_at: text("created_at").notNull(),
     updated_at: text("updated_at").notNull(),
   },
-  (t) => [index("reports_status_idx").on(t.status)],
+  (t) => [index("reports_status_idx").on(t.status), uniqueIndex("reports_client_id_unique").on(t.client_id)],
 );
 
 export const entries = sqliteTable(

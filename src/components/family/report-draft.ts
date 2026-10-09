@@ -7,24 +7,27 @@ import { AiVoiceExtract, Language, Need, NewReport, VoiceField } from "@/lib/con
 
 export const DRAFT_KEY = "ulat.report-draft";
 
-const Count = z.number().int().min(0).max(99);
+// The field rules come from the NewReport contract, so a change there reaches
+// the draft. The draft only differs where a half-filled form needs it: text is
+// an empty string instead of null, and barangay may be empty until picked.
+const { source, people, lat, lng, voice_id } = NewReport.shape;
 
 export const ReportDraft = z.object({
-  source: z.enum(["family", "neighbor"]),
+  source: source.exclude(["desk"]),
   barangay: z.string().max(120),
   purok: z.string().max(60),
   household_head: z.string().max(120),
   /** Only for a neighbor's report: who is reporting and where to find them. */
   reporter_name: z.string().max(120),
   reporter_where: z.string().max(120),
-  lat: z.number().min(-90).max(90).nullable(),
-  lng: z.number().min(-180).max(180).nullable(),
-  people: Count,
-  hurt: Count,
-  missing: Count,
+  lat,
+  lng,
+  people,
+  hurt: people,
+  missing: people,
   what_happened: z.string().max(200),
   needs: z.array(Need),
-  voice_id: z.string().uuid().nullable(),
+  voice_id,
   transcript: z.string().max(2000),
   english: z.string().max(2000),
   language: Language.nullable(),

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import fixtures from "../../../seed/ai-fixtures.json";
-import { barHeight, formatTimer, micFailure, MIN_AUDIO_BYTES, pickMimeType, readVoiceNote } from "./voice-note";
+import { BAR_STEPS, barStep, formatTimer, micFailure, MIN_AUDIO_BYTES, pickMimeType, readVoiceNote } from "./voice-note";
 
 const note = new Blob([new Uint8Array(MIN_AUDIO_BYTES * 4)], { type: "audio/webm;codecs=opus" });
 
@@ -62,10 +62,11 @@ describe("reading the note", () => {
 });
 
 describe("waveform", () => {
-  it("keeps every bar inside the range the design draws", () => {
-    expect(barHeight(0)).toBe(7);
-    expect(barHeight(1)).toBe(66);
-    expect(barHeight(5)).toBe(66);
-    expect(barHeight(-1)).toBe(7);
+  it("keeps every bar on one of the height steps", () => {
+    expect(barStep(0)).toBe(0);
+    expect(barStep(1)).toBe(BAR_STEPS - 1);
+    expect(barStep(5)).toBe(BAR_STEPS - 1);
+    expect(barStep(-1)).toBe(0);
+    expect(barStep(0.5)).toBe(4);
   });
 });

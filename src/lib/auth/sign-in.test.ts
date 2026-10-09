@@ -8,8 +8,9 @@ import {
   signSession,
 } from "./session";
 
-// The PIN check is slow on purpose, so parallel requests overlap the way they
-// do with scrypt on the thread pool.
+// The PIN and password check is slow on purpose, so parallel requests overlap
+// the way they do with scrypt on the thread pool. The staff PIN is 1234 and the
+// responder password is 123456 here.
 const verifyPin = vi.hoisted(() =>
   vi.fn(async (pin: string) => {
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -30,7 +31,22 @@ vi.mock("@/lib/auth/settings", () => ({
   readOrCreateSetting: () => "ab".repeat(32),
 }));
 vi.mock("@/db/client", () => ({
-  db: { select: () => ({ from: () => ({ where: () => ({ all: () => [{ id: "r1", name: "Mae Santos", team: null, active: true }] }) }) }) },
+  db: {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          get: () => ({
+            id: "r1",
+            name: "Mae Santos",
+            team: null,
+            active: true,
+            email: "mae@example.com",
+            password_hash: "scrypt$salt$hash",
+          }),
+        }),
+      }),
+    }),
+  },
 }));
 
 import * as responderRoute from "@/app/api/auth/responder/route";
@@ -44,8 +60,8 @@ const post = (path: string, body: unknown, headers: Record<string, string> = {})
   });
 
 const staff = (pin: string, headers?: Record<string, string>) => staffRoute.POST(post("staff", { pin }, headers));
-const responder = (pin: string, headers?: Record<string, string>) =>
-  responderRoute.POST(post("responder", { name: "Mae Santos", pin }, headers));
+const responder = (password: string, headers?: Record<string, string>) =>
+  responderRoute.POST(post("responder", { email: "mae@example.com", password }, headers));
 
 const statuses = (responses: Response[]) => responses.map((r) => r.status).sort();
 
@@ -64,7 +80,7 @@ describe("parallel sign in attempts", () => {
   });
 
   it("lets at most 5 of 10 parallel responder attempts reach verifyPin", async () => {
-    const responses = await Promise.all(Array.from({ length: 10 }, (_, i) => responder(String(100000 + i))));
+    const responses = await Promise.all(Array.from({ length: 10 }, (_, i) => responder(`wrong${i}`)));
     expect(verifyPin.mock.calls.length).toBeLessThanOrEqual(MAX_FAILURES);
     expect(statuses(responses)).toEqual([401, 401, 401, 401, 401, 429, 429, 429, 429, 429]);
   });

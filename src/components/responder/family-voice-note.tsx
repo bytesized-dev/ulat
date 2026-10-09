@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PauseIcon, PlayIcon } from "lucide-react";
 
 type FamilyVoiceNoteProps = {
@@ -10,6 +10,10 @@ type FamilyVoiceNoteProps = {
   transcript: string | null;
   english: string | null;
 };
+
+function lengthOf(el: HTMLAudioElement): number | null {
+  return Number.isFinite(el.duration) ? el.duration : null;
+}
 
 function clock(seconds: number): string {
   const whole = Math.max(0, Math.round(seconds));
@@ -22,6 +26,13 @@ function FamilyVoiceNote({ reportId, hasAudio, transcript, english }: FamilyVoic
   const audio = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [length, setLength] = useState<number | null>(null);
+
+  // The browser can load the metadata before this component hydrates, and then
+  // onLoadedMetadata never fires. Read what is already there.
+  useEffect(() => {
+    const el = audio.current;
+    if (el && el.readyState >= HTMLMediaElement.HAVE_METADATA) setLength(lengthOf(el));
+  }, []);
 
   function toggle() {
     const el = audio.current;
@@ -47,7 +58,7 @@ function FamilyVoiceNote({ reportId, hasAudio, transcript, english }: FamilyVoic
             ref={audio}
             src={`/api/files/${reportId}`}
             preload="metadata"
-            onLoadedMetadata={(e) => setLength(Number.isFinite(e.currentTarget.duration) ? e.currentTarget.duration : null)}
+            onLoadedMetadata={(e) => setLength(lengthOf(e.currentTarget))}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
             onEnded={() => setPlaying(false)}

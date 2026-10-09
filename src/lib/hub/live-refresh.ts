@@ -9,6 +9,11 @@ export function changesOverview(event: HubEvent | null): boolean {
   return event !== null && OVERVIEW_EVENTS.has(event.type);
 }
 
+/** Which live events change the second look list: an entry joins it or leaves it. */
+export function changesReview(event: HubEvent | null): boolean {
+  return event !== null && (event.type === "entry.needs_review" || event.type === "entry.confirmed");
+}
+
 /** Runs `fn` once, `ms` after the last call, so a burst of events costs one refetch. */
 export function debounce(fn: () => void, ms: number): { call: () => void; cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null;

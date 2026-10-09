@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { changesOverview, debounce, newerSummary } from "./live-refresh";
+import { changesOverview, changesReview, debounce, newerSummary } from "./live-refresh";
 
 const id = "6f1c2c1e-6a3b-4f6e-9a55-0d6b2b9d2c11";
 
@@ -20,6 +20,20 @@ describe("which events refresh the overview", () => {
     expect(changesOverview({ type: "entry.drafted", entry_id: id })).toBe(false);
     expect(changesOverview({ type: "update.posted", update_id: id })).toBe(false);
     expect(changesOverview({ type: "safe.checked_in", id })).toBe(false);
+  });
+});
+
+describe("which events refresh the second look list", () => {
+  it("refreshes when an entry needs review or is confirmed", () => {
+    expect(changesReview({ type: "entry.needs_review", entry_id: id })).toBe(true);
+    expect(changesReview({ type: "entry.confirmed", entry_id: id, report_code: null })).toBe(true);
+  });
+
+  it("ignores everything else", () => {
+    expect(changesReview(null)).toBe(false);
+    expect(changesReview({ type: "entry.drafted", entry_id: id })).toBe(false);
+    expect(changesReview({ type: "report.created", code: "ABCD", urgent: false })).toBe(false);
+    expect(changesReview({ type: "place.saved", place_id: id })).toBe(false);
   });
 });
 

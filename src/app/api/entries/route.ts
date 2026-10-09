@@ -12,6 +12,18 @@ import { discardUploads, MAX_PHOTOS, storeUpload, type Stored } from "./_lib/upl
 // POST creates a draft from photos, an optional voice note, GPS and an optional
 // report code, then runs the photo pipeline. GET lists confirmed entries.
 
+/**
+ * The entry a phone already made for this client_id, as a 200. A queued resend
+ * after a lost reply lands here instead of making a second entry. An entry that
+ * belongs to another responder is never returned.
+ */
+function existingEntry(clientId: string, responderId: string): Response | null {
+  const found = db.select().from(entries).where(eq(entries.client_id, clientId)).get();
+  if (!found) return null;
+  if (found.responder_id !== responderId) return Response.json({ error: "client_id_taken" }, { status: 409 });
+  return Response.json({ id: found.id, number: found.number, status: found.status, entry: found }, { status: 200 });
+}
+
 export async function POST(req: Request) {
   const actor = await authorize("responder");
   if (actor instanceof Response) return actor;
@@ -39,6 +51,13 @@ export async function POST(req: Request) {
     return Response.json({ error: "photo_count" }, { status: 400 });
   }
   const noteFile = form.get("note");
+
+  // A repeat of an entry the hub already saved. Nothing is stored and the AI
+  // does not run again.
+  if (meta.data.client_id) {
+    const again = existingEntry(meta.data.client_id, actor.id);
+    if (again) return again;
+  }
 
   let report: typeof reports.$inferSelect | undefined;
   if (meta.data.report_code) {
@@ -76,11 +95,14 @@ export async function POST(req: Request) {
 
   const id = randomUUID();
   const now = new Date().toISOString();
-  let number: number;
+  let number: number | null;
   try {
     number = db.transaction((tx) => {
       const next = (tx.select({ n: sql<number>`coalesce(max(${entries.number}), 0)` }).from(entries).get()?.n ?? 0) + 1;
-      tx.insert(entries)
+      // The unique client_id decides when two requests for the same entry run
+      // at once. The loser inserts nothing and takes the winner's entry below.
+      const inserted = tx
+        .insert(entries)
         .values({
           id,
           number: next,
@@ -99,9 +121,12 @@ export async function POST(req: Request) {
           ...(report ? { people: report.people, hurt: report.hurt, missing: report.missing, needs: report.needs } : {}),
           note_path: notePath,
           status: "draft",
+          client_id: meta.data.client_id,
           created_at: now,
         })
+        .onConflictDoNothing({ target: entries.client_id })
         .run();
+      if (inserted.changes === 0) return null;
       storedPhotos.forEach((p, i) =>
         tx.insert(photos).values({ entry_id: id, path: p.path, label: meta.data.photo_labels[i] ?? null, taken_at: now }).run(),
       );
@@ -111,6 +136,12 @@ export async function POST(req: Request) {
   } catch (error) {
     await discardUploads(stored);
     throw error;
+  }
+  if (number === null) {
+    // Lost the race: the files stored for this request belong to no entry.
+    await discardUploads(stored);
+    const winner = meta.data.client_id ? existingEntry(meta.data.client_id, actor.id) : null;
+    return winner ?? Response.json({ error: "client_id_conflict" }, { status: 409 });
   }
 
   // The draft is saved. The real model can take up to 60 seconds, so the

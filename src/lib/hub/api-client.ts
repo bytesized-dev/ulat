@@ -1,9 +1,11 @@
-import type { NewPlaceInput } from "./places";
-import type { NewUpdateInput } from "./updates";
+import type { z } from "zod";
+import type { NewPlace, NewUpdate } from "../contracts/schemas";
 
-// Browser side of the hub's writes, on the paths in docs/SPEC.md section 4.
-// The route handlers come in BYT-56 and wrap createUpdate and createPlace.
-// Until then these return false and the screen says it could not post.
+// Browser side of the hub's writes to POST /api/updates and POST /api/places,
+// docs/SPEC.md section 4. False means it did not go through.
+
+export type NewUpdateInput = z.infer<typeof NewUpdate>;
+export type NewPlaceInput = z.infer<typeof NewPlace>;
 
 async function send(path: string, body: unknown, fetcher: typeof fetch): Promise<boolean> {
   try {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import fixtures from "../../../seed/ai-fixtures.json";
-import { BAR_STEPS, barStep, formatTimer, micFailure, MIN_AUDIO_BYTES, pickMimeType, readVoiceNote } from "./voice-note";
+import { BAR_STEPS, barStep, formatTimer, micFailure, MIN_AUDIO_BYTES, pickMimeType, progressStep, readVoiceNote } from "./voice-note";
 
 const note = new Blob([new Uint8Array(MIN_AUDIO_BYTES * 4)], { type: "audio/webm;codecs=opus" });
 
@@ -68,5 +68,20 @@ describe("waveform", () => {
     expect(barStep(5)).toBe(BAR_STEPS - 1);
     expect(barStep(-1)).toBe(0);
     expect(barStep(0.5)).toBe(4);
+  });
+});
+
+describe("progressStep", () => {
+  it("fills the playback bar in twelfths", () => {
+    expect(progressStep(0, 8)).toBe(0);
+    expect(progressStep(4, 8)).toBe(6);
+    expect(progressStep(8, 8)).toBe(12);
+  });
+
+  it("stays inside the bar and is empty when the length is unknown", () => {
+    expect(progressStep(20, 8)).toBe(12);
+    expect(progressStep(-1, 8)).toBe(0);
+    expect(progressStep(3, 0)).toBe(0);
+    expect(progressStep(3, Number.NaN)).toBe(0);
   });
 });

@@ -109,14 +109,14 @@ export function SheetDemo() {
 
 export function SelectDemo({ size }: { size: "phone" | "hub" }) {
   return (
-    <Select defaultValue="san-isidro">
+    <Select defaultValue="sinonoc">
       <SelectTrigger size={size} aria-label={`Barangay, ${size}`}>
         <SelectValue placeholder="Barangay" />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="san-isidro">San Isidro</SelectItem>
-        <SelectItem value="santa-cruz">Santa Cruz</SelectItem>
-        <SelectItem value="mabini">Mabini</SelectItem>
+        <SelectItem value="sinonoc">Sinonoc</SelectItem>
+        <SelectItem value="dawo">Dawo (Pob.)</SelectItem>
+        <SelectItem value="potol">Potol (Pob.)</SelectItem>
       </SelectContent>
     </Select>
   );

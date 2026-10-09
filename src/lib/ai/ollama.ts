@@ -10,6 +10,11 @@ export const OLLAMA_TIMEOUT_MS = 60_000;
 // start. docs/SPEC.md section 5.
 const KEEP_ALIVE = "30m";
 
+// The longest valid reply, a voice extract with a full transcript and its
+// English, is about 1200 tokens. The cap stops a runaway reply well before
+// OLLAMA_TIMEOUT_MS.
+const MAX_OUTPUT_TOKENS = 1536;
+
 export type OllamaFailure =
   /** No reply within 60 seconds. */
   | "timeout"
@@ -43,8 +48,13 @@ export type ChatJsonInput<S extends z.ZodType> = {
   user: string;
   /** Images or audio for the user message. Sent base64 in `images`, the one binary field /api/chat has. */
   media?: Buffer[];
-  /** Ollama's `options`, for example `{ temperature: 0 }`. Left out of the request when not set. */
+  /** Ollama's `options`, for example `{ temperature: 0 }`. Merged over the `num_predict` cap. */
   options?: Record<string, unknown>;
+  /**
+   * Gemma's hidden reasoning pass. Off unless a call needs it, since it adds
+   * 600 to 750 tokens and 10 to 60 seconds before the JSON.
+   */
+  think?: boolean;
   /** Extra line for the schema instructions, used only when the schema goes in the prompt. */
   schemaHint?: string;
 };
@@ -96,7 +106,8 @@ async function chat<S extends z.ZodType>(input: ChatJsonInput<S>, withFormat: bo
         stream: false,
         ...(withFormat ? { format: z.toJSONSchema(input.schema) } : {}),
         keep_alive: KEEP_ALIVE,
-        ...(input.options ? { options: input.options } : {}),
+        think: input.think ?? false,
+        options: { num_predict: MAX_OUTPUT_TOKENS, ...input.options },
         messages: [{ role: "system", content: input.system }, userMessage],
       }),
       signal: AbortSignal.timeout(OLLAMA_TIMEOUT_MS),

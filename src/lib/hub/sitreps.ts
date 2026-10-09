@@ -116,19 +116,23 @@ function mentions(text: string, area: string): boolean {
 type HazardEntry = { text: string; barangay: string; purok: string | null };
 type HazardPlace = { name: string; details: string | null };
 
+/** A barangay name with the optional "(Pob.)" removed, so "Dawo" and "Dawo (Pob.)" compare equal. */
+const barangayKey = (text: string | null | undefined) => normalize(text).replace(/\s*\(?\bpob\b\.?\)?/g, "").trim();
+
 /**
- * A hazard place covers an entry's hazard only when it is the same hazard at
- * the same spot: the names match, the place's details name the entry's purok
- * (or its barangay when the entry has no purok), and the details name no other
- * barangay. A place with no details cannot be placed, so it covers nothing.
+ * A hazard place hides an entry's hazard only on a positive match: the names
+ * are equal, the place's details name the entry's own barangay, and they name
+ * the entry's purok as a whole word. An entry with no purok matches on the
+ * barangay alone. Anything else, including a place with no details, shows
+ * both lines. A repeated line is better than a dropped hazard.
  */
-function placeCovers(place: HazardPlace, entry: HazardEntry, barangays: string[]): boolean {
+function placeCovers(place: HazardPlace, entry: HazardEntry): boolean {
   if (normalize(place.name) !== normalize(entry.text)) return false;
-  const details = normalize(place.details);
-  const area = normalize(entry.purok) || normalize(entry.barangay);
-  if (!details || !area || !mentions(details, area)) return false;
-  const own = normalize(entry.barangay);
-  return !barangays.some((b) => normalize(b) !== own && mentions(details, normalize(b)));
+  const details = barangayKey(place.details);
+  const barangay = barangayKey(entry.barangay);
+  if (!details || !barangay || !mentions(details, barangay)) return false;
+  const purok = normalize(entry.purok);
+  return !purok || mentions(details, purok);
 }
 
 /**
@@ -137,7 +141,8 @@ function placeCovers(place: HazardPlace, entry: HazardEntry, barangays: string[]
  * hazard places as "name, details". Then hazards typed on confirmed entries,
  * with the purok and barangay so the line says where. The same hazard in two
  * puroks or barangays shows twice. It shows once when two entries share the
- * spot or a place already covers it.
+ * spot, or when a place of the same name has details naming the same barangay
+ * and purok.
  */
 export function getHazardLines(db: Db): string[] {
   const lines: string[] = [];
@@ -162,14 +167,13 @@ export function getHazardLines(db: Db): string[] {
     .where(eq(entries.status, "confirmed"))
     .orderBy(asc(entries.number))
     .all();
-  const barangays = [...new Set(entryRows.map((r) => r.barangay))];
   const seen = new Set<string>();
   for (const { hazards, barangay, purok } of entryRows) {
     for (const raw of hazards) {
       const entry = { text: raw.trim(), barangay, purok };
       if (!entry.text) continue;
       const key = [entry.text, barangay, purok].map(normalize).join("|");
-      if (seen.has(key) || listed.some((p) => placeCovers(p, entry, barangays))) continue;
+      if (seen.has(key) || listed.some((p) => placeCovers(p, entry))) continue;
       seen.add(key);
       lines.push(`${upperFirst(entry.text)}, ${[purok?.trim(), barangay].filter(Boolean).join(", ")}`);
     }

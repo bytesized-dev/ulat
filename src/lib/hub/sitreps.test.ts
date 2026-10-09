@@ -122,7 +122,8 @@ describe("reading reports", () => {
 });
 
 describe("getHazardLines", () => {
-  const place = { lat: 1, lng: 2, created_at: THREE_PM };
+  const place = { lat: 1, lng: 2, created_at: THREE_PM, type: "hazard" } as const;
+  const lines = (name: string) => lib.getHazardLines(db).filter((l) => l.toLowerCase().includes(name.toLowerCase()));
 
   it("is empty when nothing is listed", () => {
     expect(lib.getHazardLines(db)).toEqual([]);
@@ -131,10 +132,9 @@ describe("getHazardLines", () => {
   it("lists visible hazard places, then entry hazards with where they are", () => {
     db.insert(schema.places)
       .values([
-        { ...place, type: "hazard", name: "Landslide", details: "upper Sinonoc road" },
-        { ...place, type: "hazard", name: "Fallen power line", details: "Purok 3", created_at: "2026-10-10T07:05:00.000Z" },
-        { ...place, type: "hazard", name: "Hidden flood", details: null, visible: false },
-        { ...place, type: "shelter", name: "Covered court" },
+        { ...place, name: "Landslide", details: "upper Sinonoc road" },
+        { ...place, name: "Hidden flood", details: null, visible: false },
+        { ...place, name: "Covered court", type: "shelter" },
       ])
       .run();
     db.insert(schema.entries)
@@ -143,68 +143,84 @@ describe("getHazardLines", () => {
         entry(8, { status: "needs_review", hazards: ["Not counted"] }),
       ])
       .run();
-    expect(lib.getHazardLines(db)).toEqual([
-      "Landslide, upper Sinonoc road",
-      "Fallen power line, Purok 3",
-      "Leaning post, Purok 5, Sinonoc",
-    ]);
+    expect(lib.getHazardLines(db)).toEqual(["Landslide, upper Sinonoc road", "Leaning post, Purok 5, Sinonoc"]);
   });
 
-  it("shows a hazard once when a place covers it, even with different case and spacing", () => {
-    db.insert(schema.entries).values(entry(9, { hazards: ["  fallen  POWER line"], purok: "purok 3" })).run();
-    expect(lib.getHazardLines(db).filter((l) => /power line/i.test(l))).toEqual(["Fallen power line, Purok 3"]);
+  it("shows one line when a place names the entry's barangay and purok, whatever the case and spacing", () => {
+    db.insert(schema.places).values({ ...place, name: "Cracked culvert", details: "Purok 4, Sinonoc" }).run();
+    db.insert(schema.entries).values(entry(9, { hazards: ["  cracked  CULVERT"], purok: "purok  4" })).run();
+    expect(lines("culvert")).toEqual(["Cracked culvert, Purok 4, Sinonoc"]);
   });
 
-  it("keeps an entry's hazard when the place of the same name is in another purok", () => {
-    db.insert(schema.entries).values(entry(10, { hazards: ["Fallen power line"], purok: "Purok 5" })).run();
-    expect(lib.getHazardLines(db).filter((l) => /power line/i.test(l))).toEqual([
-      "Fallen power line, Purok 3",
-      "Fallen power line, Purok 5, Sinonoc",
-    ]);
-  });
-
-  it("does not take Purok 3 for Purok 30, or a place in another barangay for this one", () => {
+  it("treats (Pob.) as optional on either side", () => {
     db.insert(schema.places)
       .values([
-        { ...place, type: "hazard", name: "Open drain", details: "Purok 30" },
-        { ...place, type: "hazard", name: "Sinkhole", details: "Purok 3, Dawo (Pob.)" },
+        { ...place, name: "Gas leak", details: "Purok 6, Dawo" },
+        { ...place, name: "Broken gate", details: "Purok 7, Banonong (Pob.)" },
       ])
       .run();
     db.insert(schema.entries)
       .values([
-        entry(11, { hazards: ["Open drain"], purok: "Purok 3" }),
-        entry(12, { hazards: ["Sinkhole"], purok: "Purok 3" }),
-        entry(13, { hazards: ["Sinkhole"], purok: "Purok 3", barangay: "Dawo (Pob.)" }),
+        entry(10, { hazards: ["Gas leak"], purok: "Purok 6", barangay: "Dawo (Pob.)" }),
+        entry(11, { hazards: ["Broken gate"], purok: "Purok 7", barangay: "Banonong" }),
       ])
       .run();
-    const lines = lib.getHazardLines(db);
-    expect(lines).toContain("Open drain, Purok 3, Sinonoc");
-    expect(lines).toContain("Sinkhole, Purok 3, Sinonoc");
-    // The Dawo entry is the place's own spot, so only the place line remains for Dawo.
-    expect(lines.filter((l) => l.startsWith("Sinkhole"))).toEqual(["Sinkhole, Purok 3, Dawo (Pob.)", "Sinkhole, Purok 3, Sinonoc"]);
+    expect(lines("gas leak")).toEqual(["Gas leak, Purok 6, Dawo"]);
+    expect(lines("broken gate")).toEqual(["Broken gate, Purok 7, Banonong (Pob.)"]);
   });
 
-  it("shows the same hazard twice for the same purok name in two barangays, and once for two entries at one spot", () => {
+  it("matches on the barangay alone when the entry has no purok", () => {
+    db.insert(schema.places).values({ ...place, name: "Broken pole", details: "near Dawo market" }).run();
+    db.insert(schema.entries).values(entry(12, { hazards: ["Broken pole"], purok: null, barangay: "Dawo (Pob.)" })).run();
+    expect(lines("broken pole")).toEqual(["Broken pole, near Dawo market"]);
+  });
+
+  it("keeps both lines when the place is in a barangay with no confirmed entries", () => {
+    db.insert(schema.places).values({ ...place, name: "Tilted pole", details: "Purok 2, Potol (Pob.)" }).run();
+    db.insert(schema.entries).values(entry(13, { hazards: ["Tilted pole"], purok: "Purok 2" })).run();
+    expect(lines("tilted pole")).toEqual(["Tilted pole, Purok 2, Potol (Pob.)", "Tilted pole, Purok 2, Sinonoc"]);
+  });
+
+  it("keeps both lines when the place spells the barangay another way", () => {
+    db.insert(schema.places).values({ ...place, name: "Sinkhole", details: "Purok 3, Dawo" }).run();
+    db.insert(schema.entries).values(entry(14, { hazards: ["Sinkhole"], purok: "Purok 3" })).run();
+    expect(lines("sinkhole")).toEqual(["Sinkhole, Purok 3, Dawo", "Sinkhole, Purok 3, Sinonoc"]);
+  });
+
+  it("keeps both lines when the place does not name a barangay, or names another purok", () => {
+    db.insert(schema.places)
+      .values([
+        { ...place, name: "Fallen power line", details: "Purok 3" },
+        { ...place, name: "Open drain", details: "Purok 30, Sinonoc" },
+        { ...place, name: "Bridge out", details: " " },
+      ])
+      .run();
     db.insert(schema.entries)
       .values([
-        entry(14, { hazards: ["Leaning post"], purok: "Purok 5", barangay: "Dawo (Pob.)" }),
-        entry(15, { hazards: ["leaning post"], purok: "Purok 5" }),
+        entry(15, { hazards: ["Fallen power line"], purok: "Purok 3" }),
+        entry(16, { hazards: ["Open drain"], purok: "Purok 3" }),
+        entry(17, { hazards: ["Bridge out"], purok: "Purok 2" }),
       ])
       .run();
-    expect(lib.getHazardLines(db).filter((l) => /leaning post/i.test(l))).toEqual([
-      "Leaning post, Purok 5, Sinonoc",
-      "Leaning post, Purok 5, Dawo (Pob.)",
-    ]);
+    expect(lines("power line")).toEqual(["Fallen power line, Purok 3", "Fallen power line, Purok 3, Sinonoc"]);
+    expect(lines("open drain")).toEqual(["Open drain, Purok 30, Sinonoc", "Open drain, Purok 3, Sinonoc"]);
+    expect(lines("bridge out")).toEqual(["Bridge out", "Bridge out, Purok 2, Sinonoc"]);
   });
 
-  it("writes a place with no details as its name, and it covers no entry hazard", () => {
-    db.insert(schema.places)
-      .values({ ...place, created_at: "2026-10-10T08:00:00.000Z", type: "hazard", name: "Bridge out", details: " " })
+  it("shows the same entry hazard twice across puroks and barangays, and once for one spot", () => {
+    db.insert(schema.entries)
+      .values([
+        entry(18, { hazards: ["Leaning tree"], purok: "Purok 5" }),
+        entry(19, { hazards: ["Leaning tree"], purok: "Purok 5", barangay: "Dawo (Pob.)" }),
+        entry(20, { hazards: ["leaning tree"], purok: "Purok 9" }),
+        entry(21, { hazards: ["LEANING  TREE"], purok: "purok 5" }),
+      ])
       .run();
-    db.insert(schema.entries).values(entry(16, { hazards: ["Bridge out"], purok: "Purok 2" })).run();
-    const lines = lib.getHazardLines(db);
-    expect(lines).toContain("Bridge out");
-    expect(lines).toContain("Bridge out, Purok 2, Sinonoc");
+    expect(lines("leaning tree")).toEqual([
+      "Leaning tree, Purok 5, Sinonoc",
+      "Leaning tree, Purok 5, Dawo (Pob.)",
+      "Leaning tree, Purok 9, Sinonoc",
+    ]);
   });
 });
 

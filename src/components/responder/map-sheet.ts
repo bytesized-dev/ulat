@@ -23,15 +23,15 @@ type BboxSetting = { west: number; south: number; east: number; north: number };
 
 /** The map's box from the map_bbox setting, a JSON object of west, south, east and north. */
 export function parseBbox(raw: string | undefined, fallback: BboxSetting): [number, number, number, number] {
-  const use = (b: BboxSetting): [number, number, number, number] => [b.west, b.south, b.east, b.north];
+  const toTuple = (b: BboxSetting): [number, number, number, number] => [b.west, b.south, b.east, b.north];
   try {
     const b = JSON.parse(raw ?? "") as Record<string, unknown>;
     const { west, south, east, north } = b;
     if ([west, south, east, north].every((n) => typeof n === "number" && Number.isFinite(n)) && (west as number) < (east as number) && (south as number) < (north as number)) {
-      return use(b as BboxSetting);
+      return toTuple(b as BboxSetting);
     }
   } catch {
     // Missing or not JSON: use the fallback below.
   }
-  return use(fallback);
+  return toTuple(fallback);
 }

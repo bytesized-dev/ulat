@@ -158,6 +158,12 @@ describe("chatJson when the reply hits the token cap", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("names the num_predict the call sent when the caller raised it", async () => {
+    fetchMock.mockResolvedValue(capped(cut));
+    const error = await chatJson({ schema: schemaUnderTest, system: "sys", user: "usr", options: { num_predict: 4096 } }).catch((e) => e);
+    expect(error).toMatchObject({ kind: "invalid_output", message: "The reply hit the 4096 token cap", raw: cut });
+  });
+
   it("accepts a normal stop", async () => {
     fetchMock.mockResolvedValue(Response.json({ message: { content: '{"n":3}' }, done: true, done_reason: "stop" }));
     await expect(call()).resolves.toMatchObject({ value: { n: 3 } });

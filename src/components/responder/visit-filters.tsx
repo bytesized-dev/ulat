@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { ChevronDownIcon } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { TextToggle } from "./text-toggle";
 import { NO_FILTERS, type VisitFilters } from "./to-visit-order";
 
 const KEY = "ulat.responder.visit-filters";
@@ -72,26 +73,10 @@ type VisitFilterChipsProps = {
   /** The responder's team barangay. Without one there is no area chip. */
   team: string | null;
   className?: string;
-  /** Plain text with a check when on, for a row that should not look like buttons. The default is pills. */
-  variant?: "chip" | "text";
 };
 
 /** "Assigned to me" and the team's barangay, each on or off. */
-export function VisitFilterChips({ filters, onChange, team, className, variant = "chip" }: VisitFilterChipsProps) {
-  if (variant === "text") {
-    return (
-      <div role="group" aria-label="Filters" className={cn("flex flex-wrap gap-x-5", className)}>
-        <TextToggle indicator="check" pressed={filters.mine} onPressedChange={(mine) => onChange({ ...filters, mine })}>
-          Assigned to me
-        </TextToggle>
-        {team ? (
-          <TextToggle indicator="check" pressed={filters.area} onPressedChange={(area) => onChange({ ...filters, area })}>
-            {team}
-          </TextToggle>
-        ) : null}
-      </div>
-    );
-  }
+export function VisitFilterChips({ filters, onChange, team, className }: VisitFilterChipsProps) {
   return (
     <div role="group" aria-label="Filters" className={cn("flex gap-2 overflow-x-auto", className)}>
       <Chip pressed={filters.mine} onPressedChange={(mine) => onChange({ ...filters, mine })}>
@@ -103,5 +88,50 @@ export function VisitFilterChips({ filters, onChange, team, className, variant =
         </Chip>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The same two filters in a dropdown, for a row with no room for chips. It stays
+ * open while ticking, so both can be chosen, and the trigger counts what is on.
+ */
+export function VisitFilterMenu({ filters, onChange, team, className }: VisitFilterChipsProps) {
+  const active = Number(filters.mine) + Number(team !== null && filters.area);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-11 shrink-0 items-center gap-1 rounded-sm text-body-sm font-semibold whitespace-nowrap outline-none transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            active > 0 ? "text-ink" : "text-muted-text",
+            className,
+          )}
+        >
+          {active > 0 ? `Filter (${active})` : "Filter"}
+          <ChevronDownIcon aria-hidden="true" className="size-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuCheckboxItem
+          className="min-h-11 text-body-sm"
+          checked={filters.mine}
+          onCheckedChange={(mine) => onChange({ ...filters, mine })}
+          onSelect={(event) => event.preventDefault()}
+        >
+          Assigned to me
+        </DropdownMenuCheckboxItem>
+        {team ? (
+          <DropdownMenuCheckboxItem
+            className="min-h-11 text-body-sm"
+            checked={filters.area}
+            onCheckedChange={(area) => onChange({ ...filters, area })}
+            onSelect={(event) => event.preventDefault()}
+          >
+            {team}
+          </DropdownMenuCheckboxItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

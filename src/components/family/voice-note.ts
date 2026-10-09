@@ -62,7 +62,10 @@ export async function readVoiceNote(audio: Blob, send: typeof fetch = fetch): Pr
   }
 }
 
-/** Bar height from 7 to 66 px for a level from 0 to 1, the range the design draws. */
-export function barHeight(level: number): number {
-  return Math.round(7 + Math.min(1, Math.max(0, level)) * 59);
+/** How many heights a waveform bar can take, from the shortest to the tallest. */
+export const BAR_STEPS = 9;
+
+/** The height step for a level from 0 to 1. Out of range levels stay at the ends. */
+export function barStep(level: number): number {
+  return Math.round(Math.min(1, Math.max(0, level)) * (BAR_STEPS - 1));
 }

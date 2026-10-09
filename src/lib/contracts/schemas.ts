@@ -86,6 +86,8 @@ export const NewReport = z.object({
   what_happened: z.string().max(200).nullable(),
   needs: z.array(Need),
   voice_id: z.string().uuid().nullable(),
+  /** The photo the phone sent to POST /api/reports/photo. A phone on an older bundle omits it, which means no photo. */
+  photo_id: z.string().uuid().nullable().default(null),
   transcript: z.string().max(2000).nullable(),
   english: z.string().max(2000).nullable(),
   language: Language.nullable(),
@@ -106,6 +108,14 @@ export type NewVoiceMeta = z.infer<typeof NewVoiceMeta>;
 /** The answer to a voice upload. No URL: only a responder or staff can read the audio, by report. */
 export const VoiceStored = z.object({ voice_id: z.string().uuid() });
 export type VoiceStored = z.infer<typeof VoiceStored>;
+
+/** The fields next to the photo file in POST /api/reports/photo. Made on the phone like voice_id. */
+export const NewPhotoMeta = z.object({ photo_id: z.string().uuid() });
+export type NewPhotoMeta = z.infer<typeof NewPhotoMeta>;
+
+/** The answer to a photo upload. No URL: only a responder or staff can see the photo, by photo id. */
+export const PhotoStored = z.object({ photo_id: z.string().uuid() });
+export type PhotoStored = z.infer<typeof PhotoStored>;
 
 export const CantAssess = z.object({
   reason: CantAssessReason,

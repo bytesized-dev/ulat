@@ -10,7 +10,7 @@ export const DRAFT_KEY = "ulat.report-draft";
 // The field rules come from the NewReport contract, so a change there reaches
 // the draft. The draft only differs where a half-filled form needs it: text is
 // an empty string instead of null, and barangay may be empty until picked.
-const { source, people, lat, lng, voice_id } = NewReport.shape;
+const { source, people, lat, lng, voice_id, photo_id } = NewReport.shape;
 
 export const ReportDraft = z.object({
   source: source.exclude(["desk"]),
@@ -28,6 +28,8 @@ export const ReportDraft = z.object({
   what_happened: z.string().max(200),
   needs: z.array(Need),
   voice_id,
+  /** Made by the check screen's photo picker, once per photo. Null while the family has not added one. */
+  photo_id,
   transcript: z.string().max(2000),
   english: z.string().max(2000),
   language: Language.nullable(),
@@ -54,6 +56,7 @@ export function emptyDraft(): ReportDraft {
     what_happened: "",
     needs: [],
     voice_id: null,
+    photo_id: null,
     transcript: "",
     english: "",
     language: null,
@@ -152,6 +155,7 @@ export function draftFromReport(report: NewReport): ReportDraft {
     what_happened: report.what_happened ?? "",
     needs: report.needs,
     voice_id: report.voice_id,
+    photo_id: report.photo_id,
     transcript: report.transcript ?? "",
     english: report.english ?? "",
     language: report.language,
@@ -182,6 +186,7 @@ export function toNewReport(draft: ReportDraft) {
     what_happened: orNull(draft.what_happened),
     needs: draft.needs,
     voice_id: draft.voice_id,
+    photo_id: draft.photo_id,
     transcript: orNull(draft.transcript),
     english: orNull(draft.english),
     language: draft.language,

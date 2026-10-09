@@ -108,6 +108,7 @@ export function toNewReport(form: HouseholdForm, heard: HeardNote | null): NewRe
     what_happened: text(form.what),
     needs: form.needs,
     voice_id: null,
+    photo_id: null,
     transcript: heard?.transcript ?? null,
     english: heard?.english ?? null,
     language: heard?.language ?? null,

@@ -13,7 +13,7 @@ const canvas = {
   people: 241,
   hurt: 6,
   missing: 1,
-  priority: ["San Isidro", "Santa Cruz", "Mabini"],
+  priority: ["Sinonoc", "Dawo (Pob.)", "Potol (Pob.)"],
   needs: { water: 41, food: 38, tarp: 33 },
   notYetVisited: 17,
 };
@@ -22,7 +22,7 @@ describe("buildSms", () => {
   it("includes every key number and fits in two texts", () => {
     const text = buildSms(canvas);
     for (const n of ["46", "14", "23", "58", "241", "6 hurt", "1 missing", "17"]) expect(text).toContain(n);
-    expect(text).toContain("Priority: San Isidro, Santa Cruz.");
+    expect(text).toContain("Priority: Sinonoc, Dawo (Pob.).");
     expect(smsSegments(text)).toBe(2);
   });
 });

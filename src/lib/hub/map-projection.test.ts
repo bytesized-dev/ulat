@@ -1,0 +1,66 @@
+import { describe, expect, it } from "vitest";
+import { mapAssets } from "./map-assets";
+import { type Bbox, fromPercent, inside, toPercent, zoomBbox } from "./map-projection";
+
+// A stand-in town bbox, about 4 by 3 km, until the real town is picked.
+const bbox: Bbox = [124.0, 10.0, 124.04, 10.03];
+
+describe("toPercent", () => {
+  it("puts the corners at 0 and 100", () => {
+    expect(toPercent({ lng: 124.0, lat: 10.03 }, bbox)).toEqual({ x: 0, y: 0 });
+    const se = toPercent({ lng: 124.04, lat: 10.0 }, bbox);
+    expect(se.x).toBeCloseTo(100);
+    expect(se.y).toBeCloseTo(100);
+  });
+
+  it("grows y southwards like the screen", () => {
+    const north = toPercent({ lng: 124.02, lat: 10.025 }, bbox);
+    const south = toPercent({ lng: 124.02, lat: 10.005 }, bbox);
+    expect(south.y).toBeGreaterThan(north.y);
+  });
+});
+
+describe("fromPercent", () => {
+  it("round trips with toPercent, so seed positions land where the canvas shows them", () => {
+    for (const pos of [
+      { x: 58.8, y: 45.2 },
+      { x: 0, y: 100 },
+      { x: 29, y: 44.6 },
+    ]) {
+      const back = toPercent(fromPercent(pos, bbox), bbox);
+      expect(back.x).toBeCloseTo(pos.x, 6);
+      expect(back.y).toBeCloseTo(pos.y, 6);
+    }
+  });
+});
+
+describe("zoomBbox", () => {
+  it("keeps the center and halves the span at factor 2", () => {
+    const z = zoomBbox(bbox, 2);
+    const center = toPercent({ lng: (z[0] + z[2]) / 2, lat: (z[1] + z[3]) / 2 }, bbox);
+    expect(center.x).toBeCloseTo(50, 1);
+    expect(center.y).toBeCloseTo(50, 1);
+    expect(z[2] - z[0]).toBeCloseTo((bbox[2] - bbox[0]) / 2);
+  });
+
+  it("is the same bbox at factor 1", () => {
+    zoomBbox(bbox, 1).forEach((v, i) => expect(v).toBeCloseTo(bbox[i]));
+  });
+});
+
+describe("inside", () => {
+  it("is true only within the map area", () => {
+    expect(inside({ x: 50, y: 50 })).toBe(true);
+    expect(inside({ x: -1, y: 50 })).toBe(false);
+    expect(inside({ x: 50, y: 101 })).toBe(false);
+  });
+});
+
+describe("mapAssets", () => {
+  it("serves every map file from the hub, never from the internet", () => {
+    for (const url of Object.values(mapAssets)) {
+      expect(url.startsWith("/map/")).toBe(true);
+      expect(url).not.toMatch(/^[a-z]+:\/\//);
+    }
+  });
+});

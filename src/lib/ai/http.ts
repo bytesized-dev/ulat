@@ -1,27 +1,28 @@
-import { z } from "zod";
+import { AiErrorBody } from "@/lib/contracts";
 import { OllamaError } from "./ollama";
 
-// What the AI routes send back when they cannot return an extract. The family
-// screen shows a retry button when `retry` is true. This lives here, not in
-// src/lib/contracts, until CJ moves it there.
+// The shape of the error body lives in src/lib/contracts. It is re-exported so
+// code that imports it from here keeps working.
+export { AiErrorBody };
 
-export const AiErrorBody = z.object({
-  error: z.enum(["bad_request", "too_large", "timeout", "unavailable", "invalid_output"]),
-  retry: z.boolean(),
-});
-export type AiErrorBody = z.infer<typeof AiErrorBody>;
+type AiErrorKind = AiErrorBody["error"];
 
-const STATUS: Record<AiErrorBody["error"], number> = {
+const STATUS: Record<AiErrorKind, number> = {
   bad_request: 400,
   too_large: 413,
+  rejected: 422,
   timeout: 504,
   unavailable: 503,
   invalid_output: 502,
 };
 
-export function aiError(error: AiErrorBody["error"]): Response {
-  const body: AiErrorBody = { error, retry: error !== "bad_request" && error !== "too_large" };
-  return Response.json(body, { status: STATUS[error], headers: { "Cache-Control": "no-store" } });
+// Sending the same request again cannot change these.
+const FINAL: ReadonlySet<AiErrorKind> = new Set(["bad_request", "too_large", "rejected"]);
+
+/** `status` overrides the usual one, for example 411 on a bad_request. */
+export function aiError(error: AiErrorKind, status: number = STATUS[error]): Response {
+  const body: AiErrorBody = { error, retry: !FINAL.has(error) };
+  return Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 /** Turn a failed model call into a response. Anything else is a bug and rethrows. */

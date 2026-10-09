@@ -59,6 +59,17 @@ export const AiTranslation = z.object({
 });
 export type AiTranslation = z.infer<typeof AiTranslation>;
 
+/**
+ * What the AI routes send back when they cannot return an extract. Screens show
+ * a retry button only when `retry` is true. `rejected` is Ollama refusing the
+ * input with a 4xx, so the same request can never succeed.
+ */
+export const AiErrorBody = z.object({
+  error: z.enum(["bad_request", "too_large", "rejected", "timeout", "unavailable", "invalid_output"]),
+  retry: z.boolean(),
+});
+export type AiErrorBody = z.infer<typeof AiErrorBody>;
+
 /* ---------- API inputs ---------- */
 
 export const NewReport = z.object({

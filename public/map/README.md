@@ -5,7 +5,8 @@ Everything the map needs, served by the hub. Nothing here is fetched from the in
 | File | Source | As of | Licence |
 |---|---|---|---|
 | `town.pmtiles` | Protomaps daily build `20261008`, basemap v4, cut to 123.08,8.41,123.55,9.00, zoom 0 to 15 | OpenStreetMap data of 8 Oct 2026 | ODbL 1.0. Show "© OpenStreetMap contributors" on the map |
-| `fonts/` | Noto Sans Regular, Medium and Italic glyphs from protomaps/basemaps-assets | 9 Oct 2026 | SIL Open Font License 1.1, see `fonts/OFL.txt` |
+| `fonts/` | Noto Sans Regular, Medium, Italic and Devanagari glyphs from protomaps/basemaps-assets, the fonts the basemap style names | 9 Oct 2026 | SIL Open Font License 1.1, see `fonts/OFL.txt` |
+| `maplibre-gl-worker.mjs` | Copy of `node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs`, maplibre-gl 6.13.0. Copy it again after an upgrade; a test checks they match | 9 Oct 2026 | BSD 3-Clause |
 | `sprites/v4/light*` | Protomaps basemap icons from protomaps/basemaps-assets | 9 Oct 2026 | MIT, derived from tangrams/icons |
 | `barangays.geojson` | HDX Philippines Subnational Administrative Boundaries (COD-AB, PSA and NAMRIA), admin level 4, `adm3_pcode` PH0907201, simplified to about 5 m | Valid from 13 Feb 2025 | CC BY-IGO. Credit OCHA, PSA and NAMRIA |
 
@@ -18,4 +19,4 @@ Everything the map needs, served by the hub. Nothing here is fetched from the in
 
 ## Sizes
 
-About 3.5 MB of tiles, 13 MB of glyphs in 768 small files, 60 KB of sprites and 90 KB of boundaries.
+About 3.5 MB of tiles, 15 MB of glyphs in 1,024 small files, 500 KB of MapLibre worker, 60 KB of sprites and 90 KB of boundaries.

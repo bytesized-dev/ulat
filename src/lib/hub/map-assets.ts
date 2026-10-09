@@ -4,6 +4,8 @@
  *
  * scripts/map/fetch-map.sh writes these files once, before the storm.
  */
+import type { Bbox } from "./map-projection";
+
 export const mapAssets = {
   /** The town cut from the Protomaps daily build. Read through the pmtiles protocol. */
   tiles: "/map/town.pmtiles",
@@ -13,7 +15,15 @@ export const mapAssets = {
   sprite: "/map/sprites/v4/light",
   /** Barangay boundaries from HDX, cut to the town. */
   barangays: "/map/barangays.geojson",
+  /**
+   * MapLibre's web worker, a copy of node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs.
+   * MapLibre looks for it next to its own script, which a bundler moves, so it is served from here.
+   */
+  worker: "/map/maplibre-gl-worker.mjs",
 } as const;
+
+/** The area town.pmtiles covers. The map cannot pan past it, since there is nothing to draw there. */
+export const tilesBounds: Bbox = [123.08, 8.41, 123.55, 9.0];
 
 /**
  * The map colors, by role, as token names from DESIGN.md. The MapLibre style
@@ -33,7 +43,10 @@ export const mapTokens = {
   shade2: "map-shade-2",
   shade3: "map-shade-3",
   label: "body",
+  halo: "canvas",
 } as const;
+
+export type MapRole = keyof typeof mapTokens;
 
 /** The property on each barangay feature that holds its name, as the seed spells it. */
 export const barangayNameProperty = "name";

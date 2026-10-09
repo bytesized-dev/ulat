@@ -16,11 +16,18 @@ describe("offline map package", () => {
   });
 
   it("has every glyph range for the label fonts, so labels render offline", () => {
-    for (const font of [labelFont, "Noto Sans Medium", "Noto Sans Italic"]) {
+    for (const font of [labelFont, "Noto Sans Medium", "Noto Sans Italic", "Noto Sans Devanagari Regular v1"]) {
       const ranges = readdirSync(`public/map/fonts/${font}`).filter((f) => f.endsWith(".pbf"));
       expect(ranges).toHaveLength(256);
     }
     expect(existsSync("public/map/fonts/OFL.txt")).toBe(true);
+  });
+
+  it("serves the same MapLibre worker as the installed maplibre-gl", () => {
+    // After a maplibre-gl upgrade, copy node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs to public/map again.
+    const served = readFileSync(pub(mapAssets.worker));
+    const installed = readFileSync("node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs");
+    expect(served.equals(installed)).toBe(true);
   });
 
   it("has the light sprites at 1x and 2x", () => {

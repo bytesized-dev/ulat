@@ -87,7 +87,8 @@ function ToVisitList({ responderId, responderName, team, reports }: ToVisitListP
           <h1 className="text-title-page text-ink">To visit</h1>
           <span className="font-mono text-mono-sm text-muted-text">{shown.length}</span>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        {/* Sort on top, filters under it, both on the same two columns so every chip lines up. */}
+        <div role="group" aria-label="Sort" className="mt-4 grid grid-cols-2 gap-2">
           <Chip pressed={sort === "urgent"} onPressedChange={() => setSort("urgent")}>
             Urgent first
           </Chip>
@@ -95,7 +96,7 @@ function ToVisitList({ responderId, responderName, team, reports }: ToVisitListP
             Nearest
           </Chip>
         </div>
-        <VisitFilterChips filters={filters} onChange={setFilters} team={team} className="mt-2" />
+        <VisitFilterChips filters={filters} onChange={setFilters} team={team} className="mt-2 grid grid-cols-2 overflow-visible" />
         <div className="mt-4 flex flex-col">
           {items.map((item) => (
             <ToVisitRow key={item.code} item={item} responderId={responderId} />

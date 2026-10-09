@@ -8,28 +8,36 @@ import { cn, typeScale } from "../../src/lib/utils";
 
 describe("class merging keeps type and colour apart", () => {
   it("keeps a text colour when a type size is merged after it", () => {
-    expect(cn("text-on-action", "text-body")).toContain("text-on-action");
-    expect(cn("text-error", "text-label")).toContain("text-error");
-    expect(cn("text-text-2", "text-small")).toContain("text-text-2");
+    expect(cn("text-primary-foreground", "text-title-sm")).toContain("text-primary-foreground");
+    expect(cn("text-danger", "text-caption")).toContain("text-danger");
+    expect(cn("text-muted-text", "text-body-sm")).toContain("text-muted-text");
+  });
+
+  it("keeps text-body, the secondary colour, next to text-body-md, the size", () => {
+    const merged = cn("text-body", "text-body-md");
+    expect(merged).toContain("text-body-md");
+    expect(merged.split(" ")).toContain("text-body");
   });
 
   it("still lets one type size replace another", () => {
-    const merged = cn("text-body", "text-title");
-    expect(merged).toContain("text-title");
-    expect(merged).not.toContain("text-body");
+    const merged = cn("text-body-md", "text-title-page");
+    expect(merged).toContain("text-title-page");
+    expect(merged).not.toContain("text-body-md");
   });
 
   it("still lets one text colour replace another", () => {
-    const merged = cn("text-text-2", "text-error");
-    expect(merged).toContain("text-error");
-    expect(merged).not.toContain("text-text-2");
+    const merged = cn("text-body", "text-danger");
+    expect(merged).toContain("text-danger");
+    expect(merged).not.toContain("text-body");
   });
 });
 
 describe("the scale named in utils matches the one in globals.css", () => {
   it("has a token for every size and a size for every token", () => {
     const css = readFileSync("src/app/globals.css", "utf8");
-    const declared = [...css.matchAll(/^\s*--text-([a-z]+):/gm)].map((m) => m[1]);
+    // Whole names such as display-xl. A modifier such as display-xl--line-height
+    // has a double dash after the name, so the colon never follows it directly.
+    const declared = [...css.matchAll(/^\s*--text-([a-z0-9]+(?:-[a-z0-9]+)*):/gm)].map((m) => m[1]);
     expect([...declared].sort()).toEqual([...typeScale].sort());
   });
 });

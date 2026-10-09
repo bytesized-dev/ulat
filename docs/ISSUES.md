@@ -65,6 +65,7 @@ Priority means tier: Urgent is tier 1, High is tier 2, Medium is tier 3. Milesto
 | BYT-65 | Store a family report photo | CJ | 3 Tier 2 | platform | High | 1.5 |
 | BYT-66 | Check your report: step 3 UI and a working photo | Artkin | 3 Tier 2 | family | High | 3 |
 | BYT-67 | Family report detail: show the family's photo | James | 3 Tier 2 | responder | High | 0.5 |
+| BYT-68 | Responder sign in: email and password in a clean layout | Artkin | 3 Tier 2 | responder | High | 3 |
 | BYT-32 | Possible duplicates | Sean | 4 Tier 3 | hub | Medium | 1.5 |
 | BYT-41 | Lock screen and low battery | Sean | 4 Tier 3 | hub | Medium | 1 |
 | BYT-43 | Printable situation report and join poster | Sean | 4 Tier 3 | hub | Medium | 1 |
@@ -792,6 +793,33 @@ No design covers the photo, so keep it small and match the note block.
 - [ ] Tapping it opens the photo full size, with a labeled close button
 - [ ] A report with no photo shows no empty slot
 - [ ] `pnpm typecheck && pnpm test` pass, and the PR has screenshots at 390px with and without a photo
+
+---
+
+## BYT-68 Responder sign in: email and password in a clean layout
+
+- **Owner:** Artkin. Responder app area, James reviews the responder files and CJ the crossings.
+- **Milestone:** 3 Tier 2
+- **Label:** responder
+- **Priority:** High, tier 2
+- **Estimate:** 3 h
+- **Spec:** 1, 3, 4
+- **Screens:**
+  - Responder: unlock: `design/screens/responder/unlock.html`, `design/png/responder/unlock.png`, route `/r/sign-in`
+
+The responder sign in page looks unfinished. At 1440px the name list, the keypad and the Unlock button stretch to the edges of the window. At 390px and 425px there is a tall empty gap between the keypad and the button. This issue replaces the name list and PIN pad with an email and password form in one narrow centered column, and gives each teammate a test account. This issue's layout overrides the design wherever they disagree. Keep the heading "Responder sign in". Linear has the full checklist.
+
+**Acceptance criteria**
+
+- [ ] One column no wider than `max-w-sm`, centered at 1440px. Heading, Email, Password, error line, then Sign in right under the fields, not pinned to the bottom
+- [ ] Email and Password use the shared `Input` and `Label`. Password has a show or hide button with an `aria-label` and a 44px target
+- [ ] Enter submits. Sign in is disabled until both fields have text and reads "Signing in" while it waits
+- [ ] A wrong try shows "Wrong email or password. Try again.", clears the password and keeps the email
+- [ ] `pin-pad.tsx` and `pin-entry.ts` are deleted
+- [ ] `responders` gets `email` and `password_hash`, and `ResponderSignIn` becomes `{ email, password }`. The route checks the password per account and no longer reads `team_pin_hash`
+- [ ] The seed has four responders with the password `ulat2026`: CJ Jutba `cjjutba@gmail.com`, Artkin Carreon `artkin@gmail.com`, Sean Jacinto `sean@gmail.com`, James Calunsag `james@gmail.com`. They replace r1 to r4, and r5's records move to r2
+- [ ] The e2e test, README, SPEC and the privacy line in AGENTS.md describe email and password, not the team PIN
+- [ ] `pnpm typecheck && pnpm test` pass, and the PR has screenshots at 390px and 1440px of the empty form, the filled form and a wrong password
 
 ---
 

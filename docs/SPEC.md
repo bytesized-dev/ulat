@@ -134,7 +134,6 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 | `POST /api/reports/[code]/assign` | Staff | Assign to a responder |
 | `POST /api/reports/[code]/cant-assess` | Responder | Reason and note |
 | `POST /api/entries` | Responder | Creates a draft from photos, note, GPS and an optional report code, then runs the photo pipeline |
-| `POST /api/entries` (JSON) | Responder | `StartDraft` with a report code. Starts a draft with no photos from the report's house, or returns the draft already open for it. 409 when the report is visited, cant_assess or merged. Photos are added with `POST /api/entries/[id]/photos` |
 | `POST /api/entries/[id]/photos` | Responder | Adds a photo to a draft and runs the photo draft again |
 | `GET /api/entries/[id]` | Responder, staff | Entry with photos, AI draft and history |
 | `PATCH /api/entries/[id]` | Responder, staff | `EntryConfirm` to confirm, or field edits. Records changes in `events` |

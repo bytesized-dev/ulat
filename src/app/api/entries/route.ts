@@ -4,18 +4,67 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { entries, photos, reports } from "@/db/schema";
 import { draftEntry } from "@/lib/ai/draft-entry";
-import { ConfirmedDamageClass, NewEntryMeta } from "@/lib/contracts";
+import { ConfirmedDamageClass, NewEntryMeta, StartDraft } from "@/lib/contracts";
 import { audit } from "./_lib/audit";
 import { authorize } from "./_lib/auth";
 import { MAX_PHOTOS, storeUpload, type Stored } from "./_lib/uploads";
 
 // POST creates a draft from photos, an optional voice note, GPS and an optional
-// report code, then runs the photo pipeline. GET lists confirmed entries.
+// report code, then runs the photo pipeline. A JSON body with only a report
+// code starts a draft with no photos yet, which is what "Start assessment" on
+// a family report does. GET lists confirmed entries.
+
+const ASSESSABLE: (typeof reports.$inferSelect.status)[] = ["waiting", "assigned", "on_the_way"];
+
+// Opens the capture screen's draft for a report. A second tap, or a second
+// responder on the same house, gets the draft that already exists.
+async function startDraft(req: Request, actorId: string) {
+  const body = StartDraft.safeParse(await req.json().catch(() => null));
+  if (!body.success) return Response.json({ error: "bad_body", issues: body.error.issues }, { status: 400 });
+
+  const report = db.select().from(reports).where(eq(reports.code, body.data.report_code)).get();
+  if (!report) return Response.json({ error: "report_not_found" }, { status: 404 });
+  // A house that was visited, cannot be assessed or was merged is not assessed
+  // again from its report. A second entry would count the house twice.
+  if (!ASSESSABLE.includes(report.status)) return Response.json({ error: "report_closed", status: report.status }, { status: 409 });
+
+  const open = db
+    .select({ id: entries.id, number: entries.number })
+    .from(entries)
+    .where(and(eq(entries.report_id, report.id), eq(entries.status, "draft")))
+    .get();
+  if (open) return Response.json({ id: open.id, number: open.number, status: "draft" }, { status: 200 });
+
+  const id = randomUUID();
+  const number = db.transaction((tx) => {
+    const next = (tx.select({ n: sql<number>`coalesce(max(${entries.number}), 0)` }).from(entries).get()?.n ?? 0) + 1;
+    tx.insert(entries)
+      .values({
+        id,
+        number: next,
+        report_id: report.id,
+        responder_id: actorId,
+        barangay: report.barangay,
+        purok: report.purok,
+        household_head: report.household_head,
+        lat: report.lat,
+        lng: report.lng,
+        status: "draft",
+        created_at: new Date().toISOString(),
+      })
+      .run();
+    audit(tx, id, "entry.created", actorId, { number: next, report_code: report.code, photos: 0, note: false });
+    return next;
+  });
+  return Response.json({ id, number, status: "draft" }, { status: 201 });
+}
 
 export async function POST(req: Request) {
   const actor = await authorize("responder");
   if (actor instanceof Response) return actor;
   if (actor.role !== "responder") return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  if (req.headers.get("content-type")?.startsWith("application/json")) return startDraft(req, actor.id);
 
   let form: FormData;
   try {

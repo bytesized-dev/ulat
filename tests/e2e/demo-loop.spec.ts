@@ -30,6 +30,8 @@ const GPS = { geolocation: { latitude: 8.6556, longitude: 123.429 }, permissions
 // A name the seed does not use, so each pin label below matches one pin.
 const HOUSEHOLD = "Magsaysay household";
 const PUROK = "Purok 3";
+// Nothing is picked for the family, so the test picks one the seed lists.
+const BARANGAY = "Sinonoc";
 // The barangay the location screen names once it has applied the family's fix.
 // The map starts in another one, so seeing this name means the fix landed.
 const homeBarangay = barangayAt(
@@ -91,6 +93,9 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
 
     // Whose household
     await expect(family.getByRole("heading", { name: "Whose household?" })).toBeVisible();
+    await family.getByLabel("Head of household").fill(HOUSEHOLD);
+    await family.getByLabel("Barangay").click();
+    await family.getByRole("dialog").getByRole("button", { name: BARANGAY, exact: true }).click();
     await family.getByLabel("Purok").fill(PUROK);
     await action(family, "Continue").click();
 
@@ -103,11 +108,7 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await action(family, "Continue").click();
 
     // Check your report
-    // The typed note gives no head of household and a report cannot be sent without one.
     await expect(family.getByRole("heading", { name: "Check your report" })).toBeVisible();
-    await family.getByRole("button", { name: /Head of household/ }).click();
-    await family.getByRole("textbox", { name: "Head of household" }).fill(HOUSEHOLD);
-    await family.getByRole("button", { name: "Save" }).click();
 
     // Where the house is. Without a position the report has no pin on the hub map.
     await family.getByRole("link", { name: /Location/ }).click();

@@ -28,5 +28,14 @@ export default defineConfig({
         reuseExistingServer: false,
         timeout: 60_000,
       },
-  projects: [{ name: "chromium", use: { browserName: "chromium" } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        browserName: "chromium",
+        // The responder records a note, so give Chromium a microphone that plays a tone.
+        launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] },
+      },
+    },
+  ],
 });

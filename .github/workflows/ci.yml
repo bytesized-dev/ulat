@@ -37,5 +37,5 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-      # Add the Playwright steps back with the first smoke test in tests/e2e:
-      # pnpm exec playwright install --with-deps chromium, then pnpm e2e.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm e2e

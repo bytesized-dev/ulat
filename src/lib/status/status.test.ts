@@ -21,7 +21,8 @@ vi.mock("node:dns/promises", () => ({
 }));
 const statfs = vi.hoisted(() => vi.fn());
 vi.mock("node:fs/promises", () => ({ statfs }));
-vi.mock("@/lib/auth/settings", () => ({ readSetting: () => "true" }));
+const readSetting = vi.hoisted(() => vi.fn(() => "true"));
+vi.mock("@/lib/auth/settings", () => ({ readSetting }));
 
 const globalForStatus = globalThis as unknown as {
   ulatInternetCache?: unknown;
@@ -39,6 +40,7 @@ beforeEach(() => {
   noPmset();
   statfs.mockReset();
   statfs.mockRejectedValue(new Error("ENOENT"));
+  readSetting.mockClear();
   delete globalForStatus.ulatInternetCache;
   globalForStatus.ulatPhonesSeen?.clear();
 });
@@ -161,6 +163,33 @@ describe("GET /api/health", () => {
 });
 
 describe("status ticker", () => {
+  it("keeps ticking after a read throws", async () => {
+    vi.useFakeTimers();
+    clearInterval(globalForStatus.ulatStatusTicker);
+    delete globalForStatus.ulatStatusTicker;
+
+    // The database fails on the first beat only.
+    readSetting.mockImplementationOnce(() => {
+      throw new Error("database is locked");
+    });
+
+    const seen: HubEvent[] = [];
+    const off = subscribe({ role: "staff" }, (event) => seen.push(event));
+    try {
+      startStatusTicker();
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(readSetting).toHaveBeenCalledTimes(1);
+      expect(seen).toEqual([]);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(seen).toHaveLength(1);
+      expect(seen[0].type).toBe("hub.status");
+    } finally {
+      off();
+      clearInterval(globalForStatus.ulatStatusTicker);
+      delete globalForStatus.ulatStatusTicker;
+    }
+  });
+
   it("skips a beat while the previous read is still running", async () => {
     vi.useFakeTimers();
     clearInterval(globalForStatus.ulatStatusTicker);

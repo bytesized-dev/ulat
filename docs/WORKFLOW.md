@@ -57,7 +57,6 @@ Read DESIGN.md and the SPEC section the issue lists. Plan first, then build. Sta
 Done means the acceptance criteria pass, pnpm typecheck && pnpm test pass, and the page matches the PNG at 390px.
 ```
 
-- `/plan`, `/feature` and `/verify` from the starter kit fit this flow.
 - If Claude Code wants to change a contract or add a dependency, stop and post in chat instead.
 - Windows teammates without Ollama use `MOCK_AI=1`. For real AI during development, CJ exposes Ollama over Tailscale with `OLLAMA_HOST=0.0.0.0`, and you point `OLLAMA_URL` at CJ's Tailscale address.
 

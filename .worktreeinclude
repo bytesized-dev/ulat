@@ -1,0 +1,2 @@
+# Copied into every new worktree, so a session there has the same local env.
+.env.local

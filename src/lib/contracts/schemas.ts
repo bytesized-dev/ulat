@@ -111,10 +111,6 @@ export const NewEntryMeta = z.object({
 });
 export type NewEntryMeta = z.infer<typeof NewEntryMeta>;
 
-/** JSON body of POST /api/entries that starts a draft with no photos yet. */
-export const StartDraft = z.object({ report_code: ReportCode });
-export type StartDraft = z.infer<typeof StartDraft>;
-
 export const EntryConfirm = z.object({
   damage_class: ConfirmedDamageClass,
   material: Material,

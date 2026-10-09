@@ -51,7 +51,7 @@ function Field({ id, label, error, children }: FieldProps) {
 // margin is a little more than the footer is tall.
 const CLEAR_OF_FOOTER = "scroll-mb-36";
 
-// Step 1 of 4. Every change goes straight into the report draft, so leaving
+// Step 1 of 2. Every change goes straight into the report draft, so leaving
 // and coming back keeps the answers. Nothing is picked for the family: the
 // barangay stays empty until they choose one. Continue checks the required
 // fields, shows the first one that is empty and moves focus to it.
@@ -90,7 +90,7 @@ function WhoseHouseholdForm({ barangays, requestedSource = null }: WhoseHousehol
     event.preventDefault();
     const missing = firstMissing({ ...draft, source, barangay }, barangays);
     setError(missing);
-    if (!missing) router.push(routes.family.voice);
+    if (!missing) router.push(routes.family.check);
   }
 
   function fieldProps(field: StartField, id: string) {

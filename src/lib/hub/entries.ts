@@ -6,7 +6,7 @@ import { ConfirmedDamageClass } from "../contracts/schemas";
 import { likePattern } from "./safe";
 
 // docs/SPEC.md sections 3 and 4. What the hub entries pages read: a paged,
-// filtered list and one entry with its photos, AI draft comparison and history.
+// filtered list and one entry with its photos and history.
 // Callers pass the database so tests can use their own file. Server only.
 
 export const ENTRIES_PER_PAGE = 10;
@@ -100,22 +100,6 @@ export function listEntries(db: Db, query: Partial<EntryQuery> = {}, perPage = E
   return { rows, total, page, pages, per_page: perPage };
 }
 
-/** The fields the AI draft is compared on, in the order the screen lists them. */
-export const COMPARED_FIELDS = ["damage_class", "material", "people", "hurt", "needs"] as const;
-export type ComparedField = (typeof COMPARED_FIELDS)[number];
-
-export type FieldValue = string | number | string[] | null;
-
-export type FieldComparison = {
-  field: ComparedField;
-  /** What the field held before the first edit. For damage, what the model said. */
-  draft: FieldValue;
-  final: FieldValue;
-  changed: boolean;
-  /** Who made the last change, as a name. Null when nothing changed. */
-  changed_by: string | null;
-};
-
 export type HistoryItem = { label: string; at: string };
 
 export type EntryDetail = {
@@ -128,13 +112,7 @@ export type EntryDetail = {
     /** True when people, hurt and missing are the same in the report and the entry. */
     counts_match: boolean;
   } | null;
-  comparison: FieldComparison[];
   history: HistoryItem[];
-};
-
-const sameValue = (a: FieldValue, b: FieldValue) => {
-  const norm = (v: FieldValue) => (Array.isArray(v) ? [...v].sort() : v);
-  return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
 };
 
 const firstName = (name: string) => name.split(" ")[0] ?? name;
@@ -169,38 +147,23 @@ export function getEntryDetail(db: Db, id: string): EntryDetail | null {
 
   const report = entry.report_id ? db.select().from(reports).where(eq(reports.id, entry.report_id)).get() : undefined;
 
-  const comparison = COMPARED_FIELDS.map((field): FieldComparison => {
-    const edits = rows.filter((e) => e.type === "entry.field_changed" && e.data?.field === field);
-    const final = entry[field] as FieldValue;
-    // The entry row only keeps the model's damage class. Every other field
-    // keeps the value it had before the first recorded edit.
-    const draft = field === "damage_class" ? entry.ai_class : ((edits[0]?.data?.from as FieldValue | undefined) ?? final);
-    const changed = !sameValue(draft, final);
-    const last = edits.at(-1);
-    const by = last ? who(last.actor) : entry.confirmed_by ? who(entry.confirmed_by) : null;
-    return { field, draft, final, changed, changed_by: changed ? by : null };
-  });
-
   const history: HistoryItem[] = [];
   if (report) history.push({ label: "Family report", at: report.created_at });
-  for (const e of rows) {
+  // Older rows may hold AI photo events. No screen shows them.
+  for (const e of rows.filter((r) => !r.type.startsWith("ai."))) {
     const field = FIELD_NAMES[String(e.data?.field)] ?? String(e.data?.field);
     const label =
       e.type === "entry.created"
         ? `Taken by ${firstName(who(e.actor))}`
         : e.type === "entry.photo_added"
           ? `Photo added by ${firstName(who(e.actor))}`
-          : e.type === "ai.photo"
-            ? "AI draft"
-            : e.type === "ai.photo.failed"
-              ? "AI draft failed"
-              : e.type === "entry.field_changed"
-                ? `Changed ${field} by ${firstName(who(e.actor))}`
-                : e.type === "entry.needs_review"
-                  ? `Sent for review by ${firstName(who(e.actor))}`
-                  : e.type === "entry.confirmed"
-                    ? "Confirmed"
-                    : e.type.replace(/[._]/g, " ").replace(/^./, (c) => c.toUpperCase());
+          : e.type === "entry.field_changed"
+            ? `Changed ${field} by ${firstName(who(e.actor))}`
+            : e.type === "entry.needs_review"
+              ? `Sent for review by ${firstName(who(e.actor))}`
+              : e.type === "entry.confirmed"
+                ? "Confirmed"
+                : e.type.replace(/[._]/g, " ").replace(/^./, (c) => c.toUpperCase());
     history.push({ label, at: e.at });
   }
   history.sort((a, b) => a.at.localeCompare(b.at));
@@ -221,7 +184,6 @@ export function getEntryDetail(db: Db, id: string): EntryDetail | null {
           counts_match: report.people === entry.people && report.hurt === entry.hurt && report.missing === entry.missing,
         }
       : null,
-    comparison,
     history,
   };
 }

@@ -9,7 +9,10 @@ import { routes } from "@/lib/contracts";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchSelect } from "@/components/ui/search-select";
+import { cn } from "@/lib/utils";
 import { type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, PHOTO_LABELS } from "./capture";
+import { EntryFields } from "./entry-fields";
+import { canConfirm, type ClassFrom, type EntryForm, type EntryStart, initialForm } from "./entry-form";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
 import { type ClientIds, createClientIds, sendEntry, UNCLEAR_ANSWER } from "./send-entry";
@@ -20,9 +23,29 @@ const fieldLabel = "text-body-sm font-semibold text-ink";
 type Photo = { file: File; label: string; url: string };
 
 // With newHouse, the responder types the house in, because no family report named it.
-type AssessFormProps = { house: House; newHouse?: boolean; barangays?: string[] };
+type AssessFormProps = {
+  house: House;
+  newHouse?: boolean;
+  barangays?: string[];
+  /** The family report and the hub's reading of its photo. A house with no report starts empty. */
+  start?: EntryStart;
+  classFrom?: ClassFrom;
+  /** The family report's hurt count, for "Matches report". */
+  reportHurt?: number | null;
+};
 
-function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFormProps) {
+/** What still stops Confirm entry, in words. Null when it can go. */
+function missingText(photos: number, classChosen: boolean): string | null {
+  if (photos === 0 && !classChosen) return "Add a photo and choose a damage class to confirm.";
+  if (photos === 0) return "Add at least one photo to confirm.";
+  if (!classChosen) return "Choose a damage class to confirm.";
+  return null;
+}
+
+// One screen per house: the responder takes the photos, checks what the family
+// and the hub's reading of their photo said, and confirms. No AI reads the
+// responder's photos or note, so nothing waits after Confirm entry.
+function AssessForm({ house: given, newHouse = false, barangays = [], start, classFrom = null, reportHurt = null }: AssessFormProps) {
   const [fields, setFields] = useState({ barangay: given.barangay, purok: given.purok ?? "", head: given.household_head ?? "" });
   const house: House = newHouse
     ? { report_code: null, barangay: fields.barangay, purok: fields.purok.trim() || null, household_head: fields.head.trim() || null }
@@ -30,12 +53,13 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const sending = useRef(false);
-  // Made on the first Send and kept for the life of this form, so a tap after a lost reply is a resend.
+  // Made on the first Confirm and kept for the life of this form, so a tap after a lost reply is a resend.
   const clientIds = useRef<ClientIds | null>(null);
   const barangayField = useRef<HTMLButtonElement>(null);
   // A new object on each failed send, so focus moves again if the field is still empty.
   const [barangayError, setBarangayError] = useState<{ message: string } | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [form, setForm] = useState<EntryForm>(() => initialForm(start));
   const [note, setNote] = useState<Blob | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [gps, setGps] = useState<Gps | null>(null);
@@ -80,20 +104,31 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     setPhotos((p) => p.filter((_, i) => i !== index).map((x, i) => ({ ...x, label: nextLabel(i) ?? x.label })));
   }
 
+  const classChosen = canConfirm(form);
+  const missing = missingText(photos.length, classChosen);
+
   async function send() {
     // The ref answers at once. State would still read false for a second tap in
     // the same frame, and each POST makes its own entry.
-    if (sending.current || photos.length === 0) return;
+    if (sending.current || missing) return;
     // A house opened from a report brings its barangay. A new house starts empty and needs one.
     if (newHouse && !barangays.includes(fields.barangay)) return setBarangayError({ message: "Choose a barangay" });
     sending.current = true;
     setBusy(true);
     setError(null);
     clientIds.current ??= createClientIds();
-    const outcome = await sendEntry({ house, labels: photos.map((p) => p.label), gps, photos: photos.map((p) => p.file), note, ids: clientIds.current });
+    const outcome = await sendEntry({
+      house,
+      labels: photos.map((p) => p.label),
+      gps,
+      photos: photos.map((p) => p.file),
+      note,
+      entry: form,
+      ids: clientIds.current,
+    });
     if (outcome.kind === "saved") {
       // Stay locked while the next screen loads, so a late tap cannot post again.
-      router.push(routes.responder.drafting(outcome.id));
+      router.push(routes.responder.confirmed(outcome.id));
       return;
     }
     if (outcome.kind === "invalid") setError("This house is missing its barangay. Go back and open it again.");
@@ -242,14 +277,22 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
           <MapPinIcon aria-hidden="true" className={gps ? "size-4 text-success" : "size-4 text-muted"} />
           {gpsText(gps, gpsFailed)}
         </p>
-        {photos.length === 0 ? <p className="text-body-sm text-body">Add at least one photo to send.</p> : null}
-        <p role="alert" className="min-h-5 text-body-sm text-danger">
+        <EntryFields form={form} onChange={(patch) => setForm((f) => ({ ...f, ...patch }))} reportHurt={reportHurt} classFrom={classFrom} />
+      </main>
+      {/* Pinned, so Confirm entry stays in reach on a long form. The error sits above the button it belongs to. */}
+      <footer className="sticky bottom-0 flex flex-col border-t border-hairline bg-canvas px-gutter pt-3 pb-7">
+        <p role="alert" className={cn("text-body-sm text-danger", error && "pb-3")}>
           {error}
         </p>
-      </main>
-      <footer className="px-gutter pb-7">
-        <Button type="button" className="w-full" disabled={busy || photos.length === 0 || (!newHouse && !house.barangay)} aria-busy={busy} onClick={() => void send()}>
-          {busy ? "Sending" : "Send to hub"}
+        {!error && missing ? <p className="pb-3 text-body-sm text-body">{missing}</p> : null}
+        <Button
+          type="button"
+          className="w-full"
+          disabled={busy || missing !== null || (!newHouse && !house.barangay)}
+          aria-busy={busy}
+          onClick={() => void send()}
+        >
+          {busy ? "Saving" : "Confirm entry"}
         </Button>
       </footer>
     </div>

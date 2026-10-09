@@ -61,7 +61,6 @@ describe("createSitrep", () => {
         entry(1),
         entry(2, { damage_class: "partial", hurt: 0, missing: 1, needs: ["water", "food"] }),
         entry(3, { status: "needs_review" }),
-        entry(4, { status: "draft", damage_class: null }),
       ])
       .run();
     const second = lib.createSitrep(db, at("2026-10-10T09:30:00.000Z"));

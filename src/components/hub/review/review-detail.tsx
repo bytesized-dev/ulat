@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { StatusDot } from "@/components/ui/status-dot";
-import { aiSide, responderCounts, responderSide, reviewActions, type CountLine, type ReviewEntry, type ReviewPhoto, type Side } from "@/lib/hub/review";
+import { responderCounts, responderSide, reviewActions, type CountLine, type ReviewEntry, type ReviewPhoto, type Side } from "@/lib/hub/review";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import { ReviewActions } from "./review-actions";
@@ -54,11 +54,11 @@ function SideCard({ title, side, counts = [], emphasis }: { title: string; side:
   );
 }
 
-// The selected entry: who and where, the photos, the AI draft next to what the
-// responder chose, and the three ways to settle it.
+// The selected entry: who and where, the photos, what the
+// responder chose, and the two ways to settle it.
 function ReviewDetail({ entry, photos }: ReviewDetailProps) {
   const name = entry.household_head?.trim() || `Entry ${String(entry.number).padStart(4, "0")}`;
-  const { approve, useAi } = reviewActions(entry);
+  const { approve } = reviewActions(entry);
   const place = [entry.purok, entry.barangay].filter(Boolean).join(", ");
   const responderName = entry.responder_name.trim();
 
@@ -74,16 +74,12 @@ function ReviewDetail({ entry, photos }: ReviewDetailProps) {
 
       <PhotoTiles photos={photos} />
 
-      <div className="grid grid-cols-2 gap-4">
-        <SideCard title="AI draft" side={aiSide(entry)} />
-        <SideCard title={`${responderName} chose`} side={responderSide(entry)} counts={responderCounts(entry)} emphasis />
-      </div>
+      <SideCard title={`${responderName} chose`} side={responderSide(entry)} counts={responderCounts(entry)} emphasis />
 
       <ReviewActions
         key={entry.id}
         entryId={entry.id}
         approve={approve}
-        useAi={useAi}
         responderName={responderName}
         askedAt={entry.photos_asked_at ? formatTime(entry.photos_asked_at) : null}
       />

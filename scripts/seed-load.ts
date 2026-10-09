@@ -18,10 +18,7 @@ import {
   updates,
 } from "../src/db/schema";
 import {
-  AiPhotoDraft,
-  Confidence,
   ConfirmedDamageClass,
-  DamageClass,
   EntryStatus,
   Language,
   Material,
@@ -53,21 +50,11 @@ const PLACES_TIME = "12:00";
 const NEWEST_LEAD_MS = 3 * 60_000;
 // History of a seeded entry, as minutes before it was confirmed or sent for review.
 const TAKEN_BEFORE_MIN = 28;
-const DRAFTED_BEFORE_MIN = 1;
 
 /** The seed's review text, as the keys the app writes in entry.needs_review. */
 const REVIEW_REASON_KEYS: Record<string, string> = {
-  "Responder changed class": "class_differs",
-  "AI not sure": "unclear_no_new_photo",
   "Hurt count differs": "hurt_differs",
 };
-
-const AI_REASONS = {
-  total: "Roof gone and walls down.",
-  partial: "Roof and walls damaged, structure standing.",
-  none: "No visible damage to the roof or walls.",
-  unclear: "The roof is not visible.",
-} as const;
 
 const BBox = z.object({ west: z.number(), south: z.number(), east: z.number(), north: z.number() });
 type BBox = z.infer<typeof BBox>;
@@ -101,9 +88,6 @@ const Seed = z.object({
       hurt: z.number().int(),
       missing: z.number().int(),
       damage_class: ConfirmedDamageClass,
-      ai_class: DamageClass,
-      ai_confidence: Confidence,
-      ai_reason: z.string().optional(),
       material: Material,
       hazards: z.array(z.string()),
       needs: z.array(Need),
@@ -235,22 +219,14 @@ for (const e of seed.entries) {
 type EventRow = typeof events.$inferInsert;
 
 /**
- * The trail a responder's visit leaves, in the types the app writes: taken,
- * the AI draft, then confirmed or sent for review. The draft is the same
- * AiPhotoDraft shape the photo route stores, checked before it is saved.
+ * The trail a responder's visit leaves, in the types the app writes: saved,
+ * then confirmed or sent for review. No AI reads a responder's photos, so a
+ * seeded entry has no AI draft, whatever the seed file still carries.
  */
 function entryEvents(e: (typeof seed.entries)[number], confirmedAt: string | null, reviewAt: string): EventRow[] {
   const id = entryIds.get(e.number)!;
   const actor = responderId(e.responder_id);
   const end = confirmedAt ?? reviewAt;
-  const draft = AiPhotoDraft.parse({
-    damage_class: e.ai_class,
-    confidence: e.ai_confidence,
-    material: e.material,
-    hazards: e.hazards,
-    reason: e.ai_reason ?? AI_REASONS[e.ai_class],
-    need_more: null,
-  });
   const reasonKey = e.review_reason ? REVIEW_REASON_KEYS[e.review_reason] : undefined;
   const reasonKeys = reasonKey ? [reasonKey] : [];
   const row = (type: string, who: string, at: string, data: Record<string, unknown>): EventRow => ({
@@ -263,7 +239,6 @@ function entryEvents(e: (typeof seed.entries)[number], confirmedAt: string | nul
   });
   return [
     row("entry.created", actor, minutesBefore(end, TAKEN_BEFORE_MIN), { number: e.number, report_code: e.report_code, photos: 0, note: false }),
-    row("ai.photo", "system", minutesBefore(end, DRAFTED_BEFORE_MIN), { raw: JSON.stringify(draft) }),
     confirmedAt
       ? row("entry.confirmed", actor, confirmedAt, { class: e.damage_class })
       : row("entry.needs_review", actor, reviewAt, { reasons: reasonKeys }),
@@ -357,9 +332,6 @@ export async function loadSeed() {
             material: e.material,
             hazards: e.hazards,
             damage_class: e.damage_class,
-            ai_class: e.ai_class,
-            ai_confidence: e.ai_confidence,
-            ai_reason: e.ai_reason ?? null,
             status: e.status,
             review_reason: e.review_reason ?? null,
             confirmed_by: confirmedAt ? (responderNames.get(e.responder_id) ?? null) : null,

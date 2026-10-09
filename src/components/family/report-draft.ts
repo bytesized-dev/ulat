@@ -1,17 +1,18 @@
 import { z } from "zod";
-import { AiVoiceExtract, Language, Need, NewReport, VoiceField } from "@/lib/contracts";
+import { Need, NewReport } from "@/lib/contracts";
 import { clearReportPhoto } from "./report-photo-store";
 
-// The report a family is filling in, kept in sessionStorage between the four
-// steps: household, details, check, send. Every step reads and writes this one
-// object, and the send screen turns it into a NewReport.
+// The report a family is filling in, kept in sessionStorage between the three
+// steps: household, details, send. Every step reads and writes this one object,
+// and the send screen turns it into a NewReport. The family types every field.
+// Nothing on the phone goes to the AI.
 
 export const DRAFT_KEY = "ulat.report-draft";
 
 // The field rules come from the NewReport contract, so a change there reaches
 // the draft. The draft only differs where a half-filled form needs it: text is
 // an empty string instead of null, and barangay may be empty until picked.
-const { source, people, lat, lng, voice_id } = NewReport.shape;
+const { source, people, lat, lng } = NewReport.shape;
 
 export const ReportDraft = z.object({
   source: source.exclude(["desk"]),
@@ -28,14 +29,6 @@ export const ReportDraft = z.object({
   missing: people,
   what_happened: z.string().max(200),
   needs: z.array(Need),
-  voice_id,
-  transcript: z.string().max(2000),
-  english: z.string().max(2000),
-  language: Language.nullable(),
-  /** True when the note was recorded, so the check screen offers the voice note. A typed note is false. */
-  spoken: z.boolean().default(false),
-  /** Fields the model was not sure about. They show the Please check marker. */
-  uncertain_fields: z.array(VoiceField),
 });
 export type ReportDraft = z.infer<typeof ReportDraft>;
 
@@ -54,12 +47,6 @@ export function emptyDraft(): ReportDraft {
     missing: 0,
     what_happened: "",
     needs: [],
-    voice_id: null,
-    transcript: "",
-    english: "",
-    language: null,
-    spoken: false,
-    uncertain_fields: [],
   };
 }
 
@@ -108,36 +95,8 @@ export function clearDraft(storage: DraftStorage | null = browserStorage()): voi
 }
 
 /**
- * Fills the draft from a voice or typed note. A field the model left empty
- * keeps what the family already entered. A name the family typed on the first
- * step is theirs: the note only fills the head of household when it is empty,
- * and then the model's doubt about it no longer applies.
- */
-export function applyExtract(draft: ReportDraft, extract: AiVoiceExtract): ReportDraft {
-  const typedHead = draft.household_head.trim() !== "";
-  return {
-    ...draft,
-    household_head: typedHead ? draft.household_head : (extract.household_head ?? draft.household_head),
-    people: extract.people ?? draft.people,
-    hurt: extract.hurt ?? draft.hurt,
-    missing: extract.missing ?? draft.missing,
-    what_happened: extract.what_happened ?? draft.what_happened,
-    needs: extract.needs.length > 0 ? extract.needs : draft.needs,
-    transcript: extract.transcript,
-    english: extract.english,
-    language: extract.language,
-    uncertain_fields: typedHead ? extract.uncertain_fields.filter((field) => field !== "household_head") : extract.uncertain_fields,
-  };
-}
-
-/** A family edited the field, so it no longer needs the Please check marker. */
-export function markChecked(draft: ReportDraft, field: z.infer<typeof VoiceField>): ReportDraft {
-  return { ...draft, uncertain_fields: draft.uncertain_fields.filter((f) => f !== field) };
-}
-
-/**
  * The draft a refused queued report becomes again, so the family can fix it on
- * the check screen. The inverse of toNewReport: null text turns back into an
+ * the details screen. The inverse of toNewReport: null text turns back into an
  * empty string. A report from the help desk cannot come from a phone, so it
  * falls back to a family report.
  */
@@ -157,10 +116,6 @@ export function draftFromReport(report: NewReport): ReportDraft {
     missing: report.missing,
     what_happened: report.what_happened ?? "",
     needs: report.needs,
-    voice_id: report.voice_id,
-    transcript: report.transcript ?? "",
-    english: report.english ?? "",
-    language: report.language,
   };
 }
 
@@ -187,10 +142,10 @@ export function toNewReport(draft: ReportDraft) {
     missing: draft.missing,
     what_happened: orNull(draft.what_happened),
     needs: draft.needs,
-    voice_id: draft.voice_id,
-    transcript: orNull(draft.transcript),
-    english: orNull(draft.english),
-    language: draft.language,
+    // Only the help desk records a voice note. A family report has none.
+    transcript: null,
+    english: null,
+    language: null,
     consent: true,
   });
 }

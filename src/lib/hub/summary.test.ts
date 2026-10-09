@@ -151,7 +151,6 @@ describe("priority rule", () => {
 
   it("ignores entries that are not confirmed", () => {
     house({ barangay: "A", hurt: 3, status: "needs_review" });
-    house({ barangay: "A", hurt: 3, status: "draft", damage_class: null });
     house({ barangay: "A", damage_class: "none" });
     expect(row("A")).toMatchObject({ hurt: 0, totally: 0, partially: 0, none: 1, priority: "low" });
     expect(getHubSummary(db)).toMatchObject({ houses_checked: 1, hurt: 0, in_review: 1 });

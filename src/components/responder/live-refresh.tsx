@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLiveEvents } from "@/lib/live/use-live-events";
 
-// Asks the server for fresh data when a report is created or changes or a place is saved, and again
+// Asks the server for fresh data when a report is created, changes or gets a photo assessment, or a place is saved, and again
 // when the stream comes back, because the stream does not replay what was missed.
 function LiveRefresh() {
   const router = useRouter();
@@ -12,7 +12,8 @@ function LiveRefresh() {
   const connectedBefore = useRef(false);
 
   useEffect(() => {
-    if (latest && (latest.type === "report.created" || latest.type === "report.updated" || latest.type === "place.saved")) router.refresh();
+    if (!latest) return;
+    if (latest.type === "report.created" || latest.type === "report.updated" || latest.type === "report.assessed" || latest.type === "place.saved") router.refresh();
   }, [latest, router]);
 
   useEffect(() => {

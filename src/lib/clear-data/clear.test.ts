@@ -57,7 +57,7 @@ function seed() {
     .get();
   const entry = db
     .insert(schema.entries)
-    .values({ number: 231, report_id: parent.id, responder_id: responder.id, barangay: "Potol (Pob.)", created_at: at })
+    .values({ number: 231, report_id: parent.id, responder_id: responder.id, barangay: "Potol (Pob.)", damage_class: "partial", status: "confirmed", created_at: at })
     .returning()
     .get();
 

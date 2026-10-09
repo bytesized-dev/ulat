@@ -14,6 +14,8 @@ import {
   EntryStatus,
   SafeCheckin,
   UpdateType,
+  AssessmentStatus,
+  Urgency,
   type HubSummary,
 } from "../lib/contracts/schemas";
 
@@ -60,11 +62,31 @@ export const reports = sqliteTable(
     missing: integer("missing").notNull().default(0),
     what_happened: text("what_happened"),
     needs: text("needs", { mode: "json" }).$type<z.infer<typeof Need>[]>().notNull().$defaultFn(() => []),
-    voice_path: text("voice_path"),
+    /** What a help desk voice note said, and its English. A family report has none. */
     transcript: text("transcript"),
     transcript_en: text("transcript_en"),
     language: text("language", { enum: values(Language.options) }),
     photo_path: text("photo_path"),
+    /**
+     * The hub's reading of the family photo, made in the background after the
+     * report is saved. Null when there is no photo. A failed reading stores
+     * unclear with low confidence, like an entry draft. Urgency is not stored:
+     * src/lib/reports/assessment.ts computes it when a screen reads the report.
+     */
+    ai_status: text("ai_status", { enum: values(AssessmentStatus.options) }),
+    ai_class: text("ai_class", { enum: values(DamageClass.options) }),
+    ai_confidence: text("ai_confidence", { enum: values(Confidence.options) }),
+    ai_reason: text("ai_reason"),
+    ai_hazards: text("ai_hazards", { mode: "json" }).$type<string[]>(),
+    /** When the reading was queued or finished, so a stalled one can be run again. */
+    ai_at: text("ai_at"),
+    /** A responder's or staff member's own reading. It wins over the AI on every screen and never changes a total. */
+    verdict_class: text("verdict_class", { enum: values(ConfirmedDamageClass.options) }),
+    verdict_urgency: text("verdict_urgency", { enum: values(Urgency.options) }),
+    verdict_note: text("verdict_note"),
+    /** A responder id, or "staff". */
+    verdict_by: text("verdict_by"),
+    verdict_at: text("verdict_at"),
     status: text("status", { enum: values(ReportStatus.options) }).notNull().default("waiting"),
     assigned_to: text("assigned_to").references(() => responders.id),
     cant_reason: text("cant_reason", { enum: values(CantAssessReason.options) }),
@@ -102,17 +124,12 @@ export const entries = sqliteTable(
     needs: text("needs", { mode: "json" }).$type<z.infer<typeof Need>[]>().notNull().$defaultFn(() => []),
     material: text("material", { enum: values(Material.options) }),
     hazards: text("hazards", { mode: "json" }).$type<string[]>().notNull().$defaultFn(() => []),
-    /** The responder's class. Null while the entry is a draft. */
-    damage_class: text("damage_class", { enum: values(ConfirmedDamageClass.options) }),
-    /** What the model said, which can be unclear. */
-    ai_class: text("ai_class", { enum: values(DamageClass.options) }),
-    ai_confidence: text("ai_confidence", { enum: values(Confidence.options) }),
-    ai_reason: text("ai_reason"),
-    ai_need_more: text("ai_need_more"),
+    /** The responder's class. No AI reads a responder's photos, so there is no AI class here. */
+    damage_class: text("damage_class", { enum: values(ConfirmedDamageClass.options) }).notNull(),
+    /** The responder's voice note, kept as audio. Nothing transcribes it. */
     note_path: text("note_path"),
-    note_transcript: text("note_transcript"),
-    note_en: text("note_en"),
-    status: text("status", { enum: values(EntryStatus.options) }).notNull().default("draft"),
+    /** Set when the entry is saved, confirmed or held for a second look. There is no default. */
+    status: text("status", { enum: values(EntryStatus.options) }).notNull(),
     review_reason: text("review_reason"),
     confirmed_by: text("confirmed_by"),
     confirmed_at: text("confirmed_at"),

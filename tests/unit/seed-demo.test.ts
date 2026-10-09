@@ -8,7 +8,6 @@ import { generateSQLiteDrizzleJson, generateSQLiteMigration } from "drizzle-kit/
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Db } from "../../src/db/client";
 import * as schema from "../../src/db/schema";
-import { AiPhotoDraft } from "../../src/lib/contracts";
 import { detectDuplicates, listOpenDuplicates } from "../../src/lib/hub/duplicates";
 import { getEntryDetail } from "../../src/lib/hub/entries";
 
@@ -88,17 +87,14 @@ describe("seed history", () => {
     for (const entry of rows) {
       const detail = getEntryDetail(shifted, entry.id);
       const labels = detail?.history.map((h) => h.label) ?? [];
-      expect(labels.slice(-3), `entry ${entry.number}`).toEqual([
+      expect(labels.slice(-2), `entry ${entry.number}`).toEqual([
         expect.stringMatching(/^Taken by /),
-        "AI draft",
         entry.status === "confirmed" ? "Confirmed" : expect.stringMatching(/^Sent for review by /),
       ]);
     }
   });
 
-  it("stores the AI draft in the shape the photo route stores", () => {
-    const drafts = shifted.select().from(schema.events).all().filter((e) => e.type === "ai.photo");
-    expect(drafts).toHaveLength(49);
-    for (const e of drafts) expect(AiPhotoDraft.safeParse(JSON.parse(String((e.data as { raw: string }).raw))).success).toBe(true);
+  it("stores no AI draft for a responder's entry, since no AI reads their photos", () => {
+    expect(shifted.select().from(schema.events).all().filter((e) => e.type === "ai.photo")).toHaveLength(0);
   });
 });

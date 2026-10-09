@@ -15,9 +15,8 @@ describe("which events refresh the overview", () => {
     expect(changesOverview({ type: "place.saved", place_id: id })).toBe(true);
   });
 
-  it("ignores drafts, updates, check-ins and hub status", () => {
+  it("ignores updates, check-ins and hub status", () => {
     expect(changesOverview(null)).toBe(false);
-    expect(changesOverview({ type: "entry.drafted", entry_id: id })).toBe(false);
     expect(changesOverview({ type: "update.posted", update_id: id })).toBe(false);
     expect(changesOverview({ type: "safe.checked_in", id })).toBe(false);
   });
@@ -32,9 +31,8 @@ describe("which events refresh the map", () => {
     expect(changesMap({ type: "place.saved", place_id: id })).toBe(true);
   });
 
-  it("ignores drafts and events the map does not show", () => {
+  it("ignores events the map does not show", () => {
     expect(changesMap(null)).toBe(false);
-    expect(changesMap({ type: "entry.drafted", entry_id: id })).toBe(false);
     expect(changesMap({ type: "update.posted", update_id: id })).toBe(false);
   });
 });

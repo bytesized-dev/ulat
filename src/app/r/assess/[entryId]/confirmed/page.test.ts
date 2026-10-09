@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { freshDb } from "@/lib/hub/test-setup";
 
 // The confirmed page says "Entry confirmed" only for a confirmed entry. A held
-// entry says it was sent for a second look, and a draft goes back to the check screen.
+// entry says it was sent for a second look.
 
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => ({ value: "token" }) }) }));
 vi.mock("@/lib/auth/session", () => ({ SESSION_COOKIE: { responder: "r" }, readActiveResponder: async () => ({ id: "r1" }) }));
@@ -27,7 +27,7 @@ beforeAll(async () => {
 }, 30_000);
 
 let number = 1;
-const entry = (status: "draft" | "needs_review" | "confirmed") =>
+const entry = (status: "needs_review" | "confirmed") =>
   db
     .insert(schema.entries)
     .values({
@@ -64,10 +64,5 @@ describe("/r/assess/[entryId]/confirmed", () => {
     expect(html).not.toContain("Entry confirmed");
     expect(html).toContain("6 people, 1 hurt");
     expect(html).toContain("Back to list");
-  }, 30_000);
-
-  it("sends a draft back to the check screen", async () => {
-    const id = entry("draft");
-    await expect(render(id)).rejects.toThrow(`NEXT_REDIRECT /r/assess/${id}/check`);
   }, 30_000);
 });

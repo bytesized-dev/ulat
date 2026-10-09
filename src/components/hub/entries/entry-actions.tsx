@@ -66,7 +66,6 @@ function toConfirm(form: EditForm, entry: Entry): EntryConfirm {
     hurt: parseCount(form.hurt) ?? 0,
     missing: parseCount(form.missing) ?? 0,
     needs: form.needs,
-    new_photo_since_unclear: false,
   };
 }
 

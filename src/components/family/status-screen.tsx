@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,21 +10,35 @@ import { StatusDot } from "@/components/ui/status-dot";
 import { Timeline } from "@/components/ui/timeline";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
+import { parseSentReport, readSentRaw } from "./sent-report";
 import { useReportStatus } from "./use-report-status";
 import { normalizeCode, placeOf, resultOf, timelineItems } from "./status-view";
 
 // A family looks up its own report by code. Before a responder confirms it,
 // the screen shows the household and where the report is. After, it leads with
-// the result. It stays current on its own while it is open.
+// the result. It stays current on its own while it is open. With no code in the
+// link, it opens the report this phone sent, so nobody types the code again.
+// Check another code puts the lookup back.
+const subscribeNever = () => () => {};
+
 function StatusScreen() {
   const router = useRouter();
   const params = useSearchParams();
-  const code = normalizeCode(params.get("code") ?? "") || null;
+  const linked = normalizeCode(params.get("code") ?? "") || null;
+  const saved = parseSentReport(useSyncExternalStore(subscribeNever, readSentRaw, () => null))?.code ?? null;
   const [typed, setTyped] = useState<string | null>(null);
+  const [another, setAnother] = useState(false);
+  const code = linked ?? (another ? null : saved);
   const { view, message, refresh } = useReportStatus(code);
   const errorId = useId();
 
   const result = view ? resultOf(view) : null;
+
+  function checkAnother() {
+    setAnother(true);
+    setTyped("");
+    if (linked) router.replace(routes.family.status());
+  }
 
   if (view && result) {
     return (
@@ -41,12 +55,15 @@ function StatusScreen() {
           </div>
           <Timeline aria-label="Report progress" items={timelineItems(view)} />
           <p className="rounded-xl bg-surface-soft p-4 text-body-sm text-body">Ask the help desk about relief. Bring your code.</p>
+          <Button type="button" variant="tertiary" className="w-full" onClick={checkAnother}>
+            Check another code
+          </Button>
         </main>
       </div>
     );
   }
 
-  // Shows what the family typed, or the code in the link until they type.
+  // Shows what the family typed, or the code being shown until they type.
   const field = typed ?? code ?? "";
 
   return (

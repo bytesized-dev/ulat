@@ -57,7 +57,6 @@ function newConfirmed(status: "confirmed" | "needs_review" = "confirmed") {
       responder_id: responderId,
       barangay: "Sinonoc",
       damage_class: "total",
-      ai_class: "total",
       material: "mixed",
       people: 4,
       status,

@@ -3,6 +3,7 @@ import { buildForm, buildMeta, formatDuration, gpsText, nextLabel, sendError } f
 
 const clientId = "3f6c2a1e-9b0d-4c55-8a7e-1d2f3a4b5c6d";
 const house = { report_code: "K7P4", barangay: "Dapitan", purok: "Purok 2", household_head: "Maria Santos" };
+const entry = { damage_class: "partial" as const, material: "mixed" as const, hazards: [], families: 1, people: 4, hurt: 0, missing: 0, needs: [] };
 
 describe("capture helpers", () => {
   it("labels photos Front, Roof, Damage and then stops", () => {
@@ -22,25 +23,29 @@ describe("capture helpers", () => {
   });
 
   it("builds meta that passes the contract, with and without GPS", () => {
-    const withGps = buildMeta(house, ["Front"], { lat: 9.77, lng: 123.3, accuracy_m: 12 }, clientId);
+    const withGps = buildMeta(house, ["Front"], { lat: 9.77, lng: 123.3, accuracy_m: 12 }, clientId, entry);
     expect(withGps.success && withGps.data.gps_accuracy_m).toBe(12);
-    const without = buildMeta(house, ["Front"], null, clientId);
+    const without = buildMeta(house, ["Front"], null, clientId, entry);
     expect(without.success && without.data.lat).toBeNull();
   });
 
   it("puts the client id in the meta and rejects one that is not a uuid", () => {
-    const ok = buildMeta(house, ["Front"], null, clientId);
+    const ok = buildMeta(house, ["Front"], null, clientId, entry);
     expect(ok.success && ok.data.client_id).toBe(clientId);
-    expect(buildMeta(house, ["Front"], null, "not-a-uuid").success).toBe(false);
+    expect(buildMeta(house, ["Front"], null, "not-a-uuid", entry).success).toBe(false);
+  });
+
+  it("rejects meta with no class yet", () => {
+    expect(buildMeta(house, ["Front"], null, clientId, { ...entry, damage_class: null }).success).toBe(false);
   });
 
   it("rejects meta with more than three labels or no barangay", () => {
-    expect(buildMeta(house, ["a", "b", "c", "d"], null, clientId).success).toBe(false);
-    expect(buildMeta({ ...house, barangay: "" }, ["a"], null, clientId).success).toBe(false);
+    expect(buildMeta(house, ["a", "b", "c", "d"], null, clientId, entry).success).toBe(false);
+    expect(buildMeta({ ...house, barangay: "" }, ["a"], null, clientId, entry).success).toBe(false);
   });
 
   it("builds the multipart body", () => {
-    const meta = buildMeta(house, ["Front"], null, clientId);
+    const meta = buildMeta(house, ["Front"], null, clientId, entry);
     if (!meta.success) throw new Error("meta");
     const photo = new File(["x"], "a.jpg", { type: "image/jpeg" });
     const form = buildForm(meta.data, [photo], new Blob(["y"], { type: "audio/webm;codecs=opus" }));

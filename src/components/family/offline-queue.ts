@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { NewReport } from "@/lib/contracts";
 import { newClientId } from "@/lib/client-id";
-import { postReport, uploadPhoto, uploadVoice } from "./send-report";
+import { postReport, uploadPhoto } from "./send-report";
 
 // Reports a family agreed to send while the hub could not be reached. They wait
-// here, on the phone, with any audio and photos, and go out once /api/health
+// here, on the phone, with any photo, and go out once /api/health
 // answers. This file is the queue's rules. The IndexedDB store is in queue-db.ts
 // and the screen is saved-on-phone.tsx.
 
@@ -14,7 +14,7 @@ export const HEALTH_TIMEOUT_MS = 4000;
 /** Page-level signal that the queue changed, so the screen can read it again. */
 export const QUEUE_EVENT = "ulat:queue-changed";
 
-export type QueuedAttachment = { kind: "audio" | "photo"; name: string; blob: Blob };
+export type QueuedAttachment = { kind: "photo"; name: string; blob: Blob };
 
 export type QueuedReport = {
   id: string;
@@ -35,7 +35,7 @@ export interface QueueStore {
 const Stored = z.object({
   id: z.string().min(1),
   report: NewReport,
-  attachments: z.array(z.object({ kind: z.enum(["audio", "photo"]), name: z.string(), blob: z.instanceof(Blob) })),
+  attachments: z.array(z.object({ kind: z.literal("photo"), name: z.string(), blob: z.instanceof(Blob) })),
   saved_at: z.iso.datetime(),
   state: z.enum(["waiting", "refused"]),
 });
@@ -101,16 +101,12 @@ export type FlushResult = { reachable: boolean; sent: SentItem[]; refused: numbe
  * leaves the queue. One the hub refuses stays, marked refused, and the rest go
  * on. If the hub goes away part way, the rest stay waiting for the next try.
  *
- * A report with a recording sends the recording first, under the voice_id the
- * report carries. The queue keeps its copy of the audio until the hub accepts
- * the report. A retry sends the audio again, which costs the hub nothing, since
- * the same voice_id never makes a second file. A report the hub refuses keeps
- * its audio too, so the family can fix it and send it with its recording. If the
- * hub answers but refuses the recording, the report goes without it: the report
- * matters more than its audio.
- *
- * A photo goes the same way, under the photo_id the report carries, and the
- * queue keeps it on the same terms as the audio.
+ * A report with a photo sends the photo first, under the photo_id the report
+ * carries. The queue keeps its copy until the hub accepts the report. A retry
+ * sends the photo again, which costs the hub nothing, since the same photo_id
+ * never makes a second file. A report the hub refuses keeps its photo too, so
+ * the family can fix it and send it with the photo. If the hub answers but
+ * refuses the photo, the report goes without it: the report matters more.
  */
 export async function flushQueue(
   store: QueueStore,
@@ -125,17 +121,6 @@ export async function flushQueue(
   let reachable = true;
   for (const item of waiting) {
     let report = item.report;
-    const audio = item.attachments.find((a) => a.kind === "audio");
-    if (audio && report.voice_id) {
-      const voice = await uploadVoice(audio.blob, report.voice_id, send);
-      if (!voice.ok && voice.unreachable) {
-        reachable = false;
-        break;
-      }
-      // The queue keeps the audio. The hub deletes a recording no report has
-      // taken within an hour, so only an accepted report can let go of it.
-      if (!voice.ok) report = { ...report, voice_id: null };
-    }
     const photo = item.attachments.find((a) => a.kind === "photo");
     if (photo && report.photo_id) {
       const sentPhoto = await uploadPhoto(photo.blob, report.photo_id, send);
@@ -143,7 +128,7 @@ export async function flushQueue(
         reachable = false;
         break;
       }
-      // Kept, like the audio, until the hub accepts the report.
+      // Kept until the hub accepts the report.
       if (!sentPhoto.ok) report = { ...report, photo_id: null };
     }
     const result = await postReport(report, send);

@@ -43,7 +43,7 @@ beforeAll(async () => {
 describe("POST /api/entries when a file write throws", () => {
   it("deletes the files stored before it and writes no entry", async () => {
     const form = new FormData();
-    form.set("meta", JSON.stringify({ report_code: null, barangay: "Poblacion", purok: null, household_head: null, lat: 10.1, lng: 123.2, gps_accuracy_m: 8, photo_labels: [] }));
+    form.set("meta", JSON.stringify({ report_code: null, barangay: "Poblacion", purok: null, household_head: null, lat: 10.1, lng: 123.2, gps_accuracy_m: 8, photo_labels: [], damage_class: "partial", material: "mixed", hazards: [], families: 1, people: 4, hurt: 0, missing: 0, needs: [] }));
     for (let i = 0; i < 2; i++) form.append("photos", new File([PNG], `p${i}.png`, { type: "image/png" }));
     const req = request("/api/entries", "responder", { method: "POST", body: form });
     await expect(route.POST(req)).rejects.toThrow("ENOSPC");

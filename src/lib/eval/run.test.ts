@@ -41,7 +41,6 @@ const draft = (damage_class: AiPhotoDraft["damage_class"]): AiPhotoDraft => ({
   material: "light",
   hazards: [],
   reason: "stub",
-  need_more: null,
 });
 
 const note = (fields: Partial<AiVoiceExtract>): AiVoiceExtract => ({

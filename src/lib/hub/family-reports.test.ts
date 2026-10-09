@@ -17,9 +17,11 @@ import {
   listFamilyReports,
   listResponders,
   parseFilter,
+  sortByUrgency,
   statusLabel,
   urgentLabel,
 } from "./family-reports";
+import { reportUrgency } from "../reports/assessment";
 
 // Runs on its own copy of the simulation seed, never on data/ulat.db.
 
@@ -46,33 +48,26 @@ describe("family reports list", () => {
     expect(rows.map((r) => r.code).sort()).toEqual(expected.sort());
   });
 
-  it("puts urgent reports first, then the newest", () => {
-    const rows = listFamilyReports(db);
-    const urgent = rows.map((r) => r.hurt > 0 || r.missing > 0);
-    expect(urgent.indexOf(false)).toBeGreaterThan(0);
-    expect(urgent.slice(urgent.indexOf(false))).not.toContain(true);
-    const calm = rows.filter((r) => r.hurt === 0 && r.missing === 0).map((r) => r.created_at);
-    expect(calm).toEqual([...calm].sort().reverse());
+  it("lists high urgency first, then medium, then low, then unread", () => {
+    const rank = (r: ReturnType<typeof listFamilyReports>[number]) => {
+      const u = reportUrgency(r);
+      return u === null ? 3 : ["high", "medium", "low"].indexOf(u);
+    };
+    const ranks = listFamilyReports(db).map(rank);
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+
+  it("keeps the order inside an urgency group", () => {
+    const row = (code: string, hurt: number, ai_class: "total" | "none" | null) =>
+      ({ code, hurt, missing: 0, ai_class, ai_hazards: null, verdict_class: null, verdict_urgency: null }) as unknown as Parameters<typeof sortByUrgency>[0][number];
+    const sorted = sortByUrgency([row("A", 0, "none"), row("B", 0, null), row("C", 1, "total"), row("D", 0, "total")]);
+    expect(sorted.map((r) => r.code)).toEqual(["C", "D", "A", "B"]);
   });
 
   it("finds one report by code, even when a filter would hide it", () => {
     const waiting = listFamilyReports(db, "not_assigned")[0];
     expect(listFamilyReports(db, "problems").map((r) => r.code)).not.toContain(waiting.code);
     expect(getFamilyReport(db, waiting.code)).toEqual(waiting);
-  });
-
-  it("says whether the family's recording is stored, without exposing its path", () => {
-    const target = listFamilyReports(db)[0];
-    const set = (voice_path: string | null) => db.update(schema.reports).set({ voice_path }).where(eq(schema.reports.code, target.code)).run();
-    try {
-      set("2026-10-09/7d5c1e2a-3b4f-4a6d-9c8e-0f1a2b3c4d5e.webm");
-      const row = getFamilyReport(db, target.code)!;
-      expect(row).toMatchObject({ id: expect.any(String), has_voice: true });
-      expect(row).not.toHaveProperty("voice_path");
-    } finally {
-      set(null);
-    }
-    expect(getFamilyReport(db, target.code)!.has_voice).toBe(false);
   });
 
   it("does not find desk, merged or unknown codes", () => {

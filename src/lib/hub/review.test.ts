@@ -13,7 +13,6 @@ import * as schema from "../../db/schema";
 import { EntryConfirm } from "../contracts/schemas";
 import { confirmEntry } from "./api-client";
 import {
-  aiSide,
   askForPhotos,
   listReviewEntries,
   listReviewPhotos,
@@ -87,19 +86,12 @@ describe("second look list", () => {
 });
 
 describe("reason text", () => {
-  it("shortens the sentences the entries route stores", () => {
-    expect(reasonLabels(REVIEW_REASONS.class_differs)).toEqual(["Responder changed class"]);
-    expect(reasonLabels(REVIEW_REASONS.unclear_no_new_photo)).toEqual(["AI not sure"]);
+  it("shortens the sentence the entries route stores", () => {
     expect(reasonLabels(REVIEW_REASONS.hurt_differs)).toEqual(["Hurt count differs"]);
   });
 
-  it("gives every reason when the route stored several", () => {
-    const stored = `${REVIEW_REASONS.class_differs} ${REVIEW_REASONS.hurt_differs}`;
-    expect(reasonLabels(stored)).toEqual(["Responder changed class", "Hurt count differs"]);
-  });
-
   it("shows the short labels the seed stores as they are", () => {
-    expect(reasonLabels("AI not sure")).toEqual(["AI not sure"]);
+    expect(reasonLabels("Hurt count differs")).toEqual(["Hurt count differs"]);
   });
 
   it("says something when no reason was stored", () => {
@@ -109,8 +101,7 @@ describe("reason text", () => {
 
   it("marks a hurt count that differs as the urgent one", () => {
     expect(reasonTone("Hurt count differs")).toBe("danger");
-    expect(reasonTone("AI not sure")).toBe("muted-soft");
-    expect(reasonTone("Responder changed class")).toBe("warning");
+    expect(reasonTone("Something else")).toBe("warning");
   });
 
   it("gives every seeded entry a reason the list can show", () => {
@@ -118,25 +109,7 @@ describe("reason text", () => {
   });
 });
 
-describe("the two sides", () => {
-  it("shows the AI class and its reason", () => {
-    expect(aiSide({ ai_class: "partial", ai_reason: "Roof partly missing on the left.", ai_need_more: null })).toEqual({
-      label: "Partially damaged",
-      tone: "warning",
-      text: "Roof partly missing on the left.",
-    });
-  });
-
-  it("shows what the AI wanted when it was not sure", () => {
-    const side = aiSide({ ai_class: "unclear", ai_reason: "The roof is not visible.", ai_need_more: "Roof from the side" });
-    expect(side).toMatchObject({ label: "Not sure", tone: "muted-soft", text: "Roof from the side" });
-    expect(aiSide({ ai_class: "unclear", ai_reason: "The roof is not visible.", ai_need_more: null }).text).toBe("The roof is not visible.");
-  });
-
-  it("says so when the AI never drafted", () => {
-    expect(aiSide({ ai_class: null, ai_reason: null, ai_need_more: null }).label).toBe("No AI draft");
-  });
-
+describe("the responder side", () => {
   it("shows the responder's class and note", () => {
     expect(responderSide({ damage_class: "total", note: "Back half collapsed." })).toEqual({
       label: "Totally damaged",
@@ -177,17 +150,17 @@ describe("the counts a review is about", () => {
     ]);
   });
 
-  it("shows no counts when the reason is about the class", () => {
-    expect(rows({ ...counts, report_hurt: 2, review_reason: "Responder changed class" })).toEqual([]);
+  it("shows no counts when the reason is not about the hurt count", () => {
+    expect(rows({ ...counts, report_hurt: 2, review_reason: "Needs a second look" })).toEqual([]);
   });
 
   it("reads the counts from the seeded entry that needs them", () => {
     const entry = listReviewEntries(db).find((e) => e.number === 241);
-    expect(entry && rows(entry)).toEqual([["Hurt", "2"], ["Family report, hurt", "Not linked"]]);
+    expect(entry && rows(entry)).toEqual([["Hurt", "2"], ["Family report, hurt", "0"]]);
   });
 });
 
-describe("approve and use the AI class", () => {
+describe("approve", () => {
   it("approves the responder's class with the responder's values", () => {
     const entry = byNumber(238);
     const { approve } = reviewActions(entry);
@@ -196,19 +169,8 @@ describe("approve and use the AI class", () => {
     expect(EntryConfirm.safeParse(approve?.body).success).toBe(true);
   });
 
-  it("uses the AI class and changes nothing else", () => {
-    const entry = byNumber(238);
-    const { approve, useAi } = reviewActions(entry);
-    expect(useAi?.label).toBe("Use partially");
-    expect(useAi?.body).toEqual({ ...approve?.body, damage_class: "partial" });
-  });
-
-  it("offers no AI class when the AI was not sure", () => {
-    expect(reviewActions(byNumber(239)).useAi).toBeNull();
-  });
-
-  it("offers no AI class when the AI already agrees", () => {
-    expect(reviewActions(byNumber(241)).useAi).toBeNull();
+  it("offers Approve for a responder class and nothing else", () => {
+    expect(Object.keys(reviewActions(byNumber(241)))).toEqual(["approve"]);
     expect(reviewActions(byNumber(241)).approve).not.toBeNull();
   });
 
@@ -260,14 +222,6 @@ describe("ask for photos", () => {
     expect(db.select({ status: schema.entries.status }).from(schema.entries).where(eq(schema.entries.id, entry.id)).get()?.status).toBe("needs_review");
   });
 
-  it("carries what the AI wanted to see", () => {
-    const entry = byNumber(241);
-    db.update(schema.entries).set({ ai_need_more: "Roof from the side" }).where(eq(schema.entries.id, entry.id)).run();
-    askForPhotos(db, entry.id, new Date("2026-10-10T06:59:00.000Z"));
-    const row = events().find((e) => e.entity_id === entry.id);
-    expect(row?.data).toEqual({ need_more: "Roof from the side" });
-  });
-
   it("shows when staff asked, and writes nothing on a second ask", () => {
     const entry = byNumber(239);
     expect(entry.photos_asked_at).toBe("2026-10-10T06:59:00.000Z");
@@ -277,7 +231,8 @@ describe("ask for photos", () => {
 
   it("lets staff ask again once a photo has been added after the request", () => {
     const entry = byNumber(241);
-    expect(entry.photos_asked_at).not.toBeNull();
+    askForPhotos(db, entry.id, new Date("2026-10-10T06:59:00.000Z"));
+    expect(byNumber(241).photos_asked_at).not.toBeNull();
     const after = new Date("2026-10-10T07:10:00.000Z").toISOString();
     db.insert(schema.events).values({ entity: "entry", entity_id: entry.id, type: "entry.photo_added", actor: "r1", data: {}, at: after }).run();
     expect(byNumber(241).photos_asked_at).toBeNull();

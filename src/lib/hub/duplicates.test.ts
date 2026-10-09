@@ -64,6 +64,7 @@ function entry(over: Partial<typeof schema.entries.$inferInsert> = {}) {
     barangay: "Santa Cruz",
     household_head: "Ramil Aquino",
     status: "needs_review" as const,
+    damage_class: "partial" as const,
     created_at: "2026-10-09T06:50:00.000Z",
     ...over,
   };

@@ -183,12 +183,10 @@ export default function KitPage() {
             </Phone>
           </Specimen>
 
-          <Specimen name="ProgressSteps" note="Steps 1 to 4.">
+          <Specimen name="ProgressSteps" note="Steps 1 and 2.">
             <Phone className="flex flex-col gap-6 p-5">
               <ProgressSteps step={1} />
               <ProgressSteps step={2} />
-              <ProgressSteps step={3} />
-              <ProgressSteps step={4} />
             </Phone>
           </Specimen>
 

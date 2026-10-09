@@ -1,6 +1,6 @@
 import { db } from "@/db/client";
 import { detectDuplicates } from "./duplicates";
-import { countReviewQueues } from "./family-reports";
+import { countFamilyReports, countReviewQueues } from "./family-reports";
 
 /**
  * Entries that wait for a second look plus open duplicates. This is the number on the Review tabs. Server only.
@@ -18,4 +18,9 @@ export function getReviewCount(): number {
   }
   const review = countReviewQueues(db);
   return review.second_look + review.duplicates;
+}
+
+/** Family reports nobody is assigned to yet. This is the number on the Family reports sidebar item. Server only. */
+export function getUnassignedFamilyReportCount(): number {
+  return countFamilyReports(db).not_assigned;
 }

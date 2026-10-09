@@ -36,7 +36,6 @@ const events: Record<string, HubEvent> = {
   confirmedA: { type: "entry.confirmed", entry_id: id(), report_code: "A2S3" },
   confirmedB: { type: "entry.confirmed", entry_id: id(), report_code: "B3N6" },
   confirmedNoCode: { type: "entry.confirmed", entry_id: id(), report_code: null },
-  drafted: { type: "entry.drafted", entry_id: id() },
   needsReview: { type: "entry.needs_review", entry_id: id() },
   checkedIn: { type: "safe.checked_in", id: id() },
   hubStatus: { type: "hub.status", status },
@@ -210,7 +209,7 @@ describe("GET /api/events", () => {
     expect(decoder.decode((await reader.read()).value)).toBe("retry: 3000\n\n");
 
     publish(events.createdB);
-    publish(events.drafted);
+    publish(events.needsReview);
     publish(events.updatedA);
     const chunk = decoder.decode((await reader.read()).value);
     expect(chunk).toBe(`data: ${JSON.stringify(events.updatedA)}\n\n`);
@@ -258,8 +257,8 @@ describe("GET /api/events", () => {
     const reader = response.body!.getReader();
     const decoder = new TextDecoder();
     await reader.read();
-    publish(events.drafted);
-    expect(decoder.decode((await reader.read()).value)).toBe(`data: ${JSON.stringify(events.drafted)}\n\n`);
+    publish(events.needsReview);
+    expect(decoder.decode((await reader.read()).value)).toBe(`data: ${JSON.stringify(events.needsReview)}\n\n`);
 
     controller.abort();
     expect(openStreamCount()).toBe(0);

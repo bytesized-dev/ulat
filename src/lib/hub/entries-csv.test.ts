@@ -84,7 +84,6 @@ describe("loadEntryCsvRows", () => {
         { ...base, number: 9, status: "confirmed", damage_class: "partial", household_head: "Later", confirmed_at: "2026-10-10T08:00:00.000Z" },
         { ...base, number: 2, status: "confirmed", damage_class: "total", household_head: "Earlier", report_id: "rep1", needs: ["tarp"], hazards: ["landslide"] },
         { ...base, number: 3, status: "needs_review", damage_class: "total", household_head: "In review" },
-        { ...base, number: 4, status: "draft", household_head: "Draft" },
       ])
       .run();
     rows = loadEntryCsvRows(db);

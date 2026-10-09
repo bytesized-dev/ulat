@@ -26,9 +26,8 @@ beforeAll(async () => {
       barangay: "Sinonoc",
       household_head: "Lopez household",
       damage_class: "total",
-      ai_class: "partial",
       status: "needs_review",
-      review_reason: "The class is different from the AI draft.",
+      review_reason: "The hurt count is different from the family report.",
       created_at: "2026-09-04T06:51:00.000Z",
     })
     .returning()
@@ -83,22 +82,22 @@ describe("askForPhotosAction", () => {
 });
 
 describe("the buttons that go through PATCH /api/entries/[id]", () => {
-  it("use the AI class: the route confirms the entry with that class and audits the change", async () => {
+  it("approve: the route confirms the entry with the responder class and audits the change", async () => {
     const { listReviewEntries, reviewActions } = await import("@/lib/hub/review");
     const entry = listReviewEntries(db).find((e) => e.id === entryId)!;
-    const { useAi } = reviewActions(entry);
-    expect(useAi?.label).toBe("Use partially");
+    const { approve } = reviewActions(entry);
+    expect(approve?.label).toBe("Approve totally damaged");
 
     const req = request(`/api/entries/${entryId}`, "staff", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(useAi!.body),
+      body: JSON.stringify(approve!.body),
     });
     const res = await entryRoute.PATCH(req, { params: Promise.resolve({ id: entryId }) });
     expect(res.status).toBe(200);
 
     const saved = db.select().from(schema.entries).where(eq(schema.entries.id, entryId)).get();
-    expect(saved).toMatchObject({ status: "confirmed", damage_class: "partial", confirmed_by: "staff" });
+    expect(saved).toMatchObject({ status: "confirmed", damage_class: "total", confirmed_by: "staff" });
     const history = db.select().from(schema.events).where(eq(schema.events.entity_id, entryId)).all();
     expect(history.map((e) => e.type)).toEqual(expect.arrayContaining(["entry.field_changed", "entry.confirmed"]));
     expect(published).toContainEqual({ type: "entry.confirmed", entry_id: entryId, report_code: null });

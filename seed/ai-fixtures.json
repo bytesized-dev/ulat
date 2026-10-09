@@ -17,22 +17,6 @@
    "hurt"
   ]
  },
- "text": {
-  "language": "en",
-  "transcript": "",
-  "english": "Five of us live here. My son hurt his foot. The roof is gone. We need water and a tarp.",
-  "household_head": null,
-  "people": 5,
-  "hurt": 1,
-  "missing": 0,
-  "what_happened": "The roof is gone.",
-  "needs": [
-   "water",
-   "tarp"
-  ],
-  "hazards": [],
-  "uncertain_fields": []
- },
  "photo": {
   "damage_class": "total",
   "confidence": "high",
@@ -40,16 +24,7 @@
   "hazards": [
    "Fallen power line"
   ],
-  "reason": "Most of the roof is gone and two back walls collapsed.",
-  "need_more": null
- },
- "photo_unclear": {
-  "damage_class": "unclear",
-  "confidence": "low",
-  "material": "unknown",
-  "hazards": [],
-  "reason": "Only the front wall is visible.",
-  "need_more": "Roof from the side"
+  "reason": "Most of the roof is gone and two back walls collapsed."
  },
  "translation": {
   "ceb": "Tubig sa plaza, 3 hangtod 5 sa hapon. Pagdala og sudlanan. Usa matag pamilya.",

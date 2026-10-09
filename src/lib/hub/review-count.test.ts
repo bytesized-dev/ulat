@@ -6,6 +6,7 @@ import { freshDb } from "./test-setup";
 // Review tabs: second look entries plus open duplicates, never family reports.
 
 let getReviewCount: () => number;
+let getUnassignedFamilyReportCount: () => number;
 let countReview: typeof import("./family-reports").countReview;
 let db: Awaited<ReturnType<typeof freshDb>>["db"];
 let schemaRef: Awaited<ReturnType<typeof freshDb>>["schema"];
@@ -15,17 +16,16 @@ beforeAll(async () => {
   db = fresh.db;
   const { schema } = fresh;
   schemaRef = schema;
-  ({ getReviewCount } = await import("./review-count"));
+  ({ getReviewCount, getUnassignedFamilyReportCount } = await import("./review-count"));
   ({ countReview } = await import("./family-reports"));
 
   const now = "2026-10-09T08:00:00.000Z";
   db.insert(schema.responders).values({ id: "r1", name: "Ana" }).run();
-  const entry = (n: number, status: "needs_review" | "confirmed" | "draft") =>
-    db.insert(schema.entries).values({ number: n, responder_id: "r1", barangay: "Mabini", status, created_at: now }).run();
+  const entry = (n: number, status: "needs_review" | "confirmed") =>
+    db.insert(schema.entries).values({ number: n, responder_id: "r1", barangay: "Mabini", damage_class: "partial", status, created_at: now }).run();
   entry(1, "needs_review");
   entry(2, "needs_review");
   entry(3, "confirmed");
-  entry(4, "draft");
 
   const dupe = (n: number, status: "open" | "merged") =>
     db.insert(schema.duplicates).values({ a_type: "entry", a_id: `a${n}`, b_type: "entry", b_id: `b${n}`, status }).run();
@@ -48,6 +48,10 @@ describe("getReviewCount", () => {
     const review = countReview(db);
     expect(review.family_reports).toBe(1);
     expect(getReviewCount()).toBe(review.second_look + review.duplicates);
+  });
+
+  it("counts the family reports nobody is assigned to for the Family reports item", () => {
+    expect(getUnassignedFamilyReportCount()).toBe(countReview(db).family_reports);
   });
 
   it("flags new duplicates first, so the badge counts them before anyone opens the tab", () => {

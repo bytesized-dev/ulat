@@ -36,6 +36,76 @@ function run(args: string[]): Promise<void> {
   });
 }
 
+// Given a silent note, Gemma does not say so. It writes a believable report,
+// with people, hurt and missing filled in, so a note without speech must never
+// reach it. The check looks for loud stretches against the note's own quiet
+// parts, because the phone's gain control lifts a silent room's hiss.
+
+/** 20 ms of 16 kHz audio. */
+const FRAME_SAMPLES = 320;
+/** Speech is this many dB above the quiet parts around it. */
+const SPEECH_OVER_FLOOR_DB = 12;
+/** Anything quieter than this is not speech, however still the room is. */
+const SPEECH_MIN_DBFS = -50;
+/** The quiet parts are measured over about a second each side. */
+const FLOOR_WINDOW_FRAMES = 50;
+/**
+ * A note needs 0.6 seconds of speech. "Recording, test mic" has about 1.2, and
+ * a cough or two taps on the phone stay under it.
+ */
+const MIN_SPEECH_FRAMES = 30;
+
+/** The 16-bit samples in a WAV file, found by walking its chunks. Empty if there is no data chunk. */
+function pcmSamples(wav: Buffer): Int16Array {
+  let offset = 12;
+  while (offset + 8 <= wav.length) {
+    const id = wav.toString("latin1", offset, offset + 4);
+    const size = wav.readUInt32LE(offset + 4);
+    if (id === "data") {
+      const end = Math.min(wav.length, offset + 8 + size);
+      const bytes = wav.subarray(offset + 8, end - ((end - offset - 8) % 2));
+      return new Int16Array(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length));
+    }
+    offset += 8 + size + (size % 2);
+  }
+  return new Int16Array(0);
+}
+
+/** Loudness per frame in dB below full scale. */
+function frameLevels(samples: Int16Array): number[] {
+  const levels: number[] = [];
+  for (let start = 0; start + FRAME_SAMPLES <= samples.length; start += FRAME_SAMPLES) {
+    let sum = 0;
+    for (let i = start; i < start + FRAME_SAMPLES; i++) sum += samples[i] * samples[i];
+    const rms = Math.sqrt(sum / FRAME_SAMPLES);
+    levels.push(rms === 0 ? -120 : 20 * Math.log10(rms / 32768));
+  }
+  return levels;
+}
+
+/** The 10th percentile, so one dropout does not set the floor. */
+function quietLevel(levels: number[]): number {
+  const sorted = [...levels].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length * 0.1)];
+}
+
+/** How many 20 ms frames of a 16 kHz mono WAV sound like speech. */
+export function speechFrames(wav: Buffer): number {
+  const levels = frameLevels(pcmSamples(wav));
+  let speech = 0;
+  for (let i = 0; i < levels.length; i++) {
+    if (levels[i] < SPEECH_MIN_DBFS) continue;
+    const floor = quietLevel(levels.slice(Math.max(0, i - FLOOR_WINDOW_FRAMES), i + FLOOR_WINDOW_FRAMES + 1));
+    if (levels[i] - floor >= SPEECH_OVER_FLOOR_DB) speech++;
+  }
+  return speech;
+}
+
+/** True when a 16 kHz mono WAV from toWav holds enough speech to send to the model. */
+export function hasSpeech(wav: Buffer): boolean {
+  return speechFrames(wav) >= MIN_SPEECH_FRAMES;
+}
+
 /**
  * Any recording ffmpeg can read, as 16 kHz mono 16-bit WAV, cut at 30 seconds.
  * Failures are OllamaErrors so the route answers them like a failed model

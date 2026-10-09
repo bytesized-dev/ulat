@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
 // A family phone sends the photo here before the report, with no PIN. The
 // answer is the photo_id and nothing else: the photo has no address a family
 // can fetch. Only a responder or staff can see it, through /api/files by
-// photo id, once POST /api/reports has linked it. No AI reads it and it never
-// changes a total.
+// photo id, once POST /api/reports has linked it. The hub reads it with the
+// photo AI after that, for responders and staff only, and it never changes a
+// total.
 //
 // Anyone on the Wi-Fi can call this, so the disk use is bounded: see
 // createUploadStore for the cap on photos no report has taken and the hourly sweep.

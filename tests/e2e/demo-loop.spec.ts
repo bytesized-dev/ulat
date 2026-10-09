@@ -23,6 +23,9 @@ const seed = JSON.parse(readFileSync("seed/simulation.json", "utf8")) as {
 const before = seed._expected_totals;
 const { name: responderName, email: responderEmail, password: responderPassword } = seed.responders[0];
 const FIXTURES = ["tests/e2e/fixtures/front.png", "tests/e2e/fixtures/roof.png"];
+// The family's photo of their house. The hub reads it in the background. Big
+// enough for the photo route, which refuses anything under 1 KB.
+const FAMILY_PHOTO = "eval/photos/p043.jpg";
 const PHONE = { width: 390, height: 844 };
 const LAPTOP = { width: 1440, height: 900 };
 // A spot inside the town. The family confirms it on the map and the responder reports it from the house.
@@ -99,16 +102,14 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await family.getByLabel("Purok").fill(PUROK);
     await action(family, "Continue").click();
 
-    // Voice note, ready. MOCK_AI has no microphone to record, so type instead.
-    await action(family, "Type instead").click();
-    await expect(family.getByRole("heading", { name: "Tell us what happened" })).toBeVisible();
-    await family
-      .getByLabel("What happened")
-      .fill("Five of us live here. My son hurt his foot. The roof is gone. We need water and a tarp.");
-    await action(family, "Continue").click();
-
-    // Check your report
-    await expect(family.getByRole("heading", { name: "Check your report" })).toBeVisible();
+    // Report details. The family fills these by hand: no voice note and no AI on the phone.
+    await expect(family.getByRole("heading", { name: "Report details" })).toBeVisible();
+    for (let i = 0; i < 5; i++) await family.getByRole("button", { name: "More, People in the house" }).click();
+    await family.getByRole("button", { name: "More, Hurt" }).click();
+    await family.getByRole("button", { name: "Water", exact: true }).click();
+    await family.getByRole("button", { name: "Tarp", exact: true }).click();
+    await family.locator('input[type="file"]').setInputFiles(FAMILY_PHOTO);
+    await expect(family.getByRole("img", { name: "Your photo" })).toBeVisible();
 
     // Where the house is. Without a position the report has no pin on the hub map.
     await family.getByRole("link", { name: /Location/ }).click();
@@ -118,11 +119,8 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(family.getByText(`${homeBarangay}, ${PUROK}`, { exact: true })).toBeVisible();
     await expect(family.getByRole("button", { name: "Use this spot" })).toBeEnabled();
     await family.getByRole("button", { name: "Use this spot" }).click();
-    await expect(family.getByRole("heading", { name: "Check your report" })).toBeVisible();
-    await action(family, "Continue").click();
-
-    // Before you send
-    await expect(family.getByRole("heading", { name: "Before you send" })).toBeVisible();
+    await expect(family.getByRole("heading", { name: "Report details" })).toBeVisible();
+    // Details ends with the privacy lines and the send button, so there is no review screen after it.
     await action(family, "Agree and send").click();
 
     // Report sent
@@ -155,9 +153,17 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(row).toBeVisible();
     await row.click();
     await expect(responder.getByRole("heading", { name: /household/ })).toBeVisible();
+
+    // The hub read the family's photo in the background. MOCK_AI answers with the
+    // totally damaged fixture, and someone hurt makes the urgency high anyway.
+    const assessment = responder.getByRole("region", { name: "Photo assessment" });
+    await expect(assessment.getByText("Totally damaged")).toBeVisible();
+    await expect(assessment.getByText("High urgency")).toBeVisible();
+    // Only staff change the reading, so the responder sees no buttons on it.
+    await expect(assessment.getByRole("button")).toHaveCount(0);
   });
 
-  await test.step("3. The responder captures photos and a note, then confirms the AI draft", async () => {
+  await test.step("3. The responder takes photos and a note and confirms on the same screen", async () => {
     await action(responder, "Start assessment").click();
     await expect(responder.getByRole("heading", { name: "Assess the house" })).toBeVisible();
 
@@ -172,16 +178,12 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
     await expect(responder.getByRole("button", { name: "Play your note" })).toBeVisible();
     // The entry takes its position from the phone when it is sent. Without the fix it has no pin.
     await expect(responder.getByText(/^GPS saved/)).toBeVisible();
-    await action(responder, "Send to hub").click();
 
-    // Hub drafting, MOCK_AI answers from seed/ai-fixtures.json
-    await expect(responder.getByRole("heading", { name: "Drafting the entry" })).toBeVisible();
-    await action(responder, "Open draft").click();
-
-    // Check the draft: the photo fixture is a totally damaged house
-    await expect(responder.getByText("Check the draft")).toBeVisible();
-    await expect(responder.getByText("Most of the roof is gone and two back walls collapsed.")).toBeVisible();
+    // No AI reads the responder's photos. The class starts from the reading of the family's photo.
+    await expect(responder.getByText("Suggested from the family's photo.", { exact: false })).toBeVisible();
     await expect(responder.getByRole("radio", { name: "Totally damaged" })).toBeChecked();
+    // The hazard the hub saw in the family's photo starts selected.
+    await expect(responder.getByRole("button", { name: "Fallen power line", pressed: true })).toBeVisible();
     // The entry starts from the family report, so the counts are there before any tap.
     // Confirming them unchanged keeps the hurt count equal to the report, so the entry counts.
     await expect(responder.getByRole("group", { name: "People", exact: true }).locator("output")).toHaveText("5");
@@ -215,10 +217,10 @@ test("demo loop: report, visit, confirm, totals, status, SMS", async ({ browser 
       .toBe(before.totally + 1);
   });
 
-  await test.step("5. The family status by code shows the confirmed class", async () => {
+  await test.step("5. The family status shows the confirmed class without typing the code", async () => {
+    // The phone kept the code when the report was sent, so Check my report opens it straight away.
     await family.goto("/status");
-    await family.getByLabel("Report code").fill(code);
-    await action(family, "Check").click();
+    await expect(family.getByText(`Report ${code}`, { exact: true })).toBeVisible();
 
     await expect(family.getByRole("heading", { name: "Totally damaged" })).toBeVisible();
     await expect(family.getByText(`Confirmed by ${responderName}`)).toBeVisible();

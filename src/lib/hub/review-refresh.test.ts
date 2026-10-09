@@ -11,7 +11,6 @@ describe("which events refresh the second look list", () => {
 
   it("ignores everything else", () => {
     expect(changesReview(null)).toBe(false);
-    expect(changesReview({ type: "entry.drafted", entry_id: id })).toBe(false);
     expect(changesReview({ type: "report.created", code: "ABCD", urgent: false })).toBe(false);
     expect(changesReview({ type: "place.saved", place_id: id })).toBe(false);
   });

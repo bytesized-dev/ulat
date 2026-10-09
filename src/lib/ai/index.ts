@@ -1,40 +1,54 @@
 import type { z } from "zod";
 import { AiPhotoDraft, AiTranslation, AiVoiceExtract } from "../contracts";
 import fixtureFile from "../../../seed/ai-fixtures.json";
-import { toWav } from "./audio";
+import { hasSpeech, toWav } from "./audio";
 import { logAiCall } from "./audit";
 import { chatJson, OllamaError, type ChatJsonInput } from "./ollama";
-import { PHOTO_SYSTEM, photoUserPrompt, TEXT_SYSTEM, TRANSLATE_SYSTEM, VOICE_SYSTEM } from "./prompts";
+import { PHOTO_SYSTEM, photoUserPrompt, TRANSLATE_SYSTEM, VOICE_SYSTEM } from "./prompts";
 import { findMissingFacts } from "./translate-check";
 
-// Every AI call goes through these four functions. With MOCK_AI=1 they return
-// the fixtures in seed/ai-fixtures.json. Voice, text, photo and translation call Ollama through ./ollama.
+// Every AI call goes through these three functions. With MOCK_AI=1 they return
+// the fixtures in seed/ai-fixtures.json. Voice, photo and translation call Ollama through ./ollama.
 // The real calls parse the model's output with the same schemas before they return.
 
 // Parsed when the module loads, so a broken fixture fails loudly.
 const fixtures = {
   voice: AiVoiceExtract.parse(fixtureFile.voice),
-  text: AiVoiceExtract.parse(fixtureFile.text),
   photo: AiPhotoDraft.parse(fixtureFile.photo),
-  photoUnclear: AiPhotoDraft.parse(fixtureFile.photo_unclear),
   translation: AiTranslation.parse(fixtureFile.translation),
 };
 
 const isMock = () => process.env.MOCK_AI === "1";
 
-/** Call the model, write the raw reply to the audit trail, and pass failures on. */
-async function extract<S extends z.ZodType>(
-  call: "voice" | "text",
-  schema: S,
-  request: Omit<ChatJsonInput<S>, "schema">,
-): Promise<z.infer<S>> {
+/** Call the model once, write the raw reply to the audit trail, and pass failures on. */
+async function callOnce<S extends z.ZodType>(call: "voice", request: ChatJsonInput<S>): Promise<z.infer<S>> {
   try {
-    const { value, raw } = await chatJson({ ...request, schema });
+    const { value, raw } = await chatJson(request);
     await logAiCall(call, { raw });
     return value;
   } catch (error) {
     if (error instanceof OllamaError) await logAiCall(call, { raw: error.raw, error });
     throw error;
+  }
+}
+
+/**
+ * Without structured output, Gemma now and then breaks the JSON or writes null
+ * where the schema wants text, and the family would have to record again. The
+ * first try runs at temperature 0, which failed none of 16 test notes against
+ * 2 of 16 at the default. A reply that still fails is logged and asked once
+ * more at the default temperature, which gives a different reply.
+ */
+async function extract<S extends z.ZodType>(
+  call: "voice",
+  schema: S,
+  request: Omit<ChatJsonInput<S>, "schema">,
+): Promise<z.infer<S>> {
+  try {
+    return await callOnce(call, { ...request, schema, options: { temperature: 0 } });
+  } catch (error) {
+    if (!(error instanceof OllamaError) || error.kind !== "invalid_output") throw error;
+    return callOnce(call, { ...request, schema });
   }
 }
 
@@ -49,6 +63,9 @@ export async function readVoice(input: { audio: Buffer; mime: string }): Promise
   let wav: Buffer;
   try {
     wav = await toWav(input.audio);
+    // Gemma answers a silent note with a made-up report, so it never sees one.
+    // rejected is final: the same recording will not gain speech on a retry.
+    if (!hasSpeech(wav)) throw new OllamaError("rejected", "No speech in the recording");
   } catch (error) {
     if (error instanceof OllamaError) await logAiCall("voice", { raw: error.raw, error });
     throw error;
@@ -56,20 +73,8 @@ export async function readVoice(input: { audio: Buffer; mime: string }): Promise
   return extract("voice", AiVoiceExtract, { system: VOICE_SYSTEM, user: "Read this voice note.", media: [wav] });
 }
 
-// A typed note has no transcript. With thinking off the model copied the note
-// into the field anyway, which doubled the output and the wait.
-const TextExtract = AiVoiceExtract.omit({ transcript: true });
-
-/** A typed note. The transcript comes back empty. */
-export async function readText(input: { text: string }): Promise<AiVoiceExtract> {
-  if (isMock()) return structuredClone(fixtures.text);
-  const value = await extract("text", TextExtract, { system: TEXT_SYSTEM, user: input.text });
-  return { ...value, transcript: "" };
-}
-
 type PhotoInput = {
   photos: { data: Buffer; mime: string; label: string }[];
-  note?: string | null;
 };
 
 /**
@@ -78,21 +83,20 @@ type PhotoInput = {
  */
 export async function draftPhotoWithRaw(input: PhotoInput): Promise<{ draft: AiPhotoDraft; raw: string | null }> {
   if (isMock()) {
-    return { draft: structuredClone(input.photos.length === 1 ? fixtures.photoUnclear : fixtures.photo), raw: null };
+    return { draft: structuredClone(fixtures.photo), raw: null };
   }
   const { value, raw } = await chatJson({
     schema: AiPhotoDraft,
     system: PHOTO_SYSTEM,
-    user: photoUserPrompt({ labels: input.photos.map((photo, i) => photo.label || `Photo ${i + 1}`), note: input.note }),
+    user: photoUserPrompt({ labels: input.photos.map((photo, i) => photo.label || `Photo ${i + 1}`) }),
     media: input.photos.map((photo) => photo.data),
     // The same photos should give the same class every time.
     options: { temperature: 0 },
-    schemaHint: "Use null for need_more when damage_class is not unclear.",
   });
   return { draft: value, raw };
 }
 
-/** One to three photos of one house, with the responder's note if there is one. */
+/** The photo a family sent with their report. The hub reads it in the background, see ./draft-report. */
 export async function draftPhoto(input: PhotoInput): Promise<AiPhotoDraft> {
   return (await draftPhotoWithRaw(input)).draft;
 }

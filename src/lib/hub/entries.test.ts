@@ -60,7 +60,6 @@ describe("listEntries", () => {
   it("lists confirmed entries newest first, with the responder name", () => {
     house({ responder_id: ana });
     house();
-    house({ status: "draft", damage_class: null, confirmed_at: null });
     house({ status: "needs_review", confirmed_at: null });
     const page = listEntries(db);
     expect(page.total).toBe(2);
@@ -219,47 +218,6 @@ describe("getEntryDetail", () => {
     expect(getEntryDetail(db, house().id)?.report).toBeNull();
   });
 
-  it("compares the AI draft with the final entry", () => {
-    const e = house({
-      damage_class: "total",
-      ai_class: "total",
-      material: "light",
-      people: 5,
-      hurt: 1,
-      needs: ["water", "tarp", "medicine"],
-      confirmed_by: mae,
-    });
-    event(e.id, "entry.field_changed", mae, 5, { field: "damage_class", from: null, to: "total" });
-    event(e.id, "entry.field_changed", mae, 5, { field: "needs", from: ["water", "tarp"], to: ["water", "tarp", "medicine"] });
-    const rows = Object.fromEntries(getEntryDetail(db, e.id)!.comparison.map((c) => [c.field, c]));
-    expect(rows.damage_class).toMatchObject({ draft: "total", final: "total", changed: false, changed_by: null });
-    expect(rows.material).toMatchObject({ draft: "light", final: "light", changed: false });
-    expect(rows.needs).toMatchObject({
-      draft: ["water", "tarp"],
-      final: ["water", "tarp", "medicine"],
-      changed: true,
-      changed_by: "Mae Santos",
-    });
-  });
-
-  it("marks a damage class the responder changed, and who changed it", () => {
-    const e = house({ damage_class: "partial", ai_class: "unclear", confirmed_by: ana });
-    event(e.id, "entry.field_changed", ana, 5, { field: "damage_class", from: null, to: "partial" });
-    const damage = getEntryDetail(db, e.id)!.comparison.find((c) => c.field === "damage_class");
-    expect(damage).toMatchObject({ draft: "unclear", final: "partial", changed: true, changed_by: "Ana Villanueva" });
-  });
-
-  it("names staff when staff made the change", () => {
-    const e = house({ damage_class: "none", ai_class: "partial", confirmed_by: "staff" });
-    expect(getEntryDetail(db, e.id)!.comparison[0]).toMatchObject({ changed: true, changed_by: "Staff" });
-  });
-
-  it("does not count a reordered needs list as a change", () => {
-    const e = house({ needs: ["tarp", "water"] });
-    event(e.id, "entry.field_changed", mae, 5, { field: "needs", from: ["water", "tarp"], to: ["tarp", "water"] });
-    expect(getEntryDetail(db, e.id)!.comparison.find((c) => c.field === "needs")?.changed).toBe(false);
-  });
-
   it("builds the history from the report and the events, oldest first", () => {
     const report = db
       .insert(reports)
@@ -271,7 +229,7 @@ describe("getEntryDetail", () => {
     event(e.id, "ai.photo", "system", 6);
     event(e.id, "entry.created", mae, 4, { number: e.number });
     event(e.id, "entry.field_changed", mae, 7, { field: "hurt", from: 0, to: 1 });
-    // Another entry's events and non-entry events stay out.
+    // Another entry's events, non-entry events and AI events stay out.
     const other = house();
     event(other.id, "entry.created", ana, 4);
     db.insert(events).values({ entity: "ai", entity_id: e.id, type: "ai.voice", actor: "system", at: at(3) }).run();
@@ -279,7 +237,6 @@ describe("getEntryDetail", () => {
     expect(getEntryDetail(db, e.id)!.history).toEqual([
       { label: "Family report", at: at(0) },
       { label: "Taken by Mae", at: at(4) },
-      { label: "AI draft", at: at(6) },
       { label: "Changed hurt by Mae", at: at(7) },
       { label: "Confirmed", at: at(8) },
     ]);
@@ -302,7 +259,7 @@ describe("getEntryDetail", () => {
   });
 
   it("opens an entry that is not confirmed yet", () => {
-    const e = house({ status: "needs_review", damage_class: null, confirmed_at: null });
+    const e = house({ status: "needs_review", confirmed_at: null });
     expect(getEntryDetail(db, e.id)?.entry.status).toBe("needs_review");
   });
 });

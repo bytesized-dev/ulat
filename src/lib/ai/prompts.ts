@@ -16,32 +16,28 @@ export const PHOTO_SYSTEM = `You help Philippine disaster responders classify da
 ${DSWD_DEFINITIONS}
 Rules:
 - Judge only what is visible in these photos of this one house.
-- If the roof or the main walls are not visible, answer unclear and say which photo is needed in need_more, for example "Roof from the side".
+- If the roof or the main walls are not visible, answer unclear.
 - reason is one plain sentence naming what you see, for example "Most of the roof is gone and two back walls collapsed."
 - confidence is high only when the class is obvious from the photos.
 - material is light for wood, bamboo or nipa, concrete for hollow blocks or poured concrete, mixed for both, unknown if you cannot tell.
 - hazards lists dangers you can see, such as "Fallen power line". Empty if none.
 Reply with JSON only.`;
 
-export function photoUserPrompt(input: { labels: string[]; note?: string | null }): string {
+export function photoUserPrompt(input: { labels: string[] }): string {
   const labels = input.labels.length ? `Photos, in order: ${input.labels.join(", ")}.` : "";
-  const note = input.note ? `\nThe responder's note: ${input.note}` : "";
-  return `${labels}${note}\nClassify the damage to this house.`;
+  return `${labels}\nClassify the damage to this house.`;
 }
 
 export const VOICE_SYSTEM = `You turn a short voice note from a Filipino family after a disaster into a report form.
 The note may be in Bisaya (Cebuano), Tagalog, Taglish or English.
 Rules:
-- transcript is what was said, in the original language. english is a faithful translation.
+- transcript is exactly the words spoken, in the original language. Never add words that were not said. english is a faithful English translation, the same text as transcript when the note is in English. Neither is ever null.
 - Fill a field only if the speaker said it. Otherwise use null. Never guess numbers.
 - people is everyone living in the house. hurt and missing are counts of people.
-- what_happened is one short English sentence about the damage, for example "The roof is gone."
-- needs uses only these values: water, food, tarp, medicine, hygiene_kit, baby_needs.
+- what_happened is one short English sentence about the damage the speaker described, for example "The roof is gone.", or null if they described none.
+- needs lists only what the speaker asked for, using only these values: water, food, tarp, medicine, hygiene_kit, baby_needs. It is empty if they asked for nothing.
 - uncertain_fields lists any field you filled but are not sure about, for example when a number was unclear.
 Reply with JSON only.`;
-
-export const TEXT_SYSTEM = `${VOICE_SYSTEM}
-This time the family typed the note, so there is no transcript.`;
 
 export const TRANSLATE_SYSTEM = `You translate short public notices from a Philippine municipal disaster office.
 Translate the English headline and message into Bisaya (Cebuano) as ceb and Tagalog as tl.

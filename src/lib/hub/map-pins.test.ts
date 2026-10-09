@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 
 function entry(e: Partial<typeof entries.$inferInsert>) {
-  db.insert(entries).values({ number: ++number, responder_id: responderId, barangay: "Sinonoc", created_at: at, ...here, ...e }).run();
+  db.insert(entries).values({ number: ++number, responder_id: responderId, barangay: "Sinonoc", status: "confirmed", damage_class: "partial", created_at: at, ...here, ...e }).run();
 }
 
 function report(status: (typeof reports.$inferInsert)["status"], r: Partial<typeof reports.$inferInsert> = {}) {
@@ -43,12 +43,11 @@ function place(type: (typeof places.$inferInsert)["type"], visible = true) {
 const kinds = () => getMapPins(db).map((p) => p.kind).sort();
 
 describe("map pins", () => {
-  it("shows confirmed total and partial entries, never none, drafts or reviews", () => {
+  it("shows confirmed total and partial entries, never none or reviews", () => {
     entry({ status: "confirmed", damage_class: "total", household_head: "Garcia household" });
     entry({ status: "confirmed", damage_class: "partial" });
     entry({ status: "confirmed", damage_class: "none" });
     entry({ status: "needs_review", damage_class: "total" });
-    entry({ status: "draft" });
     expect(kinds()).toEqual(["partial", "total"]);
     expect(getMapPins(db).find((p) => p.kind === "total")).toMatchObject({ label: "Garcia household, totally damaged", ...here });
   });

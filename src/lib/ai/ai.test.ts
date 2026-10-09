@@ -1,17 +1,16 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { POST as postText } from "@/app/api/ai/text/route";
 import { POST as postVoice } from "@/app/api/ai/voice/route";
 import * as schema from "@/db/schema";
 import { AiPhotoDraft, AiVoiceExtract } from "@/lib/contracts";
-import { draftPhoto, readText, readVoice } from "./index";
+import { draftPhoto, readVoice } from "./index";
 import { chatJson, OllamaError, resetStructuredOutputProbe } from "./ollama";
 import { z } from "zod";
 
 // Ollama is replaced by a mocked fetch, ffmpeg by a pass through and the
 // database by an in-memory file, so nothing here needs a model, audio or the
 // hub's data/ulat.db.
-vi.mock("./audio", () => ({ toWav: async (audio: Buffer) => audio }));
+vi.mock("./audio", () => ({ toWav: async (audio: Buffer) => audio, hasSpeech: () => true }));
 vi.mock("../../db/client", async () => {
   const { default: Database } = await import("better-sqlite3");
   const { drizzle } = await import("drizzle-orm/better-sqlite3");
@@ -171,11 +170,12 @@ describe("chatJson when the reply hits the token cap", () => {
     await expect(call()).resolves.toMatchObject({ value: { n: 3 } });
   });
 
-  it("is audited as ai.text.failed with the cut-off reply", async () => {
-    fetchMock.mockResolvedValue(capped('{"language":"ceb","english":"The ro'));
-    await expect(readText({ text: "hello" })).rejects.toMatchObject({ kind: "invalid_output" });
+  it("is audited as ai.voice.failed with the cut-off reply", async () => {
+    // A fresh Response per call: the failed reply is asked for twice, and a body reads once.
+    fetchMock.mockImplementation(async () => capped('{"language":"ceb","english":"The ro'));
+    await expect(readVoice({ audio: Buffer.from("x"), mime: "audio/webm" })).rejects.toMatchObject({ kind: "invalid_output" });
     expect(events()[0]).toMatchObject({
-      type: "ai.text.failed",
+      type: "ai.voice.failed",
       data: { raw: '{"language":"ceb","english":"The ro', error: { kind: "invalid_output", message: "The reply hit the 1536 token cap" } },
     });
   });
@@ -277,7 +277,7 @@ describe("chatJson without structured output", () => {
   });
 });
 
-describe("voice, text and photo when Ollama answers format with a 501", () => {
+describe("voice and photo when Ollama answers format with a 501", () => {
   const noFormat = () => new Response('{"error":"structured output is unavailable"}', { status: 501 });
   const photo: AiPhotoDraft = {
     damage_class: "partial",
@@ -285,7 +285,6 @@ describe("voice, text and photo when Ollama answers format with a 501", () => {
     material: "light",
     hazards: [],
     reason: "Some roof sheets are missing but the walls stand.",
-    need_more: null,
   };
   const bodyOf = (n: number) => JSON.parse(fetchMock.mock.calls[n][1].body);
 
@@ -299,44 +298,39 @@ describe("voice, text and photo when Ollama answers format with a 501", () => {
     expect(bodyOf(1).messages[1].content).toContain('"transcript"');
     expect(events()[0]).toMatchObject({ type: "ai.voice", data: { raw: fenced } });
   });
-
-  it("reads a typed note through the prompt", async () => {
-    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(JSON.stringify(extract)));
-    await expect(readText({ text: "Wala na ang atop" })).resolves.toEqual({ ...extract, transcript: "" });
-    expect(bodyOf(1).messages[1].content).toMatch(/^Wala na ang atop\n\n/);
-    expect(bodyOf(1).messages[1].content).not.toContain('"transcript"');
-    expect(bodyOf(1).messages[1].content).toContain('"english"');
-  });
-
-  it("drafts a photo through the prompt, with the need_more hint and temperature 0", async () => {
+  it("drafts a photo through the prompt at temperature 0", async () => {
     fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(JSON.stringify(photo)));
     await expect(draftPhoto({ photos: [{ data: Buffer.from("img"), mime: "image/jpeg", label: "Front" }] })).resolves.toEqual(photo);
 
     expect(bodyOf(1)).not.toHaveProperty("format");
     expect(bodyOf(1).options).toEqual({ num_predict: 1536, temperature: 0 });
     expect(bodyOf(1).think).toBe(false);
-    expect(bodyOf(1).messages[1].content).toContain("Use null for need_more when damage_class is not unclear.");
-    expect(bodyOf(1).messages[1].content).toContain('"need_more"');
+    expect(bodyOf(1).messages[1].content).toContain('"hazards"');
+    expect(bodyOf(1).messages[1].content).not.toContain("need_more");
   });
 
   it("audits an invalid fallback reply as ai.voice.failed with the raw output", async () => {
     const bad = JSON.stringify({ ...extract, people: -1 });
-    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(bad));
+    fetchMock.mockResolvedValueOnce(noFormat()).mockResolvedValueOnce(reply(bad)).mockResolvedValueOnce(reply(bad));
     await expect(readVoice({ audio: Buffer.from("x"), mime: "audio/webm" })).rejects.toMatchObject({ kind: "invalid_output", raw: bad });
+    // The bad reply is asked for once more at the default temperature, and both tries are audited.
+    expect(bodyOf(1).options.temperature).toBe(0);
+    expect(bodyOf(2).options).not.toHaveProperty("temperature");
+    expect(events()).toHaveLength(2);
     expect(events()[0]).toMatchObject({ type: "ai.voice.failed", data: { raw: bad, error: { kind: "invalid_output" } } });
   });
 
   it("logs a reachable Ollama's error with its status, not as a lost connection", async () => {
     fetchMock.mockResolvedValue(new Response("boom", { status: 500 }));
-    await expect(readText({ text: "hello" })).rejects.toMatchObject({ kind: "unavailable", status: 500 });
+    await expect(readVoice({ audio: Buffer.from("x"), mime: "audio/webm" })).rejects.toMatchObject({ kind: "unavailable", status: 500 });
     expect(events()[0]).toMatchObject({
-      type: "ai.text.failed",
+      type: "ai.voice.failed",
       data: { raw: "boom", error: { kind: "unavailable", message: "Ollama answered 500" } },
     });
   });
 });
 
-describe("readVoice and readText", () => {
+describe("readVoice", () => {
   it("returns the model's extract and logs the raw output as ai.voice", async () => {
     fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
     await expect(readVoice({ audio: Buffer.from("x"), mime: "audio/webm" })).resolves.toEqual(extract);
@@ -346,25 +340,6 @@ describe("readVoice and readText", () => {
     expect(row.entity_id).toMatch(/^[0-9a-f-]{36}$/);
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).messages[1].images).toHaveLength(1);
   });
-
-  it("empties the transcript for a typed note and sends the text as the user message", async () => {
-    fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
-    const result = await readText({ text: "Wala na ang atop" });
-    expect(result).toEqual({ ...extract, transcript: "" });
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body).messages[1]).toEqual({ role: "user", content: "Wala na ang atop" });
-    expect(events()[0].type).toBe("ai.text");
-  });
-
-  it("leaves transcript out of the schema for a typed note, even if the model writes one", async () => {
-    fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
-    await expect(readText({ text: "Wala na ang atop" })).resolves.toEqual({ ...extract, transcript: "" });
-
-    const { properties, required } = JSON.parse(fetchMock.mock.calls[0][1].body).format;
-    expect(properties).not.toHaveProperty("transcript");
-    expect(required).not.toContain("transcript");
-    expect(properties).toHaveProperty("english");
-  });
-
   it("keeps transcript in the schema for a voice note", async () => {
     fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
     await readVoice({ audio: Buffer.from("x"), mime: "audio/webm" });
@@ -379,63 +354,17 @@ describe("readVoice and readText", () => {
     expect(row.data).toMatchObject({ raw: expect.stringContaining('"people":-1'), error: { kind: "invalid_output" } });
   });
 
-  it("logs a timeout as ai.text.failed with no raw output", async () => {
+  it("logs a timeout as ai.voice.failed with no raw output", async () => {
     fetchMock.mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
-    await expect(readText({ text: "hello" })).rejects.toMatchObject({ kind: "timeout" });
-    expect(events()[0]).toMatchObject({ type: "ai.text.failed", data: { raw: null, error: { kind: "timeout" } } });
+    await expect(readVoice({ audio: Buffer.from("x"), mime: "audio/webm" })).rejects.toMatchObject({ kind: "timeout" });
+    expect(events()[0]).toMatchObject({ type: "ai.voice.failed", data: { raw: null, error: { kind: "timeout" } } });
   });
 
   it("returns the fixtures and logs nothing under MOCK_AI=1", async () => {
     vi.stubEnv("MOCK_AI", "1");
     AiVoiceExtract.parse(await readVoice({ audio: Buffer.from("x"), mime: "audio/webm" }));
-    AiVoiceExtract.parse(await readText({ text: "hello" }));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(events()).toHaveLength(0);
-  });
-});
-
-describe("POST /api/ai/text", () => {
-  const post = (body: unknown) =>
-    postText(new Request("http://hub/api/ai/text", { method: "POST", body: typeof body === "string" ? body : JSON.stringify(body) }));
-
-  it("returns an AiVoiceExtract with an empty transcript", async () => {
-    fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
-    const response = await post({ text: "  Wala na ang atop  " });
-    expect(response.status).toBe(200);
-    expect(AiVoiceExtract.parse(await response.json())).toMatchObject({ transcript: "", english: extract.english });
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body).messages[1].content).toBe("Wala na ang atop");
-  });
-
-  it.each([["not json"], [{}], [{ text: "   " }], [{ text: "a".repeat(501) }], [{ text: 5 }]])("rejects %j with 400", async (body) => {
-    const response = await post(body);
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "bad_request", retry: false });
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    [new DOMException("timed out", "TimeoutError"), 504, "timeout"],
-    [new TypeError("fetch failed"), 503, "unavailable"],
-  ])("maps %s to a retryable %i", async (failure, status, error) => {
-    fetchMock.mockRejectedValue(failure);
-    const response = await post({ text: "hello" });
-    expect(response.status).toBe(status);
-    expect(await response.json()).toEqual({ error, retry: true });
-  });
-
-  it("works when Ollama answers format with a 501", async () => {
-    fetchMock.mockResolvedValueOnce(new Response('{"error":"structured output is unavailable"}', { status: 501 })).mockResolvedValue(reply(JSON.stringify(extract)));
-    const response = await post({ text: "Wala na ang atop" });
-    expect(response.status).toBe(200);
-    expect(AiVoiceExtract.parse(await response.json())).toMatchObject({ transcript: "", english: extract.english });
-    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).not.toHaveProperty("format");
-  });
-
-  it("returns 502 with retry when the model's output fails the schema", async () => {
-    fetchMock.mockResolvedValue(reply('{"language":"klingon"}'));
-    const response = await post({ text: "hello" });
-    expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({ error: "invalid_output", retry: true });
   });
 });
 
@@ -471,16 +400,11 @@ describe("POST /api/ai/voice", () => {
     expect(AiVoiceExtract.parse(await response.json())).toEqual(extract);
   });
 
-  it("rejects audio that is not WAV with 400 and never calls the model", async () => {
+  it("takes webm and mp4 as well as WAV, since readVoice converts them", async () => {
+    fetchMock.mockImplementation(async () => reply(JSON.stringify(extract)));
     const webm = new File([new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, ...new Array(996).fill(1)])], "note.webm", { type: "audio/webm" });
-    const mp4 = new File([new Uint8Array([0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, ...new Array(992).fill(1)])], "note.wav", { type: "audio/wav" });
-    const short = new File([new TextEncoder().encode("RIFF")], "note.wav", { type: "audio/wav" });
-    for (const file of [webm, mp4, short]) {
-      const response = await post(upload(file));
-      expect(response.status).toBe(400);
-      expect(await response.json()).toEqual({ error: "bad_request", retry: false });
-    }
-    expect(fetchMock).not.toHaveBeenCalled();
+    const mp4 = new File([new Uint8Array([0, 0, 0, 0x20, 0x66, 0x74, 0x79, 0x70, ...new Array(992).fill(1)])], "note.m4a", { type: "audio/mp4" });
+    for (const file of [webm, mp4]) expect((await post(upload(file))).status).toBe(200);
   });
 
   it("rejects a missing field, a non-audio file and an empty file with 400", async () => {

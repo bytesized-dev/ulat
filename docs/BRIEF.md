@@ -25,8 +25,8 @@ Hook for the pitch: on 10 October 2025, a magnitude 7.4 earthquake hit eastern M
 
 | User | Device | What they do |
 |---|---|---|
-| Families at the evacuation center | Their own phone, or the help desk | Report their household by voice or text, check their report by code, find water and shelters, tell relatives they are safe |
-| MDRRMO responders in the field | Their phone | Get a to-visit list sorted by urgency, photograph each house, record a note, confirm the AI draft |
+| Families at the evacuation center | Their own phone, or the help desk | Report their household with a short form and a photo, check their report by code, find water and shelters, tell relatives they are safe |
+| MDRRMO responders in the field | Their phone | Get a to-visit list sorted by urgency, photograph each house and confirm it on one screen that starts from the family's report and the hub's reading of their photo |
 | MDRRMO staff at the hub | The laptop | Watch the totals, review disagreements, assign reports, post updates, print the situation report, send the SMS summary |
 
 ## The rule that holds it together
@@ -48,8 +48,9 @@ Line for the pitch: everything that needs internet happens before the storm. The
 
 ## What the AI does
 
-- **Voice to form.** A family's note in Bisaya, Tagalog, Taglish or English becomes household head, people, hurt, missing, damage and needs. The hub also translates it to English for responders.
-- **Photo to damage class.** Responder photos become a suggested class (none, partial, total or unclear) with a one-line reason, using the DSWD definitions.
+- **Voice to form.** A note recorded at the help desk in Bisaya, Tagalog, Taglish or English becomes household head, people, hurt, missing, damage and needs. The hub also translates it to English for responders. Families fill the form themselves on their phones.
+- **Family photo reading.** The hub reads the photo a family sends with its report: damage class, hazards and a one-line reason. Code turns that and the hurt and missing counts into an urgency label for responders and staff, who can set their own verdict.
+- **Photo to damage class.** The photo a family sends with a report becomes a suggested class (none, partial, total or unclear) with a one-line reason, using the DSWD definitions. The hub reads it in the background, and code turns it into an urgency. Responder photos are evidence only and never go to the AI.
 - **Translation of updates.** Staff write an update in English and the hub drafts Bisaya and Tagalog versions for staff to check.
 
 The model never counts. Code computes every total from confirmed entries.
@@ -69,7 +70,7 @@ The model never counts. Code computes every total from confirmed entries.
 
 1. 0 to 8 s: "After Typhoon Odette, whole provinces had no signal for days. That's when LGUs have to count the damage."
 2. 8 to 15 s: the router with nothing in its internet port, and a phone saying there's no internet.
-3. 15 to 45 s: a family records a Bisaya note and a hollow pin appears on the hub map. A responder opens it, photographs a printed damage photo, and the hub drafts "Totally damaged". They confirm, the pin turns red, and the family sees "Totally damaged" under their code.
+3. 15 to 45 s: a family sends a report with a photo and a hollow pin appears on the hub map. The hub reads the photo as "Totally damaged" with high urgency. A responder opens it, photographs the house, and confirms on one screen with the class already picked. The pin turns red, and the family sees "Totally damaged" under their code.
 4. 45 to 55 s: the situation report and SMS summary, then the eval numbers.
 5. 55 to 60 s: "Ulat. One laptop, one router, no internet."
 

@@ -1,0 +1,84 @@
+import { describe, expect, it } from "vitest";
+import { distanceMeters, formatDistance, orderToVisit, withDistance, type ToVisitReport } from "./to-visit-order";
+
+const here = { lat: 10.0, lng: 124.0 };
+
+function report(code: string, over: Partial<ToVisitReport> = {}): ToVisitReport {
+  return {
+    code,
+    household_head: `${code} household`,
+    barangay: "San Isidro",
+    purok: null,
+    lat: 10.0,
+    lng: 124.0,
+    hurt: 0,
+    missing: 0,
+    created_at: "2026-10-09T08:00:00.000Z",
+    ...over,
+  };
+}
+
+// About 111 m per 0.001 degree of latitude.
+const at = (metres: number) => ({ lat: 10.0 + metres / 111_195, lng: 124.0 });
+
+describe("distance", () => {
+  it("is zero for the same point and close to the real distance", () => {
+    expect(distanceMeters(here, here)).toBe(0);
+    expect(Math.round(distanceMeters(here, at(1000)))).toBeGreaterThan(995);
+    expect(Math.round(distanceMeters(here, at(1000)))).toBeLessThan(1005);
+  });
+
+  it("formats metres and kilometres", () => {
+    expect(formatDistance(347)).toBe("350 m");
+    expect(formatDistance(999)).toBe("1000 m");
+    expect(formatDistance(1234)).toBe("1.2 km");
+    expect(formatDistance(2000)).toBe("2.0 km");
+  });
+});
+
+describe("order to visit", () => {
+  const reports = [
+    report("NEAR", { ...at(100) }),
+    report("FAR1", { ...at(2000), hurt: 1 }),
+    report("MISS", { ...at(600), missing: 1 }),
+    report("MID1", { ...at(450) }),
+  ];
+
+  it("urgent first puts hurt or missing on top, then distance", () => {
+    const order = orderToVisit(withDistance(reports, here), "urgent").map((r) => r.code);
+    expect(order).toEqual(["MISS", "FAR1", "NEAR", "MID1"]);
+  });
+
+  it("nearest ignores hurt and missing", () => {
+    const order = orderToVisit(withDistance(reports, here), "nearest").map((r) => r.code);
+    expect(order).toEqual(["NEAR", "MID1", "MISS", "FAR1"]);
+  });
+
+  it("puts houses without a distance last and keeps urgent ones first", () => {
+    const list = [
+      report("NOGP", { lat: null, lng: null, created_at: "2026-10-09T09:00:00.000Z" }),
+      report("HURT", { lat: null, lng: null, hurt: 2 }),
+      report("NEAR", { ...at(100) }),
+    ];
+    expect(orderToVisit(withDistance(list, here), "urgent").map((r) => r.code)).toEqual(["HURT", "NEAR", "NOGP"]);
+    expect(orderToVisit(withDistance(list, here), "nearest").map((r) => r.code)).toEqual(["NEAR", "HURT", "NOGP"]);
+  });
+
+  it("without the responder's location, falls back to urgent then oldest", () => {
+    const list = [
+      report("LATE", { created_at: "2026-10-09T10:00:00.000Z" }),
+      report("OLD", { created_at: "2026-10-09T07:00:00.000Z" }),
+      report("HURT", { hurt: 1, created_at: "2026-10-09T11:00:00.000Z" }),
+    ];
+    const items = withDistance(list, null);
+    expect(items.every((i) => i.distance_m === null)).toBe(true);
+    expect(orderToVisit(items, "urgent").map((r) => r.code)).toEqual(["HURT", "OLD", "LATE"]);
+  });
+
+  it("does not change the list it was given", () => {
+    const items = withDistance(reports, here);
+    const before = items.map((i) => i.code);
+    orderToVisit(items, "urgent");
+    expect(items.map((i) => i.code)).toEqual(before);
+  });
+});

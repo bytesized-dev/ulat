@@ -52,6 +52,8 @@ function exclusively<T>(work: () => Promise<T>): Promise<T> {
 
 let running = false;
 const backoff = createBackoff();
+// Entries whose last POST timed out. They go to the back of the next run.
+const stalled = new Set<string>();
 
 /**
  * Reads the queue and, when the hub answers, sends what waits. The health check
@@ -73,7 +75,7 @@ async function check(manual = false) {
     const waiting = state.items?.some((item) => !item.failure) ?? false;
     if (mayFlush({ inRange, waiting, signedOut: state.signedOut, backoffReady: backoff.ready(), manual })) {
       update({ busy: true });
-      const result = await exclusively(() => flushQueue());
+      const result = await exclusively(() => flushQueue(browserStore, fetch, stalled));
       if (result.signedOut) update({ signedOut: true });
       else if (!result.retry) update({ signedOut: false });
       // Entries that went out before the failure count as progress, so the wait starts again from the first step.

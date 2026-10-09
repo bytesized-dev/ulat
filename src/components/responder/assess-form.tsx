@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CameraIcon, MapPinIcon, XIcon } from "lucide-react";
+import { newClientId } from "@/components/family/client-id";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
@@ -73,7 +74,9 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
     // The ref answers at once. State would still read false for a second tap in
     // the same frame, and each POST makes its own entry.
     if (sending.current || photos.length === 0) return;
-    const meta = buildMeta(house, photos.map((p) => p.label), gps);
+    // One id per tap. The online try and the queued copy both carry it, so the hub
+    // can tell a resend after a lost reply from a new entry.
+    const meta = buildMeta(house, photos.map((p) => p.label), gps, newClientId());
     if (!meta.success) return setError("This house is missing its barangay. Go back and open it again.");
     sending.current = true;
     setBusy(true);

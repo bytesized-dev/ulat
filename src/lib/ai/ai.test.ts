@@ -101,8 +101,19 @@ describe("chatJson", () => {
   it("throws unavailable when Ollama is down or answers with an error", async () => {
     fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
     await expect(call()).rejects.toMatchObject({ kind: "unavailable" });
+    fetchMock.mockResolvedValueOnce(new Response("overloaded", { status: 500 }));
+    await expect(call()).rejects.toMatchObject({ kind: "unavailable", raw: "overloaded" });
+  });
+
+  it("throws rejected for an Ollama 4xx, but not for 408 or 429", async () => {
     fetchMock.mockResolvedValueOnce(new Response("model not found", { status: 404 }));
-    await expect(call()).rejects.toMatchObject({ kind: "unavailable", raw: "model not found" });
+    await expect(call()).rejects.toMatchObject({ kind: "rejected", raw: "model not found" });
+    fetchMock.mockResolvedValueOnce(new Response("bad audio", { status: 400 }));
+    await expect(call()).rejects.toMatchObject({ kind: "rejected", raw: "bad audio" });
+    fetchMock.mockResolvedValueOnce(new Response("slow", { status: 408 }));
+    await expect(call()).rejects.toMatchObject({ kind: "unavailable" });
+    fetchMock.mockResolvedValueOnce(new Response("busy", { status: 429 }));
+    await expect(call()).rejects.toMatchObject({ kind: "unavailable" });
   });
 });
 
@@ -186,13 +197,22 @@ describe("POST /api/ai/text", () => {
 });
 
 describe("POST /api/ai/voice", () => {
-  const post = (form: FormData) => postVoice(new Request("http://hub/api/ai/voice", { method: "POST", body: form }));
+  const MB = 1024 * 1024;
+  // A Request built from FormData has no Content-Length header until it goes over
+  // the wire, so serialize it and set the header the way a real upload carries it.
+  const post = async (form: FormData) => {
+    const probe = new Request("http://hub/api/ai/voice", { method: "POST", body: form });
+    const body = new Uint8Array(await probe.arrayBuffer());
+    const headers = { "content-type": probe.headers.get("content-type")!, "content-length": String(body.byteLength) };
+    return postVoice(new Request("http://hub/api/ai/voice", { method: "POST", body, headers }));
+  };
   const upload = (file: File | string | null) => {
     const form = new FormData();
     if (file !== null) form.set("audio", file);
     return form;
   };
-  const clip = new File([new Uint8Array(1000)], "note.webm", { type: "audio/webm;codecs=opus" });
+  const audioFile = (bytes: number, type: string) => new File([new Uint8Array(bytes)], "note", { type });
+  const clip = audioFile(1000, "audio/webm;codecs=opus");
 
   it("returns an AiVoiceExtract for an audio upload", async () => {
     fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
@@ -214,11 +234,53 @@ describe("POST /api/ai/voice", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("rejects a file over 8 MB with 413 and no retry", async () => {
-    const big = new File([new Uint8Array(8 * 1024 * 1024 + 1)], "long.wav", { type: "audio/wav" });
-    const response = await post(upload(big));
+  it.each(["audio/webm;codecs=opus", "audio/ogg", "audio/mp4", "audio/mpeg"])("rejects a %s clip over 1 MB with 413 and no retry", async (type) => {
+    const response = await post(upload(audioFile(MB + 1, type)));
     expect(response.status).toBe(413);
     expect(await response.json()).toEqual({ error: "too_large", retry: false });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a compressed clip of exactly 1 MB", async () => {
+    fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
+    expect((await post(upload(audioFile(MB, "audio/webm")))).status).toBe(200);
+  });
+
+  it("allows a wav up to 6 MB and rejects one over it with 413 and no retry", async () => {
+    fetchMock.mockResolvedValue(reply(JSON.stringify(extract)));
+    expect((await post(upload(audioFile(6 * MB, "audio/wav")))).status).toBe(200);
+
+    const response = await post(upload(audioFile(6 * MB + 1, "audio/wav")));
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: "too_large", retry: false });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a Content-Length over the largest cap without reading the body", async () => {
+    const request = new Request("http://hub/api/ai/voice", {
+      method: "POST",
+      body: upload(clip),
+      headers: { "content-length": String(7 * MB) },
+    });
+    const formData = vi.spyOn(request, "formData");
+    const response = await postVoice(request);
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: "too_large", retry: false });
+    expect(formData).not.toHaveBeenCalled();
+  });
+
+  it.each([[null], ["abc"], ["-5"], ["1e3"], [""]])("rejects Content-Length %j with 411 without reading the body", async (length) => {
+    const body = new ReadableStream();
+    const headers: Record<string, string> = { "content-type": "multipart/form-data; boundary=x" };
+    if (length !== null) headers["content-length"] = length;
+    const request = new Request("http://hub/api/ai/voice", { method: "POST", body, headers, duplex: "half" } as RequestInit);
+    const formData = vi.spyOn(request, "formData");
+
+    const response = await postVoice(request);
+    expect(response.status).toBe(411);
+    expect(await response.json()).toEqual({ error: "bad_request", retry: false });
+    expect(formData).not.toHaveBeenCalled();
+    expect(request.bodyUsed).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -227,5 +289,17 @@ describe("POST /api/ai/voice", () => {
     const response = await post(upload(clip));
     expect(response.status).toBe(504);
     expect(await response.json()).toEqual({ error: "timeout", retry: true });
+  });
+
+  it("maps an Ollama 400 to a final 422 and an Ollama 500 to a retryable 503", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("unsupported audio", { status: 400 }));
+    const rejected = await post(upload(clip));
+    expect(rejected.status).toBe(422);
+    expect(await rejected.json()).toEqual({ error: "rejected", retry: false });
+
+    fetchMock.mockResolvedValueOnce(new Response("boom", { status: 500 }));
+    const down = await post(upload(clip));
+    expect(down.status).toBe(503);
+    expect(await down.json()).toEqual({ error: "unavailable", retry: true });
   });
 });

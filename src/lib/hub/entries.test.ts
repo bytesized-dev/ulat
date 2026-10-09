@@ -126,6 +126,19 @@ describe("listEntries", () => {
     expect(listEntries(db, { q: "%" }).total).toBe(0);
   });
 
+  it("treats an underscore in the search as text", () => {
+    house({ household_head: "Cruz household" });
+    house({ household_head: "A_B household" });
+    expect(listEntries(db, { q: "_" }).rows.map((r) => r.household_head)).toEqual(["A_B household"]);
+  });
+
+  it("orders entries confirmed at the same moment by number, newest first, across pages", () => {
+    const same = "2026-10-09T07:00:00.000Z";
+    for (let i = 0; i < 12; i++) house({ confirmed_at: same });
+    expect(listEntries(db, { page: 1 }).rows.map((r) => r.number)).toEqual([12, 11, 10, 9, 8, 7, 6, 5, 4, 3]);
+    expect(listEntries(db, { page: 2 }).rows.map((r) => r.number)).toEqual([2, 1]);
+  });
+
   it("combines filters", () => {
     house({ damage_class: "total", barangay: "Sinonoc" });
     house({ damage_class: "total", barangay: "Dawo (Pob.)" });
@@ -267,8 +280,20 @@ describe("getEntryDetail", () => {
       { label: "Family report", at: at(0) },
       { label: "Taken by Mae", at: at(4) },
       { label: "AI draft", at: at(6) },
-      { label: "Changed hurt", at: at(7) },
+      { label: "Changed hurt by Mae", at: at(7) },
       { label: "Confirmed", at: at(8) },
+    ]);
+  });
+
+  it("never shows a raw actor id in the history", () => {
+    const e = house();
+    event(e.id, "entry.created", "6c0f7a52-0000-4000-8000-000000000000", 1);
+    event(e.id, "entry.photo_added", "system", 2);
+    event(e.id, "entry.photo_added", "staff", 3);
+    expect(getEntryDetail(db, e.id)!.history.map((h) => h.label)).toEqual([
+      "Taken by Responder",
+      "Photo added by System",
+      "Photo added by Staff",
     ]);
   });
 

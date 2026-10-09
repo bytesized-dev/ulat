@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ChevronLeftIcon } from "lucide-react";
 import { db } from "@/db/client";
 import { DraftComparison } from "@/components/hub/entries/draft-comparison";
@@ -10,6 +11,7 @@ import { NoteSection } from "@/components/hub/entries/note-section";
 import { PhotoGrid } from "@/components/hub/entries/photo-grid";
 import { HubPage } from "@/components/hub/hub-page";
 import { Pill } from "@/components/ui/pill";
+import { readSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts/routes";
 import { getEntryDetail } from "@/lib/hub/entries";
 
@@ -18,12 +20,15 @@ type Props = { params: Promise<{ id: string }> };
 // The page reads the database on every request.
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const detail = getEntryDetail(db, (await params).id);
-  return { title: detail ? `Entry ${entryNumber(detail.entry.number)}` : "Entry" };
-}
+// A fixed title, so the metadata never reads the database.
+export const metadata: Metadata = { title: "Entry" };
 
 export default async function EntryPage({ params }: Props) {
+  // Household names, injuries, GPS and photos are staff only, like GET /api/entries/[id].
+  // src/proxy.ts redirects first; this check does not rely on it.
+  const session = await readSession("staff", (await cookies()).get(SESSION_COOKIE.staff)?.value);
+  if (!session) redirect(routes.hub.lock);
+
   const detail = getEntryDetail(db, (await params).id);
   if (!detail) notFound();
   const { entry } = detail;

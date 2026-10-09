@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Db } from "../../db/client";
 import { entries, events, photos, reports, responders } from "../../db/schema";
 import { ConfirmedDamageClass } from "../contracts/schemas";
+import { likePattern } from "./safe";
 
 // docs/SPEC.md sections 3 and 4. What the hub entries pages read: a paged,
 // filtered list and one entry with its photos, AI draft comparison and history.
@@ -154,9 +155,10 @@ export function getEntryDetail(db: Db, id: string): EntryDetail | null {
   const entry = db.select().from(entries).where(eq(entries.id, id)).get();
   if (!entry) return null;
 
-  // Actors in the audit trail are responder ids, "staff" or "system".
+  // Actors in the audit trail are responder ids, "staff" or "system". A responder
+  // who is no longer in the table is still named, never shown as an id.
   const names = new Map(db.select({ id: responders.id, name: responders.name }).from(responders).all().map((r) => [r.id, r.name]));
-  const who = (actor: string) => names.get(actor) ?? (actor === "staff" ? "Staff" : actor);
+  const who = (actor: string) => names.get(actor) ?? (actor === "staff" ? "Staff" : actor === "system" ? "System" : "Responder");
 
   const rows = db
     .select()
@@ -187,15 +189,15 @@ export function getEntryDetail(db: Db, id: string): EntryDetail | null {
       e.type === "entry.created"
         ? `Taken by ${firstName(who(e.actor))}`
         : e.type === "entry.photo_added"
-          ? "Photo added"
+          ? `Photo added by ${firstName(who(e.actor))}`
           : e.type === "ai.photo"
             ? "AI draft"
             : e.type === "ai.photo.failed"
               ? "AI draft failed"
               : e.type === "entry.field_changed"
-                ? `Changed ${field}`
+                ? `Changed ${field} by ${firstName(who(e.actor))}`
                 : e.type === "entry.needs_review"
-                  ? "Sent for review"
+                  ? `Sent for review by ${firstName(who(e.actor))}`
                   : e.type === "entry.confirmed"
                     ? "Confirmed"
                     : e.type.replace(/[._]/g, " ").replace(/^./, (c) => c.toUpperCase());

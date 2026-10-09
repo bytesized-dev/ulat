@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { DownloadIcon } from "lucide-react";
 import { db } from "@/db/client";
 import { EntriesFilter } from "@/components/hub/entries/entries-filter";
@@ -6,6 +8,7 @@ import { EntriesPager } from "@/components/hub/entries/entries-pager";
 import { EntriesTable } from "@/components/hub/entries/entries-table";
 import { HubPage } from "@/components/hub/hub-page";
 import { Button } from "@/components/ui/button";
+import { readSession, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts/routes";
 import { listEntries, parseEntryQuery } from "@/lib/hub/entries";
 
@@ -15,6 +18,11 @@ export const metadata: Metadata = { title: "Entries" };
 export const dynamic = "force-dynamic";
 
 export default async function EntriesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // Household names and injuries are staff only, like GET /api/entries.
+  // src/proxy.ts redirects first; this check does not rely on it.
+  const session = await readSession("staff", (await cookies()).get(SESSION_COOKIE.staff)?.value);
+  if (!session) redirect(routes.hub.lock);
+
   const query = parseEntryQuery(await searchParams);
   const page = listEntries(db, query);
 

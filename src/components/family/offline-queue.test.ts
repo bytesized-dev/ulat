@@ -354,7 +354,8 @@ describe("flushQueue with a photo", () => {
   });
 
   it("still reads an item queued before photos existed, whose report has no photo_id", () => {
-    const { photo_id: _omitted, ...old } = report;
+    const old: Record<string, unknown> = { ...report };
+    delete old.photo_id;
     const item = { id: "old", report: old, attachments: [], saved_at: "2026-10-09T06:00:00.000Z", state: "waiting" };
     const [read] = readQueue([item]);
     expect(read.id).toBe("old");

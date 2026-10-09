@@ -134,6 +134,19 @@ describe("clearData", () => {
     expect(existsSync(m.uploadsPath)).toBe(true);
   });
 
+  it("deletes family photos in the photo folder too", () => {
+    seed();
+    mkdirSync(join(m.uploadsPath, "photo", "2026-06-12"), { recursive: true });
+    const picture = join(m.uploadsPath, "photo", "2026-06-12", "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d.jpg");
+    writeFileSync(picture, "photo");
+
+    m.clearData();
+
+    expect(existsSync(picture)).toBe(false);
+    expect(existsSync(join(m.uploadsPath, "photo"))).toBe(false);
+    expect(existsSync(m.uploadsPath)).toBe(true);
+  });
+
   it("runs on an empty hub with no uploads folder", () => {
     rmSync(m.uploadsPath, { recursive: true, force: true });
     const responders = counts().responders;

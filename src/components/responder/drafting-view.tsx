@@ -13,8 +13,8 @@ type DraftingViewProps = { entryId: string };
 
 type Progress = { photos: number; hasNote: boolean; drafted: boolean };
 
-/** How long to wait for the events stream before reading the entry anyway. */
-const STREAM_WAIT_MS = 2000;
+/** How often to read the entry while the events stream is not open. */
+const POLL_MS = 2000;
 
 // The real model can take up to 60 seconds and POST /api/entries does not wait for it.
 // The stream is opened first, then the entry is read, so entry.drafted cannot be missed.
@@ -42,21 +42,21 @@ function DraftingView({ entryId }: DraftingViewProps) {
     }
   }, [entryId]);
 
-  // First read: as soon as the stream is open, or after a short wait when it is slow to open.
+  // The entry is read only after the stream is open, so entry.drafted cannot be missed.
   useEffect(() => {
-    if (started.current) return;
-    if (connected) {
+    if (connected && !started.current) {
       started.current = true;
       queueMicrotask(() => void read());
-      return;
     }
-    const timer = setTimeout(() => {
-      if (started.current) return;
-      started.current = true;
-      void read();
-    }, STREAM_WAIT_MS);
-    return () => clearTimeout(timer);
   }, [connected, read]);
+
+  // While the stream is down, ask every couple of seconds until the draft lands, so the
+  // screen never waits on a stream that will not open.
+  useEffect(() => {
+    if (connected || progress.drafted) return;
+    const timer = setInterval(() => void read(), POLL_MS);
+    return () => clearInterval(timer);
+  }, [connected, progress.drafted, read]);
 
   // The stream does not replay what was missed, so read again when it comes back.
   useEffect(() => {

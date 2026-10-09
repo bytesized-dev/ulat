@@ -49,13 +49,15 @@ export default async function ToVisitPage() {
       <main className="flex-1 px-gutter pb-6 pt-2">
         <ToVisitList reports={open} />
       </main>
-      <footer className="px-gutter pb-4">
-        <Link href={routes.responder.newHouse} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>
-          <PlusIcon aria-hidden="true" />
-          New house
-        </Link>
-      </footer>
-      <TabBar active="toVisit" />
+      <div className="sticky bottom-0 bg-canvas">
+        <footer className="px-gutter pb-4 pt-2">
+          <Link href={routes.responder.newHouse} className={cn(buttonVariants({ variant: "secondary" }), "w-full")}>
+            <PlusIcon aria-hidden="true" />
+            New house
+          </Link>
+        </footer>
+        <TabBar active="toVisit" />
+      </div>
       <LiveRefresh />
     </div>
   );

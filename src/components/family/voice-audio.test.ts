@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { setVoiceAudio, voiceAudioBlob, voiceAudioUrl, voiceFileName } from "./voice-audio";
+import { setVoiceAudio, voiceAudioBlob, voiceAudioDuration, voiceAudioUrl, voiceFileName } from "./voice-audio";
 
 afterEach(() => setVoiceAudio(null));
 
@@ -32,5 +32,16 @@ describe("voice audio", () => {
     expect(voiceFileName(new Blob([], { type: "audio/webm;codecs=opus" }))).toBe("note.webm");
     expect(voiceFileName(new Blob([], { type: "audio/mp4" }))).toBe("note.mp4");
     expect(voiceFileName(new Blob([]))).toBe("note.webm");
+  });
+
+  it("keeps how long the recording ran, and drops it with the recording", () => {
+    expect(voiceAudioDuration()).toBeNull();
+    setVoiceAudio(new Blob(["a"], { type: "audio/webm" }), 21_400);
+    expect(voiceAudioDuration()).toBe(21_400);
+    setVoiceAudio(new Blob(["b"], { type: "audio/webm" }));
+    expect(voiceAudioDuration()).toBeNull();
+    setVoiceAudio(new Blob(["c"], { type: "audio/webm" }), 5_000);
+    setVoiceAudio(null);
+    expect(voiceAudioDuration()).toBeNull();
   });
 });

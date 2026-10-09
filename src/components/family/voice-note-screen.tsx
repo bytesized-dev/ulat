@@ -56,7 +56,7 @@ function VoiceNoteScreen() {
   const [transcript, setTranscript] = useState<string | null>(null);
 
   const recorder = useVoiceRecorder({
-    onFinish: async (audio) => {
+    onFinish: async (audio, durationMs) => {
       setTranscript(null);
       setPhase("reading");
       const result = await readVoiceNote(audio);
@@ -68,7 +68,7 @@ function VoiceNoteScreen() {
       // voice_id is made here, once per recording: the send screen uploads the
       // audio under it, and a resend of the same recording stores one file.
       updateDraft({ ...applyExtract(loadDraft(), result.extract), spoken: true, voice_id: newClientId() });
-      setVoiceAudio(audio);
+      setVoiceAudio(audio, durationMs);
       setTranscript(result.extract.transcript);
     },
   });

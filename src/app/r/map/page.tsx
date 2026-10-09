@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { and, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { BarangayCollection } from "@/components/map";
@@ -10,7 +10,7 @@ import { parseBbox } from "@/components/responder/map-sheet";
 import { TabBar } from "@/components/ui/tab-bar";
 import { map } from "@/config";
 import { db } from "@/db/client";
-import { entries, reports } from "@/db/schema";
+import { entries, places, reports } from "@/db/schema";
 import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
 import { readSetting } from "@/lib/auth/settings";
 import { routes } from "@/lib/contracts";
@@ -58,9 +58,16 @@ export default async function MapPage() {
     .all()
     .map((e) => ({ id: e.id, household_head: e.household_head, damage_class: e.damage_class as "partial" | "total", lat: e.lat!, lng: e.lng! }));
 
+  // The hazards the hub lists on /api/places for anyone. Hidden ones stay hidden, even to a laptop that also holds a staff session.
+  const hazards = db
+    .select({ id: places.id, name: places.name, details: places.details, lat: places.lat, lng: places.lng })
+    .from(places)
+    .where(and(eq(places.type, "hazard"), eq(places.visible, true)))
+    .all();
+
   return (
     <div className="flex h-dvh flex-col">
-      <MapScreen bbox={parseBbox(readSetting("map_bbox"), map.placeholderBbox)} barangays={loadBarangays()} reports={open} entries={confirmed} />
+      <MapScreen bbox={parseBbox(readSetting("map_bbox"), map.placeholderBbox)} barangays={loadBarangays()} reports={open} entries={confirmed} hazards={hazards} />
       <TabBar active="map" />
       <LiveRefresh />
     </div>

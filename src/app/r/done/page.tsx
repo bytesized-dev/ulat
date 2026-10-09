@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DoneList } from "@/components/responder/done-list";
 import { LiveRefresh } from "@/components/responder/live-refresh";
-import { AppTopBar } from "@/components/ui/app-top-bar";
 import { TabBar } from "@/components/ui/tab-bar";
 import { db } from "@/db/client";
 import { entries } from "@/db/schema";
@@ -27,6 +26,7 @@ export default async function DonePage() {
       ai_need_more: entries.ai_need_more,
       status: entries.status,
       confirmed_at: entries.confirmed_at,
+      created_at: entries.created_at,
     })
     .from(entries)
     .where(and(eq(entries.responder_id, session.responder_id), inArray(entries.status, ["draft", "needs_review", "confirmed"])))
@@ -34,21 +34,16 @@ export default async function DonePage() {
     .all();
 
   const today = dayKey(new Date());
-  const needsCheck = mine.filter((e) => e.status !== "confirmed");
+  // Only a draft can still be changed. A held entry waits on staff, so it is not the responder's to check.
+  const needsCheck = mine.filter((e) => e.status === "draft");
+  const held = mine.filter((e) => e.status === "needs_review");
   const confirmed = mine
     .filter((e) => e.status === "confirmed" && e.confirmed_at && dayKey(e.confirmed_at) === today)
     .sort((a, b) => (b.confirmed_at ?? "").localeCompare(a.confirmed_at ?? ""));
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AppTopBar name={session.name} searchLabel="Search reports" />
-      <main className="flex-1 px-gutter pb-6 pt-2">
-        <div className="flex items-baseline justify-between">
-          <h1 className="text-title-page text-ink">Done</h1>
-          <span className="font-mono text-mono-sm text-muted-text">{confirmed.length} today</span>
-        </div>
-        <DoneList needsCheck={needsCheck} confirmed={confirmed} />
-      </main>
+      <DoneList responderName={session.name} needsCheck={needsCheck} held={held} confirmed={confirmed} />
       <div className="sticky bottom-0 bg-canvas">
         <TabBar active="done" />
       </div>

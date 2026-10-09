@@ -14,11 +14,14 @@ import { useOwnPosition } from "./use-position";
 
 export type MapEntry = { id: string; household_head: string | null; damage_class: "partial" | "total"; lat: number; lng: number };
 
+export type MapHazard = { id: string; name: string; details: string | null; lat: number; lng: number };
+
 type MapScreenProps = {
   bbox: [number, number, number, number];
   barangays?: BarangayCollection;
   reports: ToVisitReport[];
   entries: MapEntry[];
+  hazards: MapHazard[];
 };
 
 const LEGEND: LegendItem[] = [
@@ -30,9 +33,9 @@ const LEGEND: LegendItem[] = [
 
 const CLASS_LABEL = { total: "Totally damaged", partial: "Partially damaged" } as const;
 
-// Unvisited reports, confirmed houses and you. Tapping a pin fills the sheet
-// under the map. Only reports offer "Open report", since confirmed houses are done.
-export function MapScreen({ bbox, barangays, reports, entries }: MapScreenProps) {
+// Unvisited reports, confirmed houses, hazards and you. Tapping a pin fills the
+// sheet under the map. Only reports offer "Open report", since confirmed houses are done.
+export function MapScreen({ bbox, barangays, reports, entries, hazards }: MapScreenProps) {
   const position = useOwnPosition();
   const placed = useMemo(() => reports.filter((r) => r.lat !== null && r.lng !== null), [reports]);
   const [selectedId, setSelectedId] = useState<string | undefined>(placed[0] ? `report-${placed[0].code}` : undefined);
@@ -47,13 +50,15 @@ export function MapScreen({ bbox, barangays, reports, entries }: MapScreenProps)
         lat: e.lat,
         lng: e.lng,
       })),
+      ...hazards.map((h) => ({ id: `hazard-${h.id}`, kind: "hazard" as const, label: `Hazard, ${h.name}`, lat: h.lat, lng: h.lng })),
       ...(position ? [{ id: "you", kind: "you" as const, label: "You", ...position }] : []),
     ],
-    [placed, entries, position],
+    [placed, entries, hazards, position],
   );
 
   const report = placed.find((r) => `report-${r.code}` === selectedId);
   const entry = entries.find((e) => `entry-${e.id}` === selectedId);
+  const hazard = hazards.find((h) => `hazard-${h.id}` === selectedId);
   const away = report ? howFar(position, { lat: report.lat!, lng: report.lng! }) : null;
 
   return (
@@ -101,6 +106,14 @@ export function MapScreen({ bbox, barangays, reports, entries }: MapScreenProps)
               {entry.household_head ?? "House with no report"}
             </span>
             <Pill dot={entry.damage_class === "total" ? "danger" : "warning"}>{entry.damage_class === "total" ? "Totally" : "Partially"}</Pill>
+          </div>
+        ) : hazard ? (
+          <div className="flex items-center justify-between gap-3 pb-1">
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate text-body-md font-medium text-ink">{hazard.name}</span>
+              {hazard.details ? <span className="text-body-sm text-body">{hazard.details}</span> : null}
+            </span>
+            <Pill>Hazard</Pill>
           </div>
         ) : (
           <p className="pb-1 text-body-md text-body">Tap a pin to see the house.</p>

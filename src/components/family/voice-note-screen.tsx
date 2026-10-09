@@ -97,7 +97,7 @@ function VoiceNoteScreen() {
           <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
             <div className="flex flex-col gap-2">
               <h1 className="text-title-page text-ink">Tell us what happened</h1>
-              <p className="text-body-md text-body">Up to {MAX_NOTE_SECONDS} seconds. Any language.</p>
+              <p className="text-body-sm text-body">Up to {MAX_NOTE_SECONDS} seconds. Any language.</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {HINTS.map((hint) => (
@@ -117,9 +117,9 @@ function VoiceNoteScreen() {
 
       {phase === "recording" ? (
         <>
-          <main className="flex flex-1 flex-col items-center gap-7 px-gutter pt-5 pb-7">
+          <main className="flex flex-1 flex-col items-center gap-7 px-gutter pt-11 pb-7">
             <Pill dot="danger">Recording</Pill>
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-3">
               <p role="timer" className="font-mono text-mono-xl tabular text-ink">
                 {formatTimer(recorder.elapsedMs)}
               </p>
@@ -180,7 +180,7 @@ function VoiceNoteScreen() {
           <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
             <div className="flex flex-col gap-2">
               <h1 className="text-title-page text-ink">We couldn&apos;t hear that</h1>
-              <p className="text-body-md text-body">Try again closer to the phone.</p>
+              <p className="text-body-sm text-body">Try again closer to the phone.</p>
             </div>
             <div className="flex flex-1 flex-col items-center justify-center gap-5">
               <MicButton label="Record again" onClick={() => void begin()} />
@@ -201,7 +201,7 @@ function VoiceNoteScreen() {
             </IconPlate>
             <div className="flex flex-col gap-2">
               <h1 className="text-title-page text-ink">Microphone is off</h1>
-              <p className="text-body-md text-body">Allow it in your browser settings, then try again.</p>
+              <p className="text-body-sm text-body">Allow it in your browser settings, then try again.</p>
             </div>
           </main>
           <footer className="flex flex-col gap-2.5 px-gutter pt-3 pb-7">

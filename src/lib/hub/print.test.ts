@@ -84,7 +84,23 @@ describe("readPoster", () => {
       wifiName: "ULAT-HUB",
       hubAddress: "https://hub.dapitan.example",
       hubHost: "hub.dapitan.example",
+      wifiPassword: null,
     });
+  });
+
+  it("shows the Wi-Fi password line only when a wifi_password setting exists", () => {
+    const markup = () => renderToStaticMarkup(createElement(PosterSheet, { poster: lib.readPoster(db) }));
+    expect(markup()).not.toContain("Password");
+    expect(markup()).not.toContain("[PASSWORD]");
+
+    setSetting("wifi_password", "ligtas2026");
+    expect(lib.readPoster(db).wifiPassword).toBe("ligtas2026");
+    expect(markup()).toContain("Password ligtas2026");
+
+    setSetting("wifi_password", "   ");
+    expect(lib.readPoster(db).wifiPassword).toBeNull();
+    expect(markup()).not.toContain("Password");
+    db.delete(schema.settings).where(eqKey("wifi_password")).run();
   });
 
   it("falls back to the default Wi-Fi name", () => {

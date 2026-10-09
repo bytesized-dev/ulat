@@ -44,6 +44,8 @@ export function getPrintReport(db: Db, n: string, at: Date = new Date()): PrintR
 export type PosterData = {
   town: string;
   wifiName: string;
+  /** Shown only when the hub has one saved, so the poster never prints a placeholder. */
+  wifiPassword: string | null;
   /** The address the QR code encodes, exactly as saved in the hub_address setting. */
   hubAddress: string | null;
   /** The address without its scheme, for the line people can type. */
@@ -60,6 +62,7 @@ export function readPoster(db: Db): PosterData {
   return {
     town: readTown(db),
     wifiName: readText(db, "wifi_name") ?? DEFAULT_WIFI_NAME,
+    wifiPassword: readText(db, "wifi_password") ?? null,
     hubAddress,
     hubHost: hubAddress ? addressHost(hubAddress) : null,
   };

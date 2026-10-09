@@ -18,6 +18,7 @@ import { useVoiceRecorder } from "./use-voice-recorder";
 import { setVoiceAudio } from "./voice-audio";
 import { formatTimer, MAX_NOTE_SECONDS, readVoiceNote } from "./voice-note";
 import { VoiceWaveform } from "./voice-waveform";
+import { FamilyScreen } from "./family-screen";
 
 const HINTS = ["People", "Hurt or missing", "Damage", "Needs"];
 
@@ -94,7 +95,7 @@ function VoiceNoteScreen() {
     );
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       {bar}
       <ProgressSteps step={2} className="px-gutter pb-1.5" />
 
@@ -216,7 +217,7 @@ function VoiceNoteScreen() {
           </footer>
         </>
       ) : null}
-    </div>
+    </FamilyScreen>
   );
 }
 

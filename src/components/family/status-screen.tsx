@@ -12,6 +12,7 @@ import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { useReportStatus } from "./use-report-status";
 import { normalizeCode, placeOf, resultOf, timelineItems } from "./status-view";
+import { FamilyScreen } from "./family-screen";
 
 // A family looks up its own report by code. Before a responder confirms it,
 // the screen shows the household and where the report is. After, it leads with
@@ -28,7 +29,7 @@ function StatusScreen() {
 
   if (view && result) {
     return (
-      <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+      <FamilyScreen>
         <TopBar title={`Report ${view.code}`} as="p" leading={{ kind: "back", href: routes.family.home }} />
         <main className="flex flex-1 flex-col gap-6 px-gutter pt-5 pb-7">
           <div className="flex flex-col gap-1">
@@ -42,7 +43,7 @@ function StatusScreen() {
           <Timeline aria-label="Report progress" items={timelineItems(view)} />
           <p className="rounded-xl bg-surface-soft p-4 text-body-sm text-body">Ask the help desk about relief. Bring your code.</p>
         </main>
-      </div>
+      </FamilyScreen>
     );
   }
 
@@ -50,7 +51,7 @@ function StatusScreen() {
   const field = typed ?? code ?? "";
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar title="My report" leading={{ kind: "back", href: routes.family.home }} />
       <main className="flex flex-1 flex-col gap-6 px-gutter pt-5 pb-7">
         <form
@@ -107,7 +108,7 @@ function StatusScreen() {
           </>
         ) : null}
       </main>
-    </div>
+    </FamilyScreen>
   );
 }
 

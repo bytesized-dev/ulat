@@ -10,6 +10,7 @@ import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { useMounted } from "@/lib/use-mounted";
 import { parseCheckedIn, readCheckedInRaw } from "./safe-checkin";
+import { FamilyScreen } from "./family-screen";
 
 const subscribeNever = () => () => {};
 
@@ -28,7 +29,7 @@ export function SafeDone() {
   if (!checkedIn) return null;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar as="p" title="" leading={{ kind: "close", href: routes.family.home }} />
       <main className="flex flex-1 flex-col gap-8 px-gutter pt-5 pb-7">
         <div className="flex flex-col items-center gap-5 pt-6 text-center">
@@ -53,6 +54,6 @@ export function SafeDone() {
           <Link href={routes.family.safe}>Add someone else</Link>
         </Button>
       </footer>
-    </div>
+    </FamilyScreen>
   );
 }

@@ -119,7 +119,7 @@ describe("POST /api/reports/[code]/cant-assess", () => {
     await signIn("responder");
     const res = await route.POST(post({ reason: "road_blocked", note: "  Bridge is out  " }), ctx(c));
     expect(res.status).toBe(200);
-    expect(row(c).status).toBe("cant_assess");
+    expect(row(c)).toMatchObject({ status: "cant_assess", cant_reason: "road_blocked", cant_note: "Bridge is out" });
     const trail = db.select().from(schema.events).where(eq(schema.events.entity_id, row(c).id)).all();
     const last = trail[trail.length - 1];
     expect(last).toMatchObject({ type: "report.status_changed", actor: "r1" });

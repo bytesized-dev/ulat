@@ -221,7 +221,7 @@ function AssessForm({ house: given, newHouse = false, barangays = [] }: AssessFo
         </p>
       </main>
       <footer className="px-gutter pb-7">
-        <Button type="button" className="w-full" disabled={busy || photos.length === 0} aria-busy={busy} onClick={() => void send()}>
+        <Button type="button" className="w-full" disabled={busy || photos.length === 0 || !house.barangay} aria-busy={busy} onClick={() => void send()}>
           {busy ? "Sending" : "Send to hub"}
         </Button>
       </footer>

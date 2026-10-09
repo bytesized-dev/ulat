@@ -14,7 +14,8 @@ const CLOSED = new Set(["visited", "cant_assess", "merged"]);
 export async function POST(req: Request, ctx: { params: Promise<{ code: string }> }) {
   const actor = await getActor();
   const blocked = deny(actor, ["responder"]);
-  if (blocked || !actor) return blocked;
+  if (blocked) return blocked;
+  if (!actor) return Response.json({ error: "not_signed_in" }, { status: 401 });
 
   const { code: raw } = await ctx.params;
   const code = ReportCode.safeParse(raw.trim().toUpperCase());

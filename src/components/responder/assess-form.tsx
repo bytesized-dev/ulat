@@ -6,15 +6,21 @@ import { CameraIcon, MapPinIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
-import { buildForm, buildMeta, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, sendError } from "./capture";
+import { Input } from "@/components/ui/input";
+import { buildForm, buildMeta, BARANGAYS, type Gps, gpsText, type House, MAX_PHOTOS, nextLabel, sendError } from "./capture";
 import { NoteRecorder } from "./note-recorder";
 import { enqueue } from "./offline-queue";
 
 type Photo = { file: File; label: string; url: string };
 
-type AssessFormProps = { house: House };
+// With newHouse, the responder types the house in, because no family report named it.
+type AssessFormProps = { house: House; newHouse?: boolean };
 
-function AssessForm({ house }: AssessFormProps) {
+function AssessForm({ house: given, newHouse = false }: AssessFormProps) {
+  const [fields, setFields] = useState({ barangay: given.barangay, purok: given.purok ?? "", head: given.household_head ?? "" });
+  const house: House = newHouse
+    ? { report_code: null, barangay: fields.barangay, purok: fields.purok.trim() || null, household_head: fields.head.trim() || null }
+    : given;
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const sending = useRef(false);
@@ -102,7 +108,38 @@ function AssessForm({ house }: AssessFormProps) {
         className="[&_p]:font-mono"
       />
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-6">
-        <h1 className="text-title-page text-ink">Assess the house</h1>
+        <h1 className="text-title-page text-ink">{newHouse ? "House with no report" : "Assess the house"}</h1>
+        {newHouse ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="nb" className="text-body-sm font-semibold text-ink">
+                Barangay
+              </label>
+              <select
+                id="nb"
+                value={fields.barangay}
+                onChange={(e) => setFields((f) => ({ ...f, barangay: e.target.value }))}
+                className="h-13 w-full rounded-md border border-hairline bg-canvas px-4 text-body-md text-ink outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary"
+              >
+                {BARANGAYS.map((b) => (
+                  <option key={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="np" className="text-body-sm font-semibold text-ink">
+                Purok
+              </label>
+              <Input id="np" value={fields.purok} maxLength={60} onChange={(e) => setFields((f) => ({ ...f, purok: e.target.value }))} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="nh" className="text-body-sm font-semibold text-ink">
+                Head of household
+              </label>
+              <Input id="nh" value={fields.head} maxLength={120} onChange={(e) => setFields((f) => ({ ...f, head: e.target.value }))} />
+            </div>
+          </div>
+        ) : null}
         <section className="flex flex-col gap-3" aria-labelledby="photos-h">
           <div className="flex items-baseline justify-between">
             <h2 id="photos-h" className="text-title-md text-ink">

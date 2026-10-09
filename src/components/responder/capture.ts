@@ -7,6 +7,9 @@ export const MAX_NOTE_SECONDS = 30;
 /** One label per photo slot, in the order the responder takes them. */
 export const PHOTO_LABELS = ["Front", "Roof", "Damage"] as const;
 
+/** The barangays a responder can pick for a house that has no report. */
+export const BARANGAYS = ["San Isidro", "Santa Cruz", "Poblacion", "Mabini", "Bagong Silang", "Rizal"] as const;
+
 export type House = {
   report_code: string | null;
   barangay: string;

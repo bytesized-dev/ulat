@@ -7,6 +7,7 @@ import { IconPlate } from "@/components/ui/icon-plate";
 import { Pill } from "@/components/ui/pill";
 import { TopBar } from "@/components/ui/top-bar";
 import { householdLabel, type QueuedReport } from "./offline-queue";
+import { FamilyScreen } from "./family-screen";
 
 type SavedOnPhoneProps = {
   items: QueuedReport[];
@@ -22,7 +23,7 @@ type SavedOnPhoneProps = {
 function SavedOnPhone({ items, busy, onRetry, onFix, onHome }: SavedOnPhoneProps) {
   const waiting = items.some((item) => item.state === "waiting");
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar as="p" title="" />
 
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
@@ -72,7 +73,7 @@ function SavedOnPhone({ items, busy, onRetry, onFix, onHome }: SavedOnPhoneProps
           </Link>
         </Button>
       </footer>
-    </div>
+    </FamilyScreen>
   );
 }
 

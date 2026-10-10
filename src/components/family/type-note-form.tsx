@@ -13,6 +13,7 @@ import { routes } from "@/lib/contracts";
 import { loadDraft, saveDraft } from "./report-draft";
 import { draftFromNote, NOTE_LIMIT, readNote } from "./type-note";
 import { setVoiceAudio } from "./voice-audio";
+import { FamilyScreen } from "./family-screen";
 
 const HINTS = ["People", "Hurt or missing", "Damage", "Needs"];
 
@@ -51,56 +52,57 @@ function TypeNoteForm() {
   }
 
   return (
-    <form
-      className="flex min-h-dvh flex-col"
-      onSubmit={(e) => {
-        e.preventDefault();
-        void submit();
-      }}
-    >
-      <TopBar as="p" title="New report" leading={{ kind: "back", href: routes.family.report }} />
-      <ProgressSteps step={2} className="px-gutter pb-1.5" />
-      <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
-        <h1 className="text-title-page text-ink">Tell us what happened</h1>
-        <div className="flex flex-wrap gap-2">
-          {HINTS.map((hint) => (
-            <Pill key={hint}>{hint}</Pill>
-          ))}
-        </div>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="note" className="sr-only">
-            What happened
-          </label>
-          <Textarea
-            id="note"
-            value={text}
-            maxLength={NOTE_LIMIT}
-            disabled={busy}
-            aria-describedby="note-count"
-            placeholder="Five of us live here. My son hurt his foot. The roof is gone. We need water and a tarp."
-            className="min-h-50 resize-none"
-            onChange={(e) => setTyped(e.target.value)}
-          />
-          <p id="note-count" className="text-right font-mono text-mono-xs text-body tabular">
-            {text.length}/{NOTE_LIMIT}
-          </p>
-          <p role="alert" className="min-h-5 text-body-sm text-danger">
-            {error?.message}
-          </p>
-        </div>
-      </main>
-      <footer className="flex flex-col gap-2.5 bg-canvas px-gutter pt-3 pb-7">
-        <Button type="submit" disabled={!ready}>
-          {busy ? "Reading your note" : error?.retry ? "Try again" : "Continue"}
-        </Button>
-        <Button asChild variant="tertiary" className="h-11 self-center px-2">
-          <Link href={routes.family.voice}>
-            <MicIcon aria-hidden="true" />
-            Record instead
-          </Link>
-        </Button>
-      </footer>
-    </form>
+    <FamilyScreen asChild>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void submit();
+        }}
+      >
+        <TopBar as="p" title="New report" leading={{ kind: "back", href: routes.family.report }} />
+        <ProgressSteps step={2} className="px-gutter pb-1.5" />
+        <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
+          <h1 className="text-title-page text-ink">Tell us what happened</h1>
+          <div className="flex flex-wrap gap-2">
+            {HINTS.map((hint) => (
+              <Pill key={hint}>{hint}</Pill>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="note" className="sr-only">
+              What happened
+            </label>
+            <Textarea
+              id="note"
+              value={text}
+              maxLength={NOTE_LIMIT}
+              disabled={busy}
+              aria-describedby="note-count"
+              placeholder="Five of us live here. My son hurt his foot. The roof is gone. We need water and a tarp."
+              className="min-h-50 resize-none"
+              onChange={(e) => setTyped(e.target.value)}
+            />
+            <p id="note-count" className="text-right font-mono text-mono-xs text-body tabular">
+              {text.length}/{NOTE_LIMIT}
+            </p>
+            <p role="alert" className="min-h-5 text-body-sm text-danger">
+              {error?.message}
+            </p>
+          </div>
+        </main>
+        <footer className="flex flex-col gap-2.5 bg-canvas px-gutter pt-3 pb-7">
+          <Button type="submit" disabled={!ready}>
+            {busy ? "Reading your note" : error?.retry ? "Try again" : "Continue"}
+          </Button>
+          <Button asChild variant="tertiary" className="h-11 self-center px-2">
+            <Link href={routes.family.voice}>
+              <MicIcon aria-hidden="true" />
+              Record instead
+            </Link>
+          </Button>
+        </footer>
+      </form>
+    </FamilyScreen>
   );
 }
 

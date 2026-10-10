@@ -23,6 +23,7 @@ import { usePhotoUrl, useReportPhoto } from "./use-report-photo";
 import { voiceAudioDuration } from "./voice-audio";
 import { formatTimer } from "./voice-note";
 import { WhatWeHeardSheet } from "./what-we-heard-sheet";
+import { FamilyScreen } from "./family-screen";
 
 type CheckReportFormProps = {
   /** The barangays from the hub's settings, for the edit sheet. */
@@ -105,7 +106,7 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
   const voiceLength = voiceAudioDuration();
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar as="p" title="New report" leading={{ kind: "back", href: checkBackHref(draft) }} />
       <ProgressSteps step={3} className="px-gutter pb-1.5" />
 
@@ -284,7 +285,7 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
         onClose={() => setEditing(null)}
       />
       <WhatWeHeardSheet open={hearing} draft={draft} onClose={() => setHearing(false)} />
-    </div>
+    </FamilyScreen>
   );
 }
 

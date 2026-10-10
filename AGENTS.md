@@ -36,7 +36,7 @@ The canvas is private to its owner's claude.ai account, so agents cannot open it
 - Ollama with `gemma4:e4b` for photos, voice and translation. whisper.cpp only if Ollama audio fails the risk check.
 - MapLibre GL with a local PMTiles file
 - Server-sent events for live updates
-- Vitest for unit tests, Playwright for smoke tests
+- Vitest for unit tests
 
 ## Commands
 
@@ -44,13 +44,10 @@ The canvas is private to its owner's claude.ai account, so agents cannot open it
 |---|---|
 | `pnpm dev` | Run the app on port 3000 |
 | `pnpm db:push` | Create or update the SQLite schema |
-| `pnpm db:seed` | Load `seed/simulation.json`, the same data the canvas shows |
-| `pnpm demo:reset` | Wipe data and uploads, reload the seed, turn simulation on |
+| `pnpm db:seed` | Load `seed/config.json`: town, barangays, map bounds, staff PIN and responder accounts. Deletes nothing |
 | `pnpm typecheck` | TypeScript, no emit |
 | `pnpm test` | Vitest |
-| `pnpm e2e` | Playwright smoke tests for the demo loop |
 | `pnpm eval` | Run the AI test set, writes `eval/results.json` |
-| `MOCK_AI=1 pnpm dev` | Run without Ollama, AI calls return fixtures |
 
 ## Who owns what
 

@@ -160,8 +160,8 @@ export function reasonTone(label: string): Tone {
 
 /**
  * Why an entry needs review, as the short labels on the list. The entries route
- * stores the long sentences from REVIEW_REASONS, joined. The seed stores one
- * short label. Anything else is shown as stored, and no reason gets a generic one.
+ * stores the long sentences from REVIEW_REASONS, joined. Anything else is
+ * shown as stored, and no reason gets a generic one.
  */
 export function reasonLabels(stored: string | null): string[] {
   const text = stored?.trim();

@@ -27,6 +27,7 @@ import { markSentFromDraft, saveSentReport } from "./sent-report";
 import { announceQueueChange } from "./use-offline-queue";
 import { updateDraft, useReportDraft } from "./use-report-draft";
 import { usePhotoUrl, useReportPhoto } from "./use-report-photo";
+import { FamilyScreen } from "./family-screen";
 
 type CheckReportFormProps = {
   /** The barangays from the hub's settings, for the edit sheet. */
@@ -152,7 +153,7 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
   const incomplete = mounted && !canSend(draft);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar as="p" title="New report" leading={{ kind: "back", href: checkBackHref() }} />
       <ProgressSteps step={2} className="px-gutter pb-1.5" />
 
@@ -314,7 +315,7 @@ function CheckReportForm({ barangays }: CheckReportFormProps) {
         }}
         onClose={() => setEditing(null)}
       />
-    </div>
+    </FamilyScreen>
   );
 }
 

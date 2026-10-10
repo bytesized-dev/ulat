@@ -1,24 +1,14 @@
 import type { z } from "zod";
 import { AiPhotoDraft, AiTranslation, AiVoiceExtract } from "../contracts";
-import fixtureFile from "../../../seed/ai-fixtures.json";
 import { hasSpeech, toWav } from "./audio";
 import { logAiCall } from "./audit";
 import { chatJson, OllamaError, type ChatJsonInput } from "./ollama";
 import { PHOTO_SYSTEM, photoUserPrompt, TRANSLATE_SYSTEM, VOICE_SYSTEM } from "./prompts";
 import { findMissingFacts } from "./translate-check";
 
-// Every AI call goes through these three functions. With MOCK_AI=1 they return
-// the fixtures in seed/ai-fixtures.json. Voice, photo and translation call Ollama through ./ollama.
-// The real calls parse the model's output with the same schemas before they return.
-
-// Parsed when the module loads, so a broken fixture fails loudly.
-const fixtures = {
-  voice: AiVoiceExtract.parse(fixtureFile.voice),
-  photo: AiPhotoDraft.parse(fixtureFile.photo),
-  translation: AiTranslation.parse(fixtureFile.translation),
-};
-
-const isMock = () => process.env.MOCK_AI === "1";
+// Every AI call goes through these three functions. Voice, photo and
+// translation call Ollama through ./ollama and parse the model's output with
+// the contract schemas before they return.
 
 /** Call the model once, write the raw reply to the audit trail, and pass failures on. */
 async function callOnce<S extends z.ZodType>(call: "voice", request: ChatJsonInput<S>): Promise<z.infer<S>> {
@@ -59,7 +49,6 @@ async function extract<S extends z.ZodType>(
  * reads only WAV, so the recording is converted first, see ./audio.
  */
 export async function readVoice(input: { audio: Buffer; mime: string }): Promise<AiVoiceExtract> {
-  if (isMock()) return structuredClone(fixtures.voice);
   let wav: Buffer;
   try {
     wav = await toWav(input.audio);
@@ -78,13 +67,10 @@ type PhotoInput = {
 };
 
 /**
- * draftPhoto, plus the model's raw reply for the audit trail. The raw text is
- * null under MOCK_AI. On a failed call the OllamaError carries the raw reply.
+ * draftPhoto, plus the model's raw reply for the audit trail. On a failed call
+ * the OllamaError carries the raw reply.
  */
-export async function draftPhotoWithRaw(input: PhotoInput): Promise<{ draft: AiPhotoDraft; raw: string | null }> {
-  if (isMock()) {
-    return { draft: structuredClone(fixtures.photo), raw: null };
-  }
+export async function draftPhotoWithRaw(input: PhotoInput): Promise<{ draft: AiPhotoDraft; raw: string }> {
   const { value, raw } = await chatJson({
     schema: AiPhotoDraft,
     system: PHOTO_SYSTEM,
@@ -107,7 +93,6 @@ export async function draftPhoto(input: PhotoInput): Promise<AiPhotoDraft> {
  * If one does not, this throws invalid_output and staff type the translation.
  */
 export async function translate(input: { headline: string; message: string }): Promise<AiTranslation> {
-  if (isMock()) return structuredClone(fixtures.translation);
   try {
     const { value, raw } = await chatJson({
       schema: AiTranslation,

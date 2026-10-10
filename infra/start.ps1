@@ -1,5 +1,5 @@
 # Starts the hub network: DNS answer for the hub name, Caddy over HTTPS, and the app.
-# Usage: .\infra\start.ps1 -HubDomain hub.example.dev -HubIp 192.168.8.10
+# Usage: .\infra\start.ps1 -HubDomain hub.cjjutba.dev -HubIp 192.168.8.10
 # Without certificate files in -CertDir it falls back to Caddy's internal certificate.
 param(
   [string]$HubDomain = $env:HUB_DOMAIN,
@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 $infra = $PSScriptRoot
 $root = Split-Path $infra -Parent
 
-if (-not $HubDomain -or -not $HubIp) { throw "Set -HubDomain and -HubIp, for example hub.example.dev and 192.168.8.10." }
+if (-not $HubDomain -or -not $HubIp) { throw "Set -HubDomain and -HubIp, for example hub.cjjutba.dev and 192.168.8.10." }
 if (-not $Caddy -or -not (Test-Path $Caddy)) { throw "Caddy not found. Put caddy.exe on PATH or pass -Caddy with its path." }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw "node not found." }
 if (-not $NoApp -and -not (Get-Command pnpm -ErrorAction SilentlyContinue)) { throw "pnpm not found." }

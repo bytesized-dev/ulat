@@ -13,10 +13,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed.ts",
-    "demo:reset": "tsx scripts/demo-reset.ts",
     "eval": "tsx scripts/eval.ts"
   },
   "dependencies": {

@@ -15,6 +15,7 @@ import { HouseholdOption } from "./household-option";
 import type { ReportDraft } from "./report-draft";
 import { useReportDraft, updateDraft } from "./use-report-draft";
 import { firstMissing, type StartError, type StartField } from "./whose-household";
+import { FamilyScreen } from "./family-screen";
 
 type WhoseHouseholdFormProps = {
   /** The barangays from the hub's settings. */
@@ -143,7 +144,7 @@ function WhoseHouseholdForm({ barangays, requestedSource = null }: WhoseHousehol
   );
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar title="New report" as="p" leading={{ kind: "back", href: routes.family.home }} />
       <ProgressSteps step={1} className="px-gutter pb-1.5" />
 
@@ -221,7 +222,7 @@ function WhoseHouseholdForm({ barangays, requestedSource = null }: WhoseHousehol
           </Button>
         </footer>
       </form>
-    </div>
+    </FamilyScreen>
   );
 }
 

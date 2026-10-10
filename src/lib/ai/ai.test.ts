@@ -44,7 +44,6 @@ const events = () => db.select().from(schema.events).all();
 
 beforeEach(async () => {
   db = (await import("../../db/client")).db as unknown as typeof db;
-  vi.stubEnv("MOCK_AI", "0");
   vi.stubEnv("OLLAMA_URL", "http://localhost:11434/");
   fetchMock.mockReset();
   resetStructuredOutputProbe();
@@ -360,12 +359,6 @@ describe("readVoice", () => {
     expect(events()[0]).toMatchObject({ type: "ai.voice.failed", data: { raw: null, error: { kind: "timeout" } } });
   });
 
-  it("returns the fixtures and logs nothing under MOCK_AI=1", async () => {
-    vi.stubEnv("MOCK_AI", "1");
-    AiVoiceExtract.parse(await readVoice({ audio: Buffer.from("x"), mime: "audio/webm" }));
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(events()).toHaveLength(0);
-  });
 });
 
 describe("POST /api/ai/voice", () => {

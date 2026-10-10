@@ -1,0 +1,93 @@
+{
+ "_note": "Hub setup for Dapitan City. pnpm db:seed writes these settings and responder accounts and leaves every report, entry and other record alone. staff_pin and each password are hashed before they reach the database.",
+ "settings": {
+  "town": "Dapitan City",
+  "barangays": [
+   "Aliguay",
+   "Antipolo",
+   "Aseniero",
+   "Ba-ao",
+   "Bagting (Pob.)",
+   "Banbanan",
+   "Banonong (Pob.)",
+   "Barcelona",
+   "Baylimango",
+   "Burgos",
+   "Canlucani",
+   "Carang",
+   "Cawa-cawa (Pob.)",
+   "Dampalan",
+   "Daro",
+   "Dawo (Pob.)",
+   "Diwa-an",
+   "Guimputlan",
+   "Hilltop",
+   "Ilaya",
+   "Kauswagan (Talisay)",
+   "Larayan",
+   "Linabo (Pob.)",
+   "Liyang",
+   "Maria Cristina",
+   "Maria Uray",
+   "Masidlakon",
+   "Matagobtob Pob. (Talisay)",
+   "Napo",
+   "Opao",
+   "Oro",
+   "Owaon",
+   "Oyan",
+   "Polo",
+   "Potol (Pob.)",
+   "Potungan",
+   "San Francisco",
+   "San Nicolas",
+   "San Pedro",
+   "San Vicente",
+   "Santa Cruz (Pob.)",
+   "Santo Niño",
+   "Selinog",
+   "Sicayab-Bucana",
+   "Sigayan",
+   "Sinonoc",
+   "Sulangon",
+   "Tag-ulo",
+   "Taguilon",
+   "Tamion"
+  ],
+  "map_bbox": {
+   "west": 123.4085,
+   "south": 8.6308,
+   "east": 123.4564,
+   "north": 8.6855
+  },
+  "wifi_name": "ULAT-HUB",
+  "hub_address": "https://hub.cjjutba.dev",
+  "staff_pin": "1234"
+ },
+ "responders": [
+  {
+   "name": "CJ Jutba",
+   "team": "Sinonoc",
+   "email": "cjjutba@gmail.com",
+   "password": "ulat2026"
+  },
+  {
+   "name": "Artkin Carreon",
+   "team": "Sinonoc",
+   "email": "artkin@gmail.com",
+   "password": "ulat2026"
+  },
+  {
+   "name": "Sean Jacinto",
+   "team": "Dawo (Pob.)",
+   "email": "sean@gmail.com",
+   "password": "ulat2026"
+  },
+  {
+   "name": "James Calunsag",
+   "team": "Banonong (Pob.)",
+   "email": "james@gmail.com",
+   "password": "ulat2026"
+  }
+ ]
+}

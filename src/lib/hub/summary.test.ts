@@ -1,21 +1,16 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { generateSQLiteDrizzleJson, generateSQLiteMigration } from "drizzle-kit/api";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { Db } from "../../db/client";
 import * as schema from "../../db/schema";
 import { entries, reports, responders, settings } from "../../db/schema";
 import { getHubSummary } from "./summary";
 
-// The summary runs on its own SQLite files, never on data/ulat.db. The schema
-// comes from src/db/schema.ts through drizzle-kit, the same as pnpm db:push.
+// The summary runs on its own in-memory SQLite, never on data/ulat.db. The
+// schema comes from src/db/schema.ts through drizzle-kit, the same as pnpm db:push.
 
 let schemaSql: string[];
-const dir = mkdtempSync(join(tmpdir(), "ulat-summary-"));
 
 /** A SQLite handle with the schema in place. */
 function create(path: string) {
@@ -24,75 +19,11 @@ function create(path: string) {
   return sqlite;
 }
 
-function open(path: string): Db {
-  return drizzle({ client: new Database(path), schema });
-}
-
 beforeAll(async () => {
   schemaSql = await generateSQLiteMigration(
     await generateSQLiteDrizzleJson({}),
     await generateSQLiteDrizzleJson(schema),
   );
-});
-
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
-
-describe("summary of the simulation seed", () => {
-  let db: Db;
-
-  beforeAll(() => {
-    const path = join(dir, "seed.db");
-    create(path).close();
-    execFileSync("npx", ["tsx", "scripts/seed.ts"], { env: { ...process.env, DATABASE_PATH: path }, stdio: "pipe" });
-    db = open(path);
-  }, 60_000);
-
-  it("matches the totals the canvas shows", () => {
-    const summary = getHubSummary(db);
-    expect(summary).toMatchObject({
-      houses_checked: 46,
-      totally: 14,
-      partially: 23,
-      none: 9,
-      families: 58,
-      people: 241,
-      hurt: 6,
-      missing: 1,
-      not_yet_visited: 17,
-      in_review: 3,
-      needs: { water: 41, food: 38, tarp: 33, medicine: 9, hygiene_kit: 0, baby_needs: 0 },
-    });
-  });
-
-  it("matches the expected totals written in the seed file", () => {
-    const { _expected_totals: expected } = JSON.parse(readFileSync("seed/simulation.json", "utf8"));
-    const { houses, needs, ...rest } = expected;
-    const summary = getHubSummary(db);
-    expect(summary).toMatchObject({ houses_checked: houses, ...rest, needs: expect.objectContaining(needs) });
-  });
-
-  it("matches the canvas table by barangay, in the same order", () => {
-    // The seed lists all 50 barangays for the family form. Only six have
-    // houses or reports, and the canvas table shows those six.
-    const all = getHubSummary(db).barangays;
-    expect(all).toHaveLength(50);
-    const rows = all
-      .filter((r) => r.families > 0 || r.waiting > 0)
-      .map((r) => [r.barangay, r.totally, r.partially, r.families, r.people, r.hurt, r.waiting, r.priority]);
-    expect(rows).toEqual([
-      ["Sinonoc", 6, 7, 18, 76, 3, 6, "high"],
-      ["Dawo (Pob.)", 4, 5, 13, 54, 2, 4, "high"],
-      ["Potol (Pob.)", 1, 3, 8, 33, 1, 2, "medium"],
-      ["Banonong (Pob.)", 2, 6, 12, 50, 0, 3, "medium"],
-      ["Linabo (Pob.)", 1, 2, 5, 20, 0, 2, "low"],
-      ["Cawa-cawa (Pob.)", 0, 0, 2, 8, 0, 0, "low"],
-    ]);
-  });
-
-  it("stamps the time it was asked for", () => {
-    const at = new Date("2026-10-09T07:00:00Z");
-    expect(getHubSummary(db, at).as_of).toBe(at.toISOString());
-  });
 });
 
 describe("priority rule", () => {

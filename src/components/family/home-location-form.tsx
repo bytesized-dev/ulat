@@ -12,6 +12,7 @@ import { useMounted } from "@/lib/use-mounted";
 import type { Bbox, LngLat } from "@/lib/hub/map-projection";
 import { barangayAt, homeChange, insideTown, placeLine, savedHome } from "./home-location";
 import { updateDraft, useReportDraft } from "./use-report-draft";
+import { FamilyScreen } from "./family-screen";
 
 type HomeLocationFormProps = {
   /** The town, from the hub's map_bbox setting. The map starts here until a spot is known. */
@@ -63,7 +64,7 @@ function HomeLocationForm({ bbox, barangays, hubBarangays }: HomeLocationFormPro
   }
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen fit="screen">
       <TopBar title="Location" leading={{ kind: "back", href: routes.family.check }} />
       <ProgressSteps step={2} className="px-gutter pb-1.5" />
 
@@ -91,7 +92,7 @@ function HomeLocationForm({ bbox, barangays, hubBarangays }: HomeLocationFormPro
           Use this spot
         </Button>
       </footer>
-    </div>
+    </FamilyScreen>
   );
 }
 

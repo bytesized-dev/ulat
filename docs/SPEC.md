@@ -9,7 +9,7 @@
 - **Hub:** a MacBook running the Next.js app, SQLite, Ollama and Caddy. It runs on battery.
 - **Network:** any Wi-Fi router with nothing in its internet port, powered by a power bank. Give the hub a fixed IP with a DHCP reservation. Wi-Fi name `ULAT-HUB`.
 - **Phones:** any phone with a browser. Nothing to install.
-- **Address:** phones open `https://hub.[your-domain]`. The router hands out the hub as the DNS server, dnsmasq on the hub answers that name with the hub's local IP, and Caddy serves a real Let's Encrypt certificate fetched before the storm with a DNS challenge. Phones trust it with no setup, so camera, microphone, GPS and offline caching all work. Details in `infra/README.md`.
+- **Address:** phones open `https://hub.cjjutba.dev`. The router hands out the hub as the DNS server, dnsmasq on the hub answers that name with the hub's local IP, and Caddy serves a real Let's Encrypt certificate fetched before the storm with a DNS challenge. Phones trust it with no setup, so camera, microphone, GPS and offline caching all work. Details in `infra/README.md`.
 - **Fallback:** if the certificate fails, Caddy's internal certificate installed on the demo phones, or plain HTTP with file inputs for photos.
 
 ### Software
@@ -19,7 +19,6 @@
 - SQLite file at `data/ulat.db`. Photos and audio at `data/uploads/<yyyy-mm-dd>/<uuid>.<ext>`. Family report photos are kept apart, at `data/uploads/photo/<yyyy-mm-dd>/<photo_id>.<ext>`.
 - Ollama on `localhost:11434` with `gemma4:e4b`.
 - Live updates over one server-sent events endpoint.
-- `MOCK_AI=1` replaces every AI call with fixtures from `seed/ai-fixtures.json`, so teammates without the model can build everything.
 
 ### Roles and access
 
@@ -172,7 +171,7 @@ One `GET /api/events` stream. Each message is a `HubEvent` from the contracts: `
 All calls first use Ollama's structured output (`format`) with the JSON schema generated from the Zod schema, then validate again with Zod. Some Ollama builds, such as Homebrew 0.40.2 on the MLX runner, lack `libollama_xgrammar` and answer any request with `format` with a 501 "structured output is unavailable". On that answer the call is sent once more without `format`, with the schema and "reply with one JSON object only, no code fence" added to the user message. The hub remembers this until the app restarts, so later calls skip the first try. A code fence around the reply is trimmed before parsing. The Zod check and the unclear and `invalid_output` rules are the same in both modes. Prompts are in `src/lib/ai/prompts.ts`.
 
 1. **Voice note to fields.** Input audio, or a transcript from whisper.cpp. Output `AiVoiceExtract`: language, transcript, English translation, household head, people, hurt, missing, what happened, needs, hazards and a list of fields the model wasn't sure about. The help desk uses it, and uncertain fields show the "Please check" marker there.
-2. **Family photo to damage class.** Input the one photo of a family report and the DSWD definitions, without the family's note, so the reading does not just repeat their words. Output `AiPhotoDraft`: damage class (`none`, `partial`, `total` or `unclear`), confidence, material, hazards, and a reason of one sentence naming what is visible. This is the only damage AI: a responder's photos and notes never go to a model. Under `MOCK_AI=1` every photo reads as the totally damaged fixture.
+2. **Family photo to damage class.** Input the one photo of a family report and the DSWD definitions, without the family's note, so the reading does not just repeat their words. Output `AiPhotoDraft`: damage class (`none`, `partial`, `total` or `unclear`), confidence, material, hazards, and a reason of one sentence naming what is visible. This is the only damage AI: a responder's photos and notes never go to a model.
 3. **Update translation.** English headline and message to Bisaya and Tagalog drafts. Staff always read them before posting.
 
 ### Rules
@@ -219,7 +218,7 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 ## 10. Simulation mode
 
 - A setting, on during the drill. Every hub page shows the Simulation pill.
-- `pnpm db:seed` loads `seed/simulation.json`, which matches the canvas. Positions in the seed are percentages of the map area, converted to latitude and longitude using the `map_bbox` setting, so the same seed works for any town: 46 checked houses (14 totally, 23 partially, 9 none), 58 families, 241 people, 6 hurt, 1 missing and 17 reports waiting, across 6 barangays.
+- `pnpm db:seed` loads `seed/config.json`: the town, its barangays, the `map_bbox`, the staff PIN and the responder accounts. It upserts them and never adds or deletes reports, entries or any other record.
 - "Clear data" on Kit setup wipes reports, entries, photos, updates, places, check-ins, sitreps, the `events` audit trail and the `duplicates` flags, and empties the uploads folder of photos and audio, family voice notes and family report photos included. It keeps settings and responders. The rows go in one transaction. The files go after it commits.
 
 ## 11. Eval
@@ -237,7 +236,6 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 4. The report appears at the top of the responder's To visit list when someone is hurt or missing, with the photo reading and its urgency on the report page.
 5. The responder takes photos on the assess screen, which starts from the family report and its photo reading, and confirms in one tap with no wait. That turns the pin solid, updates the hub totals, and changes the family status to the confirmed class.
 6. The hub situation report shows the new totals, and the SMS text fits in 2 texts.
-7. Everything above works with `MOCK_AI=1` on a machine without Ollama.
 
 ## 13. Not doing this weekend
 

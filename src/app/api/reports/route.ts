@@ -113,10 +113,9 @@ export async function POST(req: Request) {
   if (created) emit({ type: "report.created", code, urgent });
   if (photoAttached && storedPhoto) {
     await photoLinked(storedPhoto);
-    // The family does not wait for the model. Tests and the demo with MOCK_AI do,
-    // so the reading is there when the next screen loads.
-    const reading = queueReportDraft(id);
-    if (process.env.MOCK_AI === "1") await reading;
+    // The family does not wait for the model. The hub reads the photo in the
+    // background and sends report.assessed when the reading is stored.
+    void queueReportDraft(id);
   }
   return Response.json({ code }, { status: 201 });
 }

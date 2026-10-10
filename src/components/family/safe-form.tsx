@@ -13,6 +13,7 @@ import { TopBar } from "@/components/ui/top-bar";
 import { routes } from "@/lib/contracts";
 import { formatTime } from "@/lib/time";
 import { parseFound, saveCheckedIn, searchUrl, sendCheckin, initials, type Found } from "./safe-checkin";
+import { FamilyScreen } from "./family-screen";
 
 type SafeFormProps = {
   /** The barangays from the hub's settings. */
@@ -109,7 +110,7 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar as="p" title="I'm safe" leading={{ kind: "back", href: routes.family.home }} />
       <main className="flex flex-1 flex-col gap-7 px-gutter pt-5 pb-7">
         <form
@@ -210,6 +211,6 @@ export function SafeForm({ barangays, stayingOptions }: SafeFormProps) {
           </div>
         </section>
       </main>
-    </div>
+    </FamilyScreen>
   );
 }

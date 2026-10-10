@@ -1,6 +1,6 @@
 # Serves the app over HTTPS on the local network, and over plain HTTP as a
 # fallback. See infra/README.md.
-# HUB_DOMAIN is for example hub.example.dev. Certificates are fetched before the storm.
+# HUB_DOMAIN is for example hub.cjjutba.dev. Certificates are fetched before the storm.
 {
 	auto_https disable_redirects
 	admin off

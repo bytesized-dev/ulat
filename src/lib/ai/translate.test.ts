@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as postTranslate } from "@/app/api/updates/translate/route";
 import * as schema from "@/db/schema";
 import { AiTranslation } from "@/lib/contracts";
-import fixtureFile from "../../../seed/ai-fixtures.json";
 import { translate } from "./index";
 import { resetStructuredOutputProbe } from "./ollama";
 import { TRANSLATE_SYSTEM } from "./prompts";
@@ -39,7 +38,6 @@ const events = () => db.select().from(schema.events).all();
 
 beforeEach(async () => {
   db = (await import("../../db/client")).db as unknown as typeof db;
-  vi.stubEnv("MOCK_AI", "0");
   vi.stubEnv("OLLAMA_URL", "http://localhost:11434/");
   fetchMock.mockReset();
   resetStructuredOutputProbe();
@@ -77,14 +75,6 @@ describe("translate", () => {
     expect(events()[0].type).toBe("ai.translate");
   });
 
-  it("accepts the design example, where 5 PM becomes sa hapon", async () => {
-    const water = { headline: "Water at the town plaza", message: "3 to 5 PM. Bring a container." };
-    const fixture = AiTranslation.parse(fixtureFile.translation);
-    fetchMock.mockResolvedValue(reply(JSON.stringify(fixture)));
-    await expect(translate(water)).resolves.toEqual(fixture);
-    expect(events()[0].type).toBe("ai.translate");
-  });
-
   it("rejects a draft that changed a time, and logs it as ai.translate.failed with the raw output", async () => {
     const changed = { ...draft, tl: draft.tl.replace("5:00 PM", "5 ng hapon") };
     fetchMock.mockResolvedValue(reply(JSON.stringify(changed)));
@@ -106,12 +96,6 @@ describe("translate", () => {
     expect(events()[0]).toMatchObject({ type: "ai.translate.failed", data: { raw: null, error: { kind: "timeout" } } });
   });
 
-  it("returns the fixture and logs nothing under MOCK_AI=1", async () => {
-    vi.stubEnv("MOCK_AI", "1");
-    AiTranslation.parse(await translate(english));
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(events()).toHaveLength(0);
-  });
 });
 
 describe("POST /api/updates/translate", () => {
@@ -144,14 +128,6 @@ describe("POST /api/updates/translate", () => {
     const response = await post(body);
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "bad_request", retry: false });
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("returns the fixture under MOCK_AI=1", async () => {
-    vi.stubEnv("MOCK_AI", "1");
-    const response = await post(english);
-    expect(response.status).toBe(200);
-    AiTranslation.parse(await response.json());
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

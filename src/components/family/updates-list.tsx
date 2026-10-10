@@ -6,6 +6,7 @@ import { routes } from "@/lib/contracts";
 import { formatTime } from "@/lib/time";
 import { UPDATE_PILL, parseUpdates } from "./updates";
 import { useLiveList } from "./use-live-list";
+import { FamilyScreen } from "./family-screen";
 
 /** The Pill dot comes in a few tones, and the hazard dot is ink, so it is drawn here. */
 export function UpdateKindPill({ kind }: { kind: keyof typeof UPDATE_PILL }) {
@@ -23,7 +24,7 @@ export function UpdatesList() {
   const { items, loaded } = useLiveList("/api/updates", parseUpdates, "update.posted");
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar title="Updates" leading={{ kind: "back", href: routes.family.home }} />
       <main className="flex flex-1 flex-col px-gutter pt-3 pb-7">
         {items.length > 0 ? (
@@ -45,6 +46,6 @@ export function UpdatesList() {
           <p className="pt-6 text-body-md text-body">No updates yet.</p>
         ) : null}
       </main>
-    </div>
+    </FamilyScreen>
   );
 }

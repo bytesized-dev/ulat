@@ -10,7 +10,6 @@ import { freshDb, request, sessionMock } from "@/lib/hub/test-setup";
 
 const dir = mkdtempSync(join(tmpdir(), "ulat-upload-throws-"));
 process.env.UPLOAD_DIR = join(dir, "uploads");
-process.env.MOCK_AI = "1";
 
 const calls = vi.hoisted(() => ({ n: 0, failOn: 2 }));
 vi.mock("@/lib/auth/session", async () => (await import("@/lib/hub/test-setup")).sessionMock);

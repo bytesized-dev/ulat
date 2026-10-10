@@ -12,6 +12,7 @@ import { Timeline } from "@/components/ui/timeline";
 import { TopBar } from "@/components/ui/top-bar";
 import { clearDraft } from "./report-draft";
 import { parseSentReport, readSentRaw, takeSentFromDraft } from "./sent-report";
+import { FamilyScreen } from "./family-screen";
 
 const subscribeNever = () => () => {};
 
@@ -65,7 +66,7 @@ function ReportSent() {
   if (!sent) return null;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-prose flex-col">
+    <FamilyScreen>
       <TopBar as="p" title="" leading={{ kind: "close", href: routes.family.home }} />
 
       <main className="flex flex-1 flex-col gap-8 px-gutter pt-5 pb-7">
@@ -119,7 +120,7 @@ function ReportSent() {
           <Link href={routes.family.home}>Done</Link>
         </Button>
       </footer>
-    </div>
+    </FamilyScreen>
   );
 }
 

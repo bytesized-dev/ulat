@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starts the hub network on macOS or Linux: DNS answer for the hub name, Caddy over HTTPS, and the app.
-# Usage: sudo ./infra/start.sh hub.example.dev 192.168.8.10 [cert-dir]
+# Usage: sudo ./infra/start.sh hub.cjjutba.dev 192.168.8.10 [cert-dir]
 # Run it with sudo: macOS only lets root bind port 53 on a specific IP. Under sudo the build and the app
 # still run as the user who called sudo, so .next/, data/ and tmp/ do not end up owned by root.
 # Same inputs as start.ps1. HUB_DOMAIN, HUB_IP, HUB_CERT_DIR and CADDY also work as environment variables.
@@ -10,7 +10,7 @@ set -euo pipefail
 usage() {
   cat >&2 <<'EOF'
 Usage: infra/start.sh [--no-app] <hub-domain> <hub-ip> [cert-dir]
-  hub-domain  name phones open, for example hub.example.dev
+  hub-domain  name phones open, for example hub.cjjutba.dev
   hub-ip      the hub's fixed IP, for example 192.168.8.10
   cert-dir    folder with fullchain.pem and privkey.pem (default /etc/ulat/certs)
   --no-app    start DNS and Caddy only

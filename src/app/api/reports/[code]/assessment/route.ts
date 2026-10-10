@@ -76,7 +76,6 @@ export async function POST(_req: Request, ctx: { params: Promise<{ code: string 
     audit(tx, report.id, "report.reading_requested", actor.id, { previous: report.ai_status });
   });
   emit({ type: "report.assessed", code: report.code });
-  const reading = queueReportDraft(report.id);
-  if (process.env.MOCK_AI === "1") await reading;
+  void queueReportDraft(report.id);
   return Response.json({ ok: true }, { status: 202 });
 }

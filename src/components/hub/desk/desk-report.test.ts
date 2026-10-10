@@ -83,7 +83,7 @@ describe("toNewReport", () => {
   it("builds a desk report the contract accepts", () => {
     const report = toNewReport(filled, null);
     expect(NewReport.safeParse(report).success).toBe(true);
-    expect(report).toMatchObject({ source: "desk", household_head: "Pedro Santiago", people: 4, missing: 1, purok: "Purok 1", voice_id: null, transcript: null, language: null, consent: true });
+    expect(report).toMatchObject({ source: "desk", household_head: "Pedro Santiago", people: 4, missing: 1, purok: "Purok 1", transcript: null, language: null, consent: true });
   });
 
   it("carries the voice note and leaves empty text as null", () => {

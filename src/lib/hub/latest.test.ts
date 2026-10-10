@@ -27,7 +27,7 @@ beforeEach(() => {
 
 function entry(e: Partial<typeof entries.$inferInsert>) {
   db.insert(entries)
-    .values({ number: ++number, responder_id: responderId, barangay: "Sinonoc", created_at: "2026-10-10T14:00:00+08:00", ...e })
+    .values({ number: ++number, responder_id: responderId, barangay: "Sinonoc", status: "confirmed", damage_class: "partial", created_at: "2026-10-10T14:00:00+08:00", ...e })
     .run();
 }
 
@@ -59,8 +59,7 @@ describe("latest activity", () => {
     expect(getLatest(db).map((i) => i.text)).toEqual(["New report, Later", "New report, Earlier"]);
   });
 
-  it("never shows drafts or merged reports", () => {
-    entry({ status: "draft" });
+  it("never shows merged reports", () => {
     report({ status: "merged", created_at: "2026-10-10T14:50:00+08:00" });
     expect(getLatest(db)).toEqual([]);
   });

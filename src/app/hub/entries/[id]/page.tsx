@@ -5,7 +5,6 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronLeftIcon } from "lucide-react";
 import { db } from "@/db/client";
 import { EntryActions } from "@/components/hub/entries/entry-actions";
-import { DraftComparison } from "@/components/hub/entries/draft-comparison";
 import { EntryRail } from "@/components/hub/entries/entry-rail";
 import { damageLong, damageTone, entryNumber, statusLabel } from "@/components/hub/entries/labels";
 import { NoteSection } from "@/components/hub/entries/note-section";
@@ -54,10 +53,6 @@ export default async function EntryPage({ params }: Props) {
           <PhotoGrid photos={detail.photos} />
         </section>
         <NoteSection entry={entry} />
-        <section aria-labelledby="compare-h" className="flex flex-col gap-3">
-          <h2 id="compare-h" className="text-title-md text-ink">AI draft and final</h2>
-          <DraftComparison rows={detail.comparison} />
-        </section>
       </div>
     </HubPage>
   );

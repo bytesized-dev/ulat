@@ -16,13 +16,6 @@ export type DoneEntry = {
   confirmed_at: string | null;
 };
 
-/** A draft the responder can still check and confirm. */
-export type CheckEntry = {
-  id: string;
-  household_head: string | null;
-  ai_need_more: string | null;
-};
-
 /** An entry the hub holds for staff to look at. The responder can no longer change it. */
 export type HeldEntry = {
   id: string;
@@ -41,22 +34,6 @@ function nameOf(head: string | null): string {
 }
 
 const rowClass = "flex min-h-16 items-center gap-4 border-b border-hairline-soft py-2";
-
-function NeedsCheckRow({ entry }: { entry: CheckEntry }) {
-  return (
-    <Link
-      href={routes.responder.check(entry.id)}
-      className={`${rowClass} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
-    >
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-body-md font-medium text-ink">{nameOf(entry.household_head)}</span>
-        <span className="truncate text-body-sm text-body">{entry.ai_need_more ?? "Check the draft"}</span>
-      </span>
-      <Pill dot="warning">Draft</Pill>
-      <ChevronRightIcon aria-hidden="true" className="size-5 shrink-0 text-muted-soft" />
-    </Link>
-  );
-}
 
 function HeldRow({ entry }: { entry: HeldEntry }) {
   return (
@@ -89,7 +66,7 @@ function ConfirmedRow({ entry }: { entry: DoneEntry }) {
   );
 }
 
-type DoneListProps = { responderName: string; needsCheck: CheckEntry[]; held: HeldEntry[]; confirmed: DoneEntry[] };
+type DoneListProps = { responderName: string; held: HeldEntry[]; confirmed: DoneEntry[] };
 
 /** Keeps entries whose household contains every word typed. A house with no report matches its row name. */
 function matches(head: string | null, words: string[]): boolean {
@@ -97,16 +74,15 @@ function matches(head: string | null, words: string[]): boolean {
   return words.every((word) => text.includes(word));
 }
 
-// Drafts first, because they are the only thing here that waits on the
-// responder. Today's list follows: entries held for a second look, then
-// confirmed ones, newest first. Search narrows all of it by household.
-export function DoneList({ responderName, needsCheck, held, confirmed }: DoneListProps) {
+// A responder confirms each house on the assess screen, so nothing here waits
+// on them. Today's list: entries held for a second look, then confirmed ones,
+// newest first. Search narrows all of it by household.
+export function DoneList({ responderName, held, confirmed }: DoneListProps) {
   const [query, setQuery] = useState("");
   const words = useMemo(() => query.toLowerCase().split(/\s+/).filter(Boolean), [query]);
-  const drafts = needsCheck.filter((e) => matches(e.household_head, words));
   const second = held.filter((e) => matches(e.household_head, words));
   const done = confirmed.filter((e) => matches(e.household_head, words));
-  const nothing = drafts.length + second.length + done.length === 0;
+  const nothing = second.length + done.length === 0;
 
   return (
     <>
@@ -116,18 +92,6 @@ export function DoneList({ responderName, needsCheck, held, confirmed }: DoneLis
           <h1 className="text-title-page text-ink">Done</h1>
           <span className="font-mono text-mono-sm text-muted-text">{confirmed.length} today</span>
         </div>
-        {drafts.length > 0 ? (
-          <section className="mt-6" aria-labelledby="needs-check">
-            <h2 id="needs-check" className="text-title-md text-ink">
-              Needs your check
-            </h2>
-            <div className="mt-2 flex flex-col">
-              {drafts.map((e) => (
-                <NeedsCheckRow key={e.id} entry={e} />
-              ))}
-            </div>
-          </section>
-        ) : null}
         <section className="mt-6" aria-labelledby="confirmed">
           <h2 id="confirmed" className="text-title-md text-ink">
             Confirmed

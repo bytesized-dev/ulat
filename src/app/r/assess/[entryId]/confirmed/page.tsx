@@ -3,8 +3,8 @@ import { CheckIcon, ChevronRightIcon, EyeIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { CLASS_SHORT, CLASS_TONE, peopleLine, urgencyLabel } from "@/components/responder/check-draft";
-import { isUrgent, orderToVisit, withDistance } from "@/components/responder/to-visit-order";
+import { CLASS_SHORT, CLASS_TONE, peopleLine, urgencyLabel } from "@/components/responder/entry-form";
+import { orderToVisit, urgencyRank, withDistance } from "@/components/responder/to-visit-order";
 import { buttonVariants } from "@/components/ui/button";
 import { Pill } from "@/components/ui/pill";
 import { Row } from "@/components/ui/row";
@@ -14,6 +14,7 @@ import { db } from "@/db/client";
 import { entries, reports } from "@/db/schema";
 import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts";
+import { reportUrgency, URGENCY_LABELS } from "@/lib/reports/assessment";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +31,6 @@ export default async function ConfirmedPage({ params }: { params: Promise<{ entr
 
   const entry = db.select().from(entries).where(eq(entries.id, entryId)).get();
   if (!entry) notFound();
-  // A draft has nothing to show yet.
-  if (entry.status === "draft") redirect(routes.responder.check(entryId));
 
   const ownCode = entry.report_id ? db.select({ code: reports.code }).from(reports).where(eq(reports.id, entry.report_id)).get()?.code : null;
   const open = db
@@ -45,15 +44,21 @@ export default async function ConfirmedPage({ params }: { params: Promise<{ entr
       hurt: reports.hurt,
       missing: reports.missing,
       created_at: reports.created_at,
+      ai_class: reports.ai_class,
+      ai_hazards: reports.ai_hazards,
+      verdict_class: reports.verdict_class,
+      verdict_urgency: reports.verdict_urgency,
     })
     .from(reports)
     .where(inArray(reports.status, OPEN_STATUSES))
     .all()
-    .filter((r) => r.code !== ownCode);
+    .filter((r) => r.code !== ownCode)
+    .map((r) => ({ ...r, urgency: reportUrgency(r) }));
 
-  // The server has no position for the responder, so urgent houses come first and the oldest report leads.
-  const next = orderToVisit(withDistance(open, null), "urgent").find(isUrgent) ?? null;
-  const tag = next ? urgencyLabel(next.hurt, next.missing) : null;
+  // The same order as the To visit list. The server has no position for the
+  // responder, so the most urgent house leads and the oldest report breaks a tie.
+  const next = orderToVisit(withDistance(open, null), "urgent").find((r) => urgencyRank(r) >= 2) ?? null;
+  const tag = next ? (urgencyLabel(next.hurt, next.missing) ?? (next.urgency ? URGENCY_LABELS[next.urgency] : null)) : null;
   const damage = entry.damage_class;
   // A held entry does not count yet, so it must not read as confirmed.
   const held = entry.status === "needs_review";

@@ -19,6 +19,13 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined) }),
 }));
 
+// A linked photo is queued for the hub's reading. These tests are about storing
+// and linking, so the reading never runs and never calls Ollama.
+const reading = vi.hoisted(() => ({ queued: [] as string[] }));
+vi.mock("@/lib/ai/draft-report", () => ({
+  queueReportDraft: async (id: string) => void reading.queued.push(id),
+}));
+
 // The caps are 200 MB and 2000 files unlinked and 4 GB in all, and a sweep runs once a minute.
 // A test that fills a cap sets its own numbers.
 const DEFAULTS = { cap: 200 * 1024 * 1024, folderCap: 4 * 1024 * 1024 * 1024, fileCap: 2000, sweepEvery: 60 * 1000 };
@@ -79,7 +86,6 @@ const report = (extra: object = {}) => ({
   missing: 0,
   what_happened: "Roof gone",
   needs: ["water"],
-  voice_id: null,
   transcript: null,
   english: null,
   language: null,
@@ -428,15 +434,6 @@ describe("family photo upload and linking", () => {
       await put(id);
       await put(uuid());
       expect(existsSync(photoFile(id))).toBe(true);
-    });
-
-    it("does not share a cap or a sweep with family voice recordings", async () => {
-      limits.cap = BLOCK + 2000;
-      await put(uuid());
-      expect((await put(uuid())).status).toBe(507);
-      const voice = await import("../_lib/voice-store");
-      const note = new File([new Uint8Array(2000).fill(1)], "note.webm", { type: "audio/webm" });
-      expect(await voice.storeVoice(note, uuid())).toEqual({ ok: true });
     });
   });
 });

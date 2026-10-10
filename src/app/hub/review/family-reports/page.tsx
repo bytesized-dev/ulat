@@ -1,3 +1,4 @@
+import { requireStaffPage } from "@/lib/hub/staff-page";
 import { ReportRail } from "@/components/hub/family-reports/report-rail";
 import { ReportTable } from "@/components/hub/family-reports/report-table";
 import { HubPage } from "@/components/hub/hub-page";
@@ -32,6 +33,7 @@ const href = (show: FamilyFilter, code?: string) => {
 };
 
 export default async function FamilyReportsPage({ searchParams }: { searchParams: SearchParams }) {
+  await requireStaffPage();
   const params = await searchParams;
   const show = parseFilter(params.show);
 
@@ -52,7 +54,7 @@ export default async function FamilyReportsPage({ searchParams }: { searchParams
   return (
     <HubPage
       title="Family reports"
-      active={routes.hub.review}
+      active={routes.hub.familyReports}
       rail={<ReportRail report={selected} responders={responders} />}
     >
       <div className="flex flex-col gap-9">

@@ -10,7 +10,8 @@
 // - /_next/static: cache first. Its file names change with every build.
 // - Everything else, including /api, goes straight to the network.
 
-const VERSION = "ulat-shell-v1";
+// v2: the family voice and typed note pages are gone, so phones drop their cached copies.
+const VERSION = "ulat-shell-v2";
 const SHELL = ["/", "/report"];
 const NAVIGATION_TIMEOUT_MS = 4000;
 

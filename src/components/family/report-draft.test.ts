@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRAFT_KEY, clearDraft, emptyDraft, loadDraft, draftFromReport, markChecked, saveDraft, toNewReport } from "./report-draft";
+import { DRAFT_KEY, clearDraft, emptyDraft, loadDraft, draftFromReport, saveDraft, toNewReport } from "./report-draft";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const items = new Map(Object.entries(initial));
@@ -41,9 +41,14 @@ describe("report draft", () => {
     expect(() => clearDraft(blocked)).not.toThrow();
   });
 
-  it("drops the Please check marker once a field is edited", () => {
-    const draft = { ...emptyDraft(), uncertain_fields: ["people", "hurt"] as const };
-    expect(markChecked({ ...draft, uncertain_fields: [...draft.uncertain_fields] }, "people").uncertain_fields).toEqual(["hurt"]);
+  it("builds a NewReport with consent, and blanks become null", () => {
+    const draft = { ...emptyDraft(), household_head: "Dela Cruz", barangay: "San Isidro", purok: "  ", what_happened: "Roof gone" };
+    const result = toNewReport(draft);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data).toMatchObject({ source: "family", consent: true, purok: null, reporter_name: null, reporter_where: null });
+    // A family report never carries a voice note transcript. Only the help desk records one.
+    expect(result.data).toMatchObject({ transcript: null, english: null, language: null });
   });
 
   it("carries the reporter only for a neighbor's report", () => {
@@ -74,9 +79,6 @@ describe("draftFromReport", () => {
       hurt: 1,
       what_happened: "Roof gone",
       needs: ["water" as const],
-      transcript: "Nawala ang atop",
-      english: "The roof is gone",
-      language: "ceb" as const,
     };
     const body = toNewReport(draft);
     if (!body.success) throw new Error("fixture draft is not a valid report");

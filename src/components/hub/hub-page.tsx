@@ -1,5 +1,5 @@
 import { HubShell } from "@/components/ui/hub-shell";
-import { getReviewCount } from "@/lib/hub/review-count";
+import { getReviewCount, getUnassignedFamilyReportCount } from "@/lib/hub/review-count";
 import { HubStatusBlock } from "./hub-status-block";
 import { HubStatusProvider } from "./hub-status-provider";
 import { IdleLock } from "./idle-lock";
@@ -27,7 +27,7 @@ export function HubPage({ title, active, rail, actions, search, children }: HubP
       <IdleLock />
       <HubShell
         title={title}
-        nav={hubNav(getReviewCount())}
+        nav={hubNav(getReviewCount(), getUnassignedFamilyReportCount())}
         activeHref={active}
         status={<HubStatusBlock />}
         searchAction={routes.hub.entries}

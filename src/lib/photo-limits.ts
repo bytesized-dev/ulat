@@ -1,8 +1,8 @@
 import { FORM_OVERHEAD_BYTES } from "@/lib/audio-limits";
 
 // How big a family report photo may be, and how much of them the hub keeps.
-// POST /api/reports/photo takes these. The unlinked caps and the sweep work as
-// they do for family voice notes, see audio-limits.ts, with room for photos.
+// POST /api/reports/photo takes these. The unlinked caps and the sweep keep a
+// phone with no PIN from filling the hub's disk.
 
 /** The largest a photo may be. A phone camera JPEG is a few MB, and HEIC is smaller. */
 export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;

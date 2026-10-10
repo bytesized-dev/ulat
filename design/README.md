@@ -17,17 +17,17 @@ Inline styles in these files are for the mockup. Build with tokens and the share
 | Family: home | `/` | 1 | BYT-21 | [html](screens/family/home.html), [png](png/family/home.png) |
 | Family: whose household | `/report` | 1 | BYT-22 | [html](screens/family/whose-household.html), [png](png/family/whose-household.png) |
 | Family: report for a neighbor | `/report?for=neighbor` | 2 | BYT-37 | [html](screens/family/report-for-a-neighbor.html), [png](png/family/report-for-a-neighbor.png) |
-| Family: voice note, ready | `/report/voice` | 1 | BYT-36 | [html](screens/family/voice-note-ready.html), [png](png/family/voice-note-ready.png) |
-| Family: microphone blocked | `/report/voice, state` | 1 | BYT-36 | [html](screens/family/microphone-blocked.html), [png](png/family/microphone-blocked.png) |
-| Family: type instead | `/report/type` | 2 | BYT-19 | [html](screens/family/type-instead.html), [png](png/family/type-instead.png) |
-| Family: voice note, recording | `/report/voice, state` | 1 | BYT-36 | [html](screens/family/voice-note-recording.html), [png](png/family/voice-note-recording.png) |
-| Family: reading the note | `/report/voice, state` | 1 | BYT-36 | [html](screens/family/reading-the-note.html), [png](png/family/reading-the-note.png) |
-| Family: note not understood | `/report/voice, state` | 1 | BYT-36 | [html](screens/family/note-not-understood.html), [png](png/family/note-not-understood.png) |
-| Family: check your report | `/report/check` | 1 | BYT-46 | [html](screens/family/check-your-report.html), [png](png/family/check-your-report.png) |
+| Family: voice note, ready | Removed, families no longer record or type a note for the AI | 1 | BYT-36 | [html](screens/family/voice-note-ready.html), [png](png/family/voice-note-ready.png) |
+| Family: microphone blocked | Removed, families no longer record or type a note for the AI | 1 | BYT-36 | [html](screens/family/microphone-blocked.html), [png](png/family/microphone-blocked.png) |
+| Family: type instead | Removed, families no longer record or type a note for the AI | 2 | BYT-19 | [html](screens/family/type-instead.html), [png](png/family/type-instead.png) |
+| Family: voice note, recording | Removed, families no longer record or type a note for the AI | 1 | BYT-36 | [html](screens/family/voice-note-recording.html), [png](png/family/voice-note-recording.png) |
+| Family: reading the note | Removed, families no longer record or type a note for the AI | 1 | BYT-36 | [html](screens/family/reading-the-note.html), [png](png/family/reading-the-note.png) |
+| Family: note not understood | Removed, families no longer record or type a note for the AI | 1 | BYT-36 | [html](screens/family/note-not-understood.html), [png](png/family/note-not-understood.png) |
+| Family: check your report, now report details, step 2 of 3 | `/report/check` | 1 | BYT-46 | [html](screens/family/check-your-report.html), [png](png/family/check-your-report.png) |
 | Family: edit a field | `/report/check, sheet` | 2 | BYT-51 | [html](screens/family/edit-a-field.html), [png](png/family/edit-a-field.png) |
-| Family: what we heard | `/report/check, sheet` | 2 | BYT-51 | [html](screens/family/what-we-heard.html), [png](png/family/what-we-heard.png) |
+| Family: what we heard | Removed, families no longer record or type a note for the AI | 2 | BYT-51 | [html](screens/family/what-we-heard.html), [png](png/family/what-we-heard.png) |
 | Family: set home location | `/report/location` | 1 | BYT-10 | [html](screens/family/set-home-location.html), [png](png/family/set-home-location.png) |
-| Family: before you send | `/report/send` | 1 | BYT-26 | [html](screens/family/before-you-send.html), [png](png/family/before-you-send.png) |
+| Family: before you send | Merged into `/report/check`: the privacy lines and Agree and send end report details | 1 | BYT-26 | [html](screens/family/before-you-send.html), [png](png/family/before-you-send.png) |
 | Family: report sent | `/report/sent` | 1 | BYT-26 | [html](screens/family/report-sent.html), [png](png/family/report-sent.png) |
 | Family: status, waiting for visit | `/status` | 1 | BYT-27 | [html](screens/family/status-waiting-for-visit.html), [png](png/family/status-waiting-for-visit.png) |
 | Family: status, visited | `/status, state` | 1 | BYT-27 | [html](screens/family/status-visited.html), [png](png/family/status-visited.png) |
@@ -48,10 +48,10 @@ Inline styles in these files are for the mockup. Build with tokens and the share
 | Responder: family report | `/r/reports/[code]` | 1 | BYT-47 | [html](screens/responder/family-report.html), [png](png/responder/family-report.png) |
 | Responder: can't assess a house | `/r/reports/[code], sheet` | 2 | BYT-53 | [html](screens/responder/cant-assess-a-house.html), [png](png/responder/cant-assess-a-house.png) |
 | Responder: house with no report | `/r/new` | 2 | BYT-53 | [html](screens/responder/house-with-no-report.html), [png](png/responder/house-with-no-report.png) |
-| Responder: photos and note | `/r/assess/[entryId]` | 1 | BYT-50 | [html](screens/responder/photos-and-note.html), [png](png/responder/photos-and-note.png) |
-| Responder: hub drafting | `/r/assess/[entryId]/drafting` | 1 | BYT-52 | [html](screens/responder/hub-drafting.html), [png](png/responder/hub-drafting.png) |
-| Responder: check AI draft | `/r/assess/[entryId]/check` | 1 | BYT-52 | [html](screens/responder/check-ai-draft.html), [png](png/responder/check-ai-draft.png) |
-| Responder: AI can't tell | `/r/assess/[entryId]/check, state` | 1 | BYT-52 | [html](screens/responder/ai-cant-tell.html), [png](png/responder/ai-cant-tell.png) |
+| Responder: photos and note | `/r/assess/[entryId]`, now also holding the check AI draft fields and Confirm entry | 1 | BYT-50 | [html](screens/responder/photos-and-note.html), [png](png/responder/photos-and-note.png) |
+| Responder: hub drafting | Removed, no AI reads a responder's photos | 1 | BYT-52 | [html](screens/responder/hub-drafting.html), [png](png/responder/hub-drafting.png) |
+| Responder: check AI draft | Merged into `/r/assess/[entryId]`, starting from the family photo reading | 1 | BYT-52 | [html](screens/responder/check-ai-draft.html), [png](png/responder/check-ai-draft.png) |
+| Responder: AI can't tell | Removed, the responder picks the class when the family photo reading is unclear | 1 | BYT-52 | [html](screens/responder/ai-cant-tell.html), [png](png/responder/ai-cant-tell.png) |
 | Responder: entry confirmed | `/r/assess/[entryId]/confirmed` | 1 | BYT-52 | [html](screens/responder/entry-confirmed.html), [png](png/responder/entry-confirmed.png) |
 | Responder: waiting to send | `/r/queue` | 2 | BYT-48 | [html](screens/responder/waiting-to-send.html), [png](png/responder/waiting-to-send.png) |
 

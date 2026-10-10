@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseFilter, statusLabel, urgentLabel } from "./family-reports";
+import { parseFilter, sortByUrgency, statusLabel, urgentLabel } from "./family-reports";
 
 describe("labels", () => {
   it("says why a report could not be assessed", () => {
@@ -25,5 +25,14 @@ describe("labels", () => {
     expect(parseFilter("nope")).toBe("all");
     expect(parseFilter(undefined)).toBe("all");
     expect(parseFilter(["problems"])).toBe("all");
+  });
+});
+
+describe("urgency order", () => {
+  it("puts high first, then medium and low, then unread, and keeps the order inside a group", () => {
+    const row = (code: string, hurt: number, ai_class: "total" | "none" | null) =>
+      ({ code, hurt, missing: 0, ai_class, ai_hazards: null, verdict_class: null, verdict_urgency: null }) as unknown as Parameters<typeof sortByUrgency>[0][number];
+    const sorted = sortByUrgency([row("A", 0, "none"), row("B", 0, null), row("C", 1, "total"), row("D", 0, "total")]);
+    expect(sorted.map((r) => r.code)).toEqual(["C", "D", "A", "B"]);
   });
 });

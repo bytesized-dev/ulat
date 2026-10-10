@@ -34,7 +34,6 @@ const report = (extra: object = {}) => ({
   missing: 0,
   what_happened: "Roof gone",
   needs: ["water", "tarp"],
-  voice_id: null,
   transcript: "Nawala ang atop",
   english: "The roof is gone",
   language: "ceb",

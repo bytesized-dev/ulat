@@ -9,7 +9,7 @@ import type { OllamaError } from "./ollama";
  * file. A failed write is logged and swallowed: losing an
  * audit row must not throw away a family's extraction.
  */
-export async function logAiCall(call: "voice" | "text" | "photo" | "translate", result: { raw: string | null; error?: OllamaError }) {
+export async function logAiCall(call: "voice" | "photo" | "translate", result: { raw: string | null; error?: OllamaError }) {
   try {
     const [{ db }, { events }] = await Promise.all([import("../../db/client"), import("../../db/schema")]);
     db.insert(events)
@@ -31,12 +31,14 @@ export async function logAiCall(call: "voice" | "text" | "photo" | "translate", 
 }
 
 /**
- * Same as logAiCall for a call that belongs to an entry: the row is entity
- * "entry" with the entry id, so it shows in that entry's history. Used by the
- * photo draft (BYT-25), where the entry exists before the model runs.
+ * Same as logAiCall for a call that belongs to an entry or a report: the row
+ * carries that entity and id, so it shows in its history. Used where the
+ * entry or report exists before the model runs: the responder photo draft
+ * (BYT-25) and the hub's reading of a family report photo.
  */
-export async function logEntryAiCall(
-  entryId: string,
+async function logOwnedAiCall(
+  entity: "entry" | "report",
+  entityId: string,
   call: Parameters<typeof logAiCall>[0],
   result: { raw: string | null; error?: OllamaError | Error },
 ) {
@@ -45,8 +47,8 @@ export async function logEntryAiCall(
     const kind = result.error && "kind" in result.error ? result.error.kind : undefined;
     db.insert(events)
       .values({
-        entity: "entry",
-        entity_id: entryId,
+        entity,
+        entity_id: entityId,
         type: result.error ? `ai.${call}.failed` : `ai.${call}`,
         actor: "system",
         data: {
@@ -59,4 +61,12 @@ export async function logEntryAiCall(
   } catch (error) {
     console.error("Could not write the AI audit event", error);
   }
+}
+
+export function logEntryAiCall(entryId: string, call: Parameters<typeof logAiCall>[0], result: { raw: string | null; error?: OllamaError | Error }) {
+  return logOwnedAiCall("entry", entryId, call, result);
+}
+
+export function logReportAiCall(reportId: string, call: Parameters<typeof logAiCall>[0], result: { raw: string | null; error?: OllamaError | Error }) {
+  return logOwnedAiCall("report", reportId, call, result);
 }

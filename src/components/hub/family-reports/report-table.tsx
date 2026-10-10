@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Pill } from "@/components/ui/pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { statusLabel, urgentLabel, type FamilyReportRow } from "@/lib/hub/family-reports";
+import { reportUrgency, URGENCY_LABELS, URGENCY_TONE } from "@/lib/reports/assessment";
 import { formatTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ function ReportTable({ rows, selected, hrefFor }: ReportTableProps) {
           <TableHead className={head}>Household</TableHead>
           <TableHead className={head}>Barangay</TableHead>
           <TableHead className={head}>Urgent</TableHead>
+          <TableHead className={head}>Photo</TableHead>
           <TableHead className={head}>Sent</TableHead>
           <TableHead className={head}>Assigned</TableHead>
           <TableHead className={head}>Status</TableHead>
@@ -40,6 +42,8 @@ function ReportTable({ rows, selected, hrefFor }: ReportTableProps) {
         {rows.map((row) => {
           const status = statusLabel(row);
           const urgent = urgentLabel(row);
+          // A label from the photo assessment. The order stays hurt or missing first.
+          const urgency = row.photo_path ? reportUrgency(row) : null;
           const current = row.code === selected;
           return (
             <TableRow
@@ -59,6 +63,9 @@ function ReportTable({ rows, selected, hrefFor }: ReportTableProps) {
               </TableCell>
               <TableCell className={cn(cell, "text-ink")}>{row.barangay}</TableCell>
               <TableCell className={cn(cell, urgent ? "font-semibold text-danger" : "text-muted-text")}>{urgent ?? "None"}</TableCell>
+              <TableCell className={cn(cell, "text-muted-text")}>
+                {urgency ? <Pill dot={URGENCY_TONE[urgency] ?? undefined}>{URGENCY_LABELS[urgency]}</Pill> : !row.photo_path ? "No photo" : row.ai_status === "pending" ? "Reading" : "Not read"}
+              </TableCell>
               <TableCell className={cn(cell, "font-mono text-mono-xs text-muted-text")}>
                 <time dateTime={row.created_at}>{clock(row.created_at)}</time>
               </TableCell>

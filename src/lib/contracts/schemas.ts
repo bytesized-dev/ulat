@@ -15,8 +15,12 @@ export const Material = z.enum(["light", "mixed", "concrete", "unknown"]);
 export const Language = z.enum(["ceb", "tl", "en", "mixed", "unknown"]);
 export const ReportSource = z.enum(["family", "neighbor", "desk"]);
 export const ReportStatus = z.enum(["waiting", "assigned", "on_the_way", "visited", "cant_assess", "merged"]);
-export const EntryStatus = z.enum(["draft", "needs_review", "confirmed"]);
+export const EntryStatus = z.enum(["needs_review", "confirmed"]);
 export const CantAssessReason = z.enum(["cant_find", "no_one_home", "road_blocked", "not_safe", "other"]);
+/** How soon a family report needs a visit. Code decides it, never the model. See src/lib/reports/assessment.ts. */
+export const Urgency = z.enum(["high", "medium", "low"]);
+/** Where the hub's reading of a family report photo stands. failed still stores an unclear reading. */
+export const AssessmentStatus = z.enum(["pending", "done", "failed"]);
 export const PlaceType = z.enum(["relief", "shelter", "hazard"]);
 export const UpdateType = z.enum(["water_food", "shelter", "hazard", "notice"]);
 
@@ -49,7 +53,6 @@ export const AiPhotoDraft = z.object({
   material: Material,
   hazards: z.array(z.string().max(80)),
   reason: z.string().max(240),
-  need_more: z.string().max(120).nullable(),
 });
 export type AiPhotoDraft = z.infer<typeof AiPhotoDraft>;
 
@@ -85,7 +88,6 @@ export const NewReport = z.object({
   missing: Count,
   what_happened: z.string().max(200).nullable(),
   needs: z.array(Need),
-  voice_id: z.string().uuid().nullable(),
   /** Names a photo sent to POST /api/reports/photo. A report queued before photos existed has no key, so a missing one reads as null. */
   photo_id: z.string().uuid().nullable().default(null),
   transcript: z.string().max(2000).nullable(),
@@ -100,20 +102,8 @@ export const NewReport = z.object({
 export type NewReport = z.input<typeof NewReport>;
 
 /**
- * The fields next to the audio file in POST /api/reports/voice. The phone makes
- * the id, as it does the client_id, so sending the same recording twice stores
- * one file. NewReport.voice_id names it afterwards.
- */
-export const NewVoiceMeta = z.object({ voice_id: z.string().uuid() });
-export type NewVoiceMeta = z.infer<typeof NewVoiceMeta>;
-
-/** The answer to a voice upload. No URL: only a responder or staff can read the audio, by report. */
-export const VoiceStored = z.object({ voice_id: z.string().uuid() });
-export type VoiceStored = z.infer<typeof VoiceStored>;
-
-/**
  * The fields next to the image file in POST /api/reports/photo. The phone makes
- * the id, as it does the voice_id, so sending the same photo twice stores one
+ * the id, as it does the client_id, so sending the same photo twice stores one
  * file. NewReport.photo_id names it afterwards.
  */
 export const NewPhotoMeta = z.object({ photo_id: z.string().uuid() });
@@ -130,19 +120,7 @@ export const CantAssess = z.object({
 
 export const AssignReport = z.object({ responder_id: z.string().uuid() });
 
-export const NewEntryMeta = z.object({
-  report_code: ReportCode.nullable(),
-  barangay: ShortText,
-  purok: z.string().max(60).nullable(),
-  household_head: z.string().max(120).nullable(),
-  ...LatLng,
-  gps_accuracy_m: z.number().min(0).nullable(),
-  photo_labels: z.array(z.string().max(40)).max(3),
-  /** Made once on the phone when the responder taps Send. The hub returns the same entry for a repeat. */
-  client_id: z.string().uuid().optional(),
-});
-export type NewEntryMeta = z.infer<typeof NewEntryMeta>;
-
+/** What a responder decides at the house. Staff send the same fields to settle or edit an entry. */
 export const EntryConfirm = z.object({
   damage_class: ConfirmedDamageClass,
   material: Material,
@@ -152,9 +130,27 @@ export const EntryConfirm = z.object({
   hurt: Count,
   missing: Count,
   needs: z.array(Need),
-  new_photo_since_unclear: z.boolean(),
 });
 export type EntryConfirm = z.infer<typeof EntryConfirm>;
+
+/**
+ * One house, sent once from the assess screen with its photos. The photos are
+ * evidence only: no AI reads a responder's photos or note. The hub saves the
+ * entry as confirmed, or as needs_review by the SPEC section 5 rules.
+ */
+export const NewEntryMeta = z.object({
+  report_code: ReportCode.nullable(),
+  barangay: ShortText,
+  purok: z.string().max(60).nullable(),
+  household_head: z.string().max(120).nullable(),
+  ...LatLng,
+  gps_accuracy_m: z.number().min(0).nullable(),
+  photo_labels: z.array(z.string().max(40)).max(3),
+  /** Made once on the phone when the responder taps Confirm. The hub returns the same entry for a repeat. */
+  client_id: z.string().uuid().optional(),
+  ...EntryConfirm.shape,
+});
+export type NewEntryMeta = z.infer<typeof NewEntryMeta>;
 
 export const NewUpdate = z.object({
   type: UpdateType,
@@ -213,6 +209,18 @@ export const ReportStatusView = z.object({
 });
 export type ReportStatusView = z.infer<typeof ReportStatusView>;
 
+/**
+ * A responder's or staff member's own reading of a family report photo. It
+ * replaces the AI's class and urgency on every screen but never changes a
+ * total: only confirmed entries count.
+ */
+export const ReportVerdict = z.object({
+  damage_class: ConfirmedDamageClass,
+  urgency: Urgency,
+  note: z.string().trim().max(200).nullable().default(null),
+});
+export type ReportVerdict = z.infer<typeof ReportVerdict>;
+
 export const Priority = z.enum(["high", "medium", "low"]);
 
 export const BarangayRow = z.object({
@@ -262,7 +270,8 @@ export type HubStatus = z.infer<typeof HubStatus>;
 export const HubEvent = z.discriminatedUnion("type", [
   z.object({ type: z.literal("report.created"), code: ReportCode, urgent: z.boolean() }),
   z.object({ type: z.literal("report.updated"), code: ReportCode, status: ReportStatus }),
-  z.object({ type: z.literal("entry.drafted"), entry_id: z.string().uuid() }),
+  // The hub read a family report's photo, or someone set a verdict on it. Never sent to families.
+  z.object({ type: z.literal("report.assessed"), code: ReportCode }),
   z.object({ type: z.literal("entry.needs_review"), entry_id: z.string().uuid() }),
   z.object({ type: z.literal("entry.confirmed"), entry_id: z.string().uuid(), report_code: ReportCode.nullable() }),
   z.object({ type: z.literal("update.posted"), update_id: z.string().uuid() }),

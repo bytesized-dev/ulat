@@ -4,27 +4,27 @@ import type { SQLiteColumn } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { photos, reports } from "@/db/schema";
+import { queueReportDraft } from "@/lib/ai/draft-report";
 import { NewReport, ReportStatus } from "@/lib/contracts";
 import { audit, emit } from "./_lib/audit";
 import { readJsonCapped } from "./_lib/body";
 import { deny, getActor } from "./_lib/auth";
 import { freshCode } from "./_lib/code";
 import { findPhoto, photoLinked } from "./_lib/photo-store";
-import { findVoice, voiceLinked } from "./_lib/voice-store";
 import { isUrgent, urgentSql } from "./_lib/view";
 
 // POST takes a NewReport from a family phone or the help desk and returns the
 // code. GET lists reports for responders and staff, urgent first.
 //
-// A voice_id names a recording the phone sent to POST /api/reports/voice. It
-// becomes the report's voice_path when the file exists and no other report has
-// it. Otherwise the report is saved without audio and the audit row says why:
-// a disaster report must not be lost over an attachment, and answering the same
-// 201 either way gives nobody a way to test which voice_ids exist.
-//
-// A photo_id works the same way, for a photo sent to POST /api/reports/photo. It
+// A photo_id names a photo the phone sent to POST /api/reports/photo. It
 // becomes the report's photo_path and a photos row with that id, so
-// /api/files/<photo_id> serves it to responders and staff.
+// /api/files/<photo_id> serves it to responders and staff. When the file is
+// missing or another report has it, the report is saved without the photo and
+// the audit row says why: a disaster report must not be lost over an
+// attachment, and answering the same 201 either way gives nobody a way to test
+// which photo_ids exist. Once the report is
+// saved, the hub reads the photo in the background (src/lib/ai/draft-report.ts):
+// a class, hazards and a reason that responders and staff see, never a total.
 
 export async function POST(req: Request) {
   const read = await readJsonCapped(req);
@@ -41,21 +41,13 @@ export async function POST(req: Request) {
     actor = "staff";
   }
 
-  const stored = body.voice_id ? await findVoice(body.voice_id) : null;
   const storedPhoto = body.photo_id ? await findPhoto(body.photo_id) : null;
   const id = randomUUID();
   const now = new Date().toISOString();
   const urgent = isUrgent(body);
-  const { code, created, attached, photoAttached } = db.transaction((tx) => {
+  const { code, created, photoAttached } = db.transaction((tx) => {
     const fresh = freshCode(tx);
-    // Checked in the same transaction as the insert, so two reports cannot take one recording.
-    const voice = !body.voice_id
-      ? null
-      : !stored
-        ? ("unknown" as const)
-        : tx.select({ id: reports.id }).from(reports).where(eq(reports.voice_path, stored)).get()
-          ? ("used" as const)
-          : ("attached" as const);
+    // Checked in the same transaction as the insert, so two reports cannot take one photo.
     // Used means a photos row already has this id or this file.
     const photo = !body.photo_id
       ? null
@@ -89,8 +81,9 @@ export async function POST(req: Request) {
         missing: body.missing,
         what_happened: body.what_happened,
         needs: body.needs,
-        voice_path: voice === "attached" ? stored : null,
         photo_path: photo === "attached" ? storedPhoto : null,
+        ai_status: photo === "attached" ? "pending" : null,
+        ai_at: photo === "attached" ? now : null,
         transcript: body.transcript,
         transcript_en: body.english,
         language: body.language,
@@ -102,7 +95,7 @@ export async function POST(req: Request) {
       .run();
     if (inserted.changes === 0 && body.client_id) {
       const existing = tx.select({ code: reports.code }).from(reports).where(eq(reports.client_id, body.client_id)).get();
-      if (existing) return { code: existing.code, created: false, attached: false, photoAttached: false };
+      if (existing) return { code: existing.code, created: false, photoAttached: false };
     }
     if (photo === "attached" && body.photo_id && storedPhoto) {
       tx.insert(photos).values({ id: body.photo_id, report_id: id, path: storedPhoto }).run();
@@ -111,18 +104,19 @@ export async function POST(req: Request) {
       code: fresh,
       source: body.source,
       urgent,
-      voice_id: body.voice_id,
-      ...(voice ? { voice } : {}),
       photo_id: body.photo_id,
       ...(photo ? { photo } : {}),
     });
-    return { code: fresh, created: true, attached: voice === "attached", photoAttached: photo === "attached" };
+    return { code: fresh, created: true, photoAttached: photo === "attached" };
   });
 
   if (created) emit({ type: "report.created", code, urgent });
-  // The recording no longer counts as unlinked, so it stops using the unlinked cap.
-  if (attached && stored) await voiceLinked(stored);
-  if (photoAttached && storedPhoto) await photoLinked(storedPhoto);
+  if (photoAttached && storedPhoto) {
+    await photoLinked(storedPhoto);
+    // The family does not wait for the model. The hub reads the photo in the
+    // background and sends report.assessed when the reading is stored.
+    void queueReportDraft(id);
+  }
   return Response.json({ code }, { status: 201 });
 }
 

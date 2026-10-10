@@ -3,14 +3,17 @@ import { and, desc, eq, like, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { entries, photos, reports } from "@/db/schema";
-import { draftEntry } from "@/lib/ai/draft-entry";
-import { ConfirmedDamageClass, NewEntryMeta } from "@/lib/contracts";
-import { audit } from "./_lib/audit";
+import { setStatus } from "@/app/api/reports/_lib/audit";
+import { ConfirmedDamageClass, type HubEvent, NewEntryMeta } from "@/lib/contracts";
+import { audit, emit } from "./_lib/audit";
 import { authorize } from "./_lib/auth";
+import { REVIEW_REASONS, reviewReasons } from "./_lib/review";
 import { discardUploads, MAX_PHOTOS, storeUpload, type Stored } from "./_lib/uploads";
 
-// POST creates a draft from photos, an optional voice note, GPS and an optional
-// report code, then runs the photo pipeline. GET lists confirmed entries.
+// POST saves one house from the assess screen: photos, an optional voice note,
+// GPS, the responder's class and counts, and an optional report code. No AI
+// reads any of it. The entry is confirmed, or held for a second look by the
+// SPEC section 5 rules. GET lists confirmed entries.
 
 /**
  * The entry a phone already made for this client_id, as a 200. A queued resend
@@ -52,8 +55,7 @@ export async function POST(req: Request) {
   }
   const noteFile = form.get("note");
 
-  // A repeat of an entry the hub already saved. Nothing is stored and the AI
-  // does not run again.
+  // A repeat of an entry the hub already saved. Nothing is stored again.
   if (meta.data.client_id) {
     const again = existingEntry(meta.data.client_id, actor.id);
     if (again) return again;
@@ -95,6 +97,12 @@ export async function POST(req: Request) {
 
   const id = randomUUID();
   const now = new Date().toISOString();
+  const entry = meta.data;
+  const reasons = reviewReasons({ confirm: entry, reportHurt: report?.hurt ?? null });
+  const status = reasons.length > 0 ? "needs_review" : "confirmed";
+  // A merged report lives on in the one it joined, and a visited one is already done.
+  const visits = report !== undefined && status === "confirmed" && report.status !== "merged" && report.status !== "visited";
+  let visited: HubEvent | null = null;
   let number: number | null;
   try {
     number = db.transaction((tx) => {
@@ -114,13 +122,21 @@ export async function POST(req: Request) {
           lat: meta.data.lat,
           lng: meta.data.lng,
           gps_accuracy_m: meta.data.gps_accuracy_m,
-          // A house with a family report starts from what the family said, so the
-          // responder only changes what they find different. Reports carry no
-          // family count, so families keeps its default of 1. Without a report
-          // these stay at their column defaults.
-          ...(report ? { people: report.people, hurt: report.hurt, missing: report.missing, needs: report.needs } : {}),
+          // The assess screen started these from the family report, and the
+          // responder changed what they found different.
+          damage_class: entry.damage_class,
+          material: entry.material,
+          hazards: entry.hazards,
+          families: entry.families,
+          people: entry.people,
+          hurt: entry.hurt,
+          missing: entry.missing,
+          needs: entry.needs,
           note_path: notePath,
-          status: "draft",
+          status,
+          review_reason: reasons.length > 0 ? reasons.map((r) => REVIEW_REASONS[r]).join(" ") : null,
+          confirmed_by: status === "confirmed" ? actor.id : null,
+          confirmed_at: status === "confirmed" ? now : null,
           client_id: meta.data.client_id,
           created_at: now,
         })
@@ -131,6 +147,12 @@ export async function POST(req: Request) {
         tx.insert(photos).values({ entry_id: id, path: p.path, label: meta.data.photo_labels[i] ?? null, taken_at: now }).run(),
       );
       audit(tx, id, "entry.created", actor.id, { number: next, report_code: meta.data.report_code, photos: storedPhotos.length, note: !!notePath });
+      if (status === "confirmed") {
+        audit(tx, id, "entry.confirmed", actor.id, { class: entry.damage_class });
+        if (visits && report) visited = setStatus(tx, report, "visited", actor.id, {}, { entry_id: id });
+      } else {
+        audit(tx, id, "entry.needs_review", actor.id, { reasons });
+      }
       return next;
     });
   } catch (error) {
@@ -144,12 +166,14 @@ export async function POST(req: Request) {
     return winner ?? Response.json({ error: "client_id_conflict" }, { status: 409 });
   }
 
-  // The draft is saved. The model can take up to 60 seconds, so the response
-  // does not wait for it: the /drafting screen waits for the entry.drafted
-  // event instead.
-  void draftEntry(id).catch((error) => console.error("Drafting entry failed", id, error));
+  if (status === "confirmed") {
+    emit({ type: "entry.confirmed", entry_id: id, report_code: report?.code ?? null });
+    if (visited) emit(visited);
+  } else {
+    emit({ type: "entry.needs_review", entry_id: id });
+  }
   const saved = db.select().from(entries).where(eq(entries.id, id)).get();
-  return Response.json({ id, number, status: "draft", entry: saved }, { status: 201 });
+  return Response.json({ id, number, status, reasons, entry: saved }, { status: 201 });
 }
 
 const Query = z.object({

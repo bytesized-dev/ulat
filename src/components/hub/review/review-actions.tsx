@@ -12,7 +12,6 @@ import { SETTLED_PARAM } from "@/lib/hub/review-refresh";
 type ReviewActionsProps = {
   entryId: string;
   approve: ReviewAction | null;
-  useAi: ReviewAction | null;
   /** The responder's name, for the line after Ask for photos. */
   responderName: string;
   /** "2:51 PM" when staff already noted an ask for photos that still stands. */
@@ -25,11 +24,11 @@ const ERRORS = {
   failed: "Could not save. Try again.",
 } as const;
 
-// Approve and Use the AI class send EntryConfirm to PATCH /api/entries/[id], so
+// Approve sends EntryConfirm to PATCH /api/entries/[id], so
 // the route confirms the entry, audits the fields and tells the other screens.
 // Ask for photos is a server action that keeps the entry in review and notes the
 // ask in the audit trail. Nothing tells the responder yet, so the page says to.
-function ReviewActions({ entryId, approve, useAi, responderName, askedAt }: ReviewActionsProps) {
+function ReviewActions({ entryId, approve, responderName, askedAt }: ReviewActionsProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -83,11 +82,6 @@ function ReviewActions({ entryId, approve, useAi, responderName, askedAt }: Revi
         {approve ? (
           <Button type="button" size="hub" disabled={disabled} onClick={() => settle(approve)}>
             {approve.label}
-          </Button>
-        ) : null}
-        {useAi ? (
-          <Button type="button" size="hub" variant="secondary" disabled={disabled} onClick={() => settle(useAi)}>
-            {useAi.label}
           </Button>
         ) : null}
         <Button type="button" size="hub" variant="secondary" disabled={disabled || askedAt !== null} onClick={ask}>

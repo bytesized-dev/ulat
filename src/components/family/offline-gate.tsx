@@ -7,15 +7,33 @@ import { QUEUE_EVENT, type QueuedReport } from "./offline-queue";
 import { queueStore } from "./queue-db";
 import { draftFromReport, saveDraft } from "./report-draft";
 import { setReportPhoto } from "./report-photo";
-import { setVoiceAudio } from "./voice-audio";
 import { SavedOnPhone } from "./saved-on-phone";
 import { refreshQueue, useOfflineQueue } from "./use-offline-queue";
+
+/**
+ * In development, removes a worker that a built app left on this host. It
+ * serves /_next/static cache first, and dev rebuilds those files under the same
+ * names, so the page would keep running old code. Reloads once if the worker
+ * controlled this page, which then loads without it.
+ */
+async function removeServiceWorker() {
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  if (registrations.length === 0) return;
+  await Promise.all(registrations.map((registration) => registration.unregister()));
+  const keys = await caches.keys();
+  await Promise.all(keys.filter((key) => key.startsWith("ulat-")).map((key) => caches.delete(key)));
+  if (navigator.serviceWorker.controller) window.location.reload();
+}
 
 /** Registers the service worker that keeps the app shell for a phone that loses the hub. */
 function useServiceWorker() {
   useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
     // In development the worker would serve stale code, so it is for the built app only.
-    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV !== "production") {
+      removeServiceWorker().catch(() => {});
+      return;
+    }
     navigator.serviceWorker.register("/sw.js").catch(() => {
       // The page works without it. Only the offline start is lost.
     });
@@ -62,8 +80,7 @@ function OfflineGate({ children }: { children: React.ReactNode }) {
   async function fix(item: QueuedReport) {
     // The draft holds the report again, then the queue lets go of it, so it cannot be lost between the two.
     saveDraft(draftFromReport(item.report));
-    // The recording and the photo come back with it, so the send screen can upload them again.
-    setVoiceAudio(item.attachments.find((a) => a.kind === "audio")?.blob ?? null);
+    // The photo comes back with it, so the send screen can upload it again.
     setReportPhoto(item.attachments.find((a) => a.kind === "photo")?.blob ?? null);
     try {
       await queueStore().remove(item.id);

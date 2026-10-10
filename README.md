@@ -1,6 +1,6 @@
 # Ulat
 
-Offline disaster damage reporting for LGUs. One laptop and one Wi-Fi router, no internet. Families report what happened to their homes by voice, responders verify with photos, and the MDRRMO gets a situation report within the 72-hour window. A local AI model on the laptop does the reading and drafting.
+Offline disaster damage reporting for LGUs. One laptop and one Wi-Fi router, no internet. Families report what happened to their homes with a short form and a photo, responders verify with photos, and the MDRRMO gets a situation report within the 72-hour window. A local AI model on the laptop reads each family's photo in the background, so responders and staff see the likely damage and urgency before anyone visits.
 
 Built by team ByteSized for App Builders PH Hackathon 2026, theme Local AI.
 
@@ -60,8 +60,8 @@ Sign ins live in `seed/config.json`, and the database stores only their hashes. 
 | Route | Who | Sign in |
 |---|---|---|
 | `/` | Families, home | None |
-| `/report`, then `/report/voice` or `/report/type`, `/report/check`, `/report/location`, `/report/send`, `/report/sent` | Families, send a report by voice or typing | None |
-| `/status` | Families, check a report with its 4 character code | None |
+| `/report`, then `/report/check`, `/report/location`, `/report/sent` | Families, send a report: household, details and a photo | None |
+| `/status` | Families, check a report with its 4 character code. It opens the code saved on the phone | None |
 | `/updates`, `/map`, `/safe`, `/safe/done` | Families, updates from the MDRRMO, map of relief points, shelters and hazards, "I'm safe" check in | None |
 | `/r` | Responders, redirects to `/r/sign-in` | Email and password |
 | `/r/queue`, `/r/map`, `/r/new`, `/r/done`, `/r/reports/<code>` | Responders, visit queue, map, a house nobody reported, done list, one family report. The photo flow lives under `/r/assess/<entry id>` | Responder sign in |

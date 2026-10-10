@@ -1,8 +1,10 @@
 import { and, asc, desc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
 import type { z } from "zod";
 import type { Db } from "../../db/client";
-import { duplicates, entries, reports, responders } from "../../db/schema";
-import type { CantAssessReason, ReportStatus } from "../contracts/schemas";
+import { duplicates, entries, photos, reports, responders } from "../../db/schema";
+import { reportUrgency } from "../reports/assessment";
+import type { AssessmentStatus, CantAssessReason, Confidence, ConfirmedDamageClass, DamageClass, ReportStatus, Urgency } from "../contracts/schemas";
 
 // The hub's family reports list, docs/SPEC.md sections 4 and 6. Family and
 // neighbor reports only: help desk intake has its own screen. Every count is
@@ -42,10 +44,28 @@ export type FamilyReportRow = {
   assigned_name: string | null;
   transcript: string | null;
   what_happened: string | null;
-  /** True when the family's recording is stored. The path itself stays on the server. */
-  has_voice: boolean;
   created_at: string;
+  /** The family photo, which /api/files serves by this id. Null without a photo. */
+  photo_id: string | null;
+  photo_path: string | null;
+  /** The hub's reading of the photo and any verdict on it. See src/lib/reports/assessment.ts. */
+  ai_status: z.infer<typeof AssessmentStatus> | null;
+  ai_class: z.infer<typeof DamageClass> | null;
+  ai_confidence: z.infer<typeof Confidence> | null;
+  ai_reason: string | null;
+  ai_hazards: string[] | null;
+  ai_at: string | null;
+  verdict_class: z.infer<typeof ConfirmedDamageClass> | null;
+  verdict_urgency: z.infer<typeof Urgency> | null;
+  verdict_note: string | null;
+  verdict_by: string | null;
+  verdict_at: string | null;
+  /** The responder who set the verdict. Null when staff did, or there is none. */
+  verdict_name: string | null;
 };
+
+// Who set a verdict, joined apart from the assignee.
+const verdictResponders = alias(responders, "verdict_responders");
 
 const listed: SQL[] = [inArray(reports.source, ["family", "neighbor"]), ne(reports.status, "merged")];
 
@@ -63,8 +83,21 @@ const rowColumns = {
   assigned_name: responders.name,
   transcript: reports.transcript,
   what_happened: reports.what_happened,
-  has_voice: sql<boolean>`${reports.voice_path} is not null`.mapWith(Boolean),
   created_at: reports.created_at,
+  photo_id: sql<string | null>`(select ${photos.id} from ${photos} where ${photos.report_id} = ${reports.id} and ${photos.path} = ${reports.photo_path})`,
+  photo_path: reports.photo_path,
+  ai_status: reports.ai_status,
+  ai_class: reports.ai_class,
+  ai_confidence: reports.ai_confidence,
+  ai_reason: reports.ai_reason,
+  ai_hazards: reports.ai_hazards,
+  ai_at: reports.ai_at,
+  verdict_class: reports.verdict_class,
+  verdict_urgency: reports.verdict_urgency,
+  verdict_note: reports.verdict_note,
+  verdict_by: reports.verdict_by,
+  verdict_at: reports.verdict_at,
+  verdict_name: verdictResponders.name,
 };
 
 /** One report from the list, whatever the filter. Undefined for a desk, merged or unknown code. */
@@ -73,20 +106,39 @@ export function getFamilyReport(db: Db, code: string): FamilyReportRow | undefin
     .select(rowColumns)
     .from(reports)
     .leftJoin(responders, eq(responders.id, reports.assigned_to))
+    .leftJoin(verdictResponders, eq(verdictResponders.id, reports.verdict_by))
     .where(and(...listed, eq(reports.code, code)))
     .get();
 }
 
-/** Urgent first, then the newest, as the canvas shows. */
+const URGENCY_RANK = { high: 0, medium: 1, low: 2 } as const;
+
+/**
+ * High urgency first, then medium, then low, then reports with no reading yet.
+ * Inside each group the order is the query's: hurt or missing first, then the
+ * newest. Urgency comes from code in reportUrgency, never from the model.
+ */
+export function sortByUrgency(rows: FamilyReportRow[]): FamilyReportRow[] {
+  const rank = (row: FamilyReportRow) => {
+    const urgency = reportUrgency(row);
+    return urgency === null ? 3 : URGENCY_RANK[urgency];
+  };
+  // Array.prototype.sort is stable, so ties keep the query's order.
+  return [...rows].sort((a, b) => rank(a) - rank(b));
+}
+
+/** Highest urgency first, then as the canvas shows: hurt or missing, then the newest. */
 export function listFamilyReports(db: Db, filter: FamilyFilter = "all"): FamilyReportRow[] {
   const where = filter === "all" ? and(...listed) : and(...listed, inArray(reports.status, FILTER_STATUSES[filter]));
-  return db
+  const rows = db
     .select(rowColumns)
     .from(reports)
     .leftJoin(responders, eq(responders.id, reports.assigned_to))
+    .leftJoin(verdictResponders, eq(verdictResponders.id, reports.verdict_by))
     .where(where)
     .orderBy(desc(sql`(${reports.hurt} > 0 or ${reports.missing} > 0)`), desc(reports.created_at), asc(reports.code))
     .all();
+  return sortByUrgency(rows);
 }
 
 export type FamilyCounts = Record<FamilyFilter, number>;

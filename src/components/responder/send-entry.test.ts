@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createClientIds, sendEntry, UNCLEAR_ANSWER, type ClientIds } from "./send-entry";
 
 const house = { report_code: "K7P4", barangay: "Dapitan", purok: "Purok 2", household_head: "Maria Santos" };
+const entry = { damage_class: "partial" as const, material: "mixed" as const, hazards: [], families: 1, people: 4, hurt: 0, missing: 0, needs: [] };
 const photo = (name = "a.jpg") => new File(["x"], name, { type: "image/jpeg" });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -15,7 +16,7 @@ function hub(...answers: (() => Response | Promise<Response>)[]) {
   return { ids, send };
 }
 const tap = (ids: ClientIds, send: typeof fetch, over: Partial<Parameters<typeof sendEntry>[0]> = {}) =>
-  sendEntry({ house, labels: ["Front"], gps: null, photos: [photo()], note: null, ids, ...over }, send);
+  sendEntry({ house, labels: ["Front"], gps: null, photos: [photo()], note: null, entry, ids, ...over }, send);
 
 describe("createClientIds", () => {
   it("gives the same id until it is cleared, and a new one for another house", () => {

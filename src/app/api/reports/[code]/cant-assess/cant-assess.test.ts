@@ -63,7 +63,6 @@ describe("POST /api/reports/[code]/cant-assess", () => {
           missing: 0,
           what_happened: null,
           needs: [],
-          voice_id: null,
           transcript: null,
           english: null,
           language: null,

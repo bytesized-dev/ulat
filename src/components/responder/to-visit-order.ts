@@ -13,6 +13,8 @@ export type ToVisitReport = {
   /** Who the hub assigned this report to. Left out where the list does not need it. */
   assigned_to?: string | null;
   assignee_name?: string | null;
+  /** The photo assessment's urgency, worked out by code. Null without a reading of a family photo. */
+  urgency?: "high" | "medium" | "low" | null;
 };
 
 export type ToVisitItem = ToVisitReport & {
@@ -65,6 +67,17 @@ export function isUrgent(report: Pick<ToVisitReport, "hurt" | "missing">): boole
   return report.hurt > 0 || report.missing > 0;
 }
 
+/**
+ * High first, then medium, then houses nobody has read yet, then low. Low means
+ * the hub saw no damage and nobody is hurt or missing, so an unknown house goes
+ * before it. Without a reading, hurt or missing still counts as high, as the
+ * urgency rule in src/lib/reports/assessment.ts does. Code ranks, never the model.
+ */
+export function urgencyRank(report: Pick<ToVisitReport, "hurt" | "missing" | "urgency">): number {
+  const urgency = report.urgency ?? (isUrgent(report) ? "high" : null);
+  return urgency === "high" ? 3 : urgency === "medium" ? 2 : urgency === null ? 1 : 0;
+}
+
 // A house with no distance goes after every house that has one, oldest report first.
 function byDistance(a: ToVisitItem, b: ToVisitItem): number {
   if (a.distance_m === null && b.distance_m === null) return a.created_at.localeCompare(b.created_at);
@@ -81,14 +94,14 @@ export function withDistance(reports: ToVisitReport[], from: Point | null): ToVi
 }
 
 /**
- * Urgent first puts hurt or missing on top, then this responder's own reports,
+ * Urgent first ranks by urgency, then puts this responder's own reports first,
  * then sorts each group by distance. Nearest ignores both.
  */
 export function orderToVisit(items: ToVisitItem[], sort: ToVisitSort, responderId?: string): ToVisitItem[] {
   const mine = (item: ToVisitItem) => responderId !== undefined && item.assigned_to === responderId;
   return [...items].sort((a, b) => {
     if (sort === "urgent") {
-      const urgent = Number(isUrgent(b)) - Number(isUrgent(a));
+      const urgent = urgencyRank(b) - urgencyRank(a);
       if (urgent !== 0) return urgent;
       const own = Number(mine(b)) - Number(mine(a));
       if (own !== 0) return own;

@@ -1,6 +1,7 @@
 import { NewEntryMeta } from "@/lib/contracts";
+import type { EntryForm } from "./entry-form";
 
-// Pure helpers for the photos and note screen, kept apart so they can be tested.
+// Pure helpers for the assess screen, kept apart so they can be tested.
 
 export const MAX_PHOTOS = 3;
 export const MAX_NOTE_SECONDS = 30;
@@ -35,11 +36,13 @@ export function gpsText(gps: Gps | null, failed: boolean): string {
 
 /**
  * Checks the meta against the shared contract before it is sent. The client id is made
- * once per tap on Send, and the online try and the queued copy both carry it.
+ * once per tap on Confirm entry, and the online try and the queued copy both carry it.
+ * It fails while no class is chosen.
  */
-export function buildMeta(house: House, labels: string[], gps: Gps | null, clientId: string) {
+export function buildMeta(house: House, labels: string[], gps: Gps | null, clientId: string, entry: EntryForm) {
   return NewEntryMeta.safeParse({
     ...house,
+    ...entry,
     lat: gps?.lat ?? null,
     lng: gps?.lng ?? null,
     gps_accuracy_m: gps ? gps.accuracy_m : null,

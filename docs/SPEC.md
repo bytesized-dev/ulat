@@ -10,13 +10,13 @@
 - **Network:** any Wi-Fi router with nothing in its internet port, powered by a power bank. Give the hub a fixed IP with a DHCP reservation. Wi-Fi name `ULAT-HUB`.
 - **Phones:** any phone with a browser. Nothing to install.
 - **Address:** phones open `https://hub.cjjutba.dev`. The router hands out the hub as the DNS server, dnsmasq on the hub answers that name with the hub's local IP, and Caddy serves a real Let's Encrypt certificate fetched before the storm with a DNS challenge. Phones trust it with no setup, so camera, microphone, GPS and offline caching all work. Details in `infra/README.md`.
-- **Fallback:** if the certificate fails, Caddy's internal certificate installed on the demo phones, or plain HTTP with file inputs for photos and typed notes.
+- **Fallback:** if the certificate fails, Caddy's internal certificate installed on the demo phones, or plain HTTP with file inputs for photos.
 
 ### Software
 
 - One Next.js app, three areas: family at `/`, responder at `/r`, hub at `/hub`.
 - Route handlers under `/api` are the only backend.
-- SQLite file at `data/ulat.db`. Photos and audio at `data/uploads/<yyyy-mm-dd>/<uuid>.<ext>`. Family voice notes are kept apart, at `data/uploads/voice/<yyyy-mm-dd>/<voice_id>.<ext>`, and family report photos at `data/uploads/photo/<yyyy-mm-dd>/<photo_id>.<ext>`.
+- SQLite file at `data/ulat.db`. Photos and audio at `data/uploads/<yyyy-mm-dd>/<uuid>.<ext>`. Family report photos are kept apart, at `data/uploads/photo/<yyyy-mm-dd>/<photo_id>.<ext>`.
 - Ollama on `localhost:11434` with `gemma4:e4b`.
 - Live updates over one server-sent events endpoint.
 
@@ -40,13 +40,10 @@ Tier 1 is the demo loop and must work end to end. Tier 2 makes it feel complete.
 |---|---|---|
 | `/` | Family: home | 1 |
 | `/report` | Family: whose household. `?for=neighbor` shows Family: report for a neighbor (tier 2) | 1 |
-| `/report/voice` | Family: voice note ready, recording, reading the note, note not understood, microphone blocked | 1 |
-| `/report/type` | Family: type instead | 2 |
-| `/report/check` | Family: check your report, with the edit sheet and what we heard sheet (tier 2) | 1 |
+| `/report/check` | Family: report details, step 2 of 2, with the edit sheet. The family fills people, hurt, missing, what happened, a photo and needs by hand, all optional. The three privacy lines and Agree and send end this screen | 1 |
 | `/report/location` | Family: set home location | 1 |
-| `/report/send` | Family: before you send | 1 |
 | `/report/sent` | Family: report sent | 1 |
-| `/status` | Family: status, waiting for visit and status, visited | 1 |
+| `/status` | Family: status, waiting for visit and status, visited. Opens the code saved on the phone when there is one, with Check another code | 1 |
 | `/map` | Family: map | 2 |
 | `/updates` | Family: updates from MDRRMO | 2 |
 | `/safe`, `/safe/done` | Family: I'm safe, on the safe list | 2 |
@@ -54,9 +51,9 @@ Tier 1 is the demo loop and must work end to end. Tier 2 makes it feel complete.
 
 The report draft lives in `sessionStorage` until it is sent. Tier 2 adds an IndexedDB queue so a sent report survives leaving the hub's range.
 
-A recorded note keeps its audio in memory on the phone. The phone makes a `voice_id` (a UUID) when the recording is read, and a typed note clears it. On Agree and send the phone uploads the audio to `POST /api/reports/voice` under that id, then posts the report with the same `voice_id`. The hub sets `reports.voice_path` from it. If the hub answers but refuses the audio, the report goes without it, because the transcript is already in the report. If the hub does not answer, the report is queued with the audio as an attachment.
+A family report is two steps: household, then details, which ends with Agree and send. The family types every field, and nothing on the phone goes to the AI. Only the help desk records a voice note, and it keeps the words, not the audio: `NewReport` carries `transcript`, `english` and `language`, and a family report sends them as null.
 
-A family photo works the same way. The phone keeps the picked photo in memory and makes a `photo_id` (a UUID) once per tap on Send, with the `client_id`. It uploads the photo to `POST /api/reports/photo` under that id before the report, then posts the report with the same `photo_id`. The hub sets `reports.photo_path` and adds a `photos` row from it. No AI reads the photo and it never changes a total: it is context a responder sees before the visit. If the hub answers but refuses the photo, the report goes without it. If the hub does not answer, the report is queued with the photo as an attachment.
+A family photo works the same way. The phone keeps the picked photo in memory and makes a `photo_id` (a UUID) once per tap on Send, with the `client_id`. It uploads the photo to `POST /api/reports/photo` under that id before the report, then posts the report with the same `photo_id`. The hub sets `reports.photo_path` and adds a `photos` row from it. Once the report is saved, the hub reads the photo in the background (see the family photo assessment in section 6). The reading and any verdict on it are context for responders and staff before the visit. Families never see them, and they never change a total. If the hub answers but refuses the photo, the report goes without it. If the hub does not answer, the report is queued with the photo as an attachment.
 
 ### Responder
 
@@ -69,10 +66,10 @@ A family photo works the same way. The phone keeps the picked photo in memory an
 | `/r/queue` | Responder: waiting to send | 2 |
 | `/r/reports/[code]` | Responder: family report, with the can't assess sheet (tier 2) | 1 |
 | `/r/new` | Responder: house with no report | 2 |
-| `/r/assess/[entryId]` | Responder: photos and note | 1 |
-| `/r/assess/[entryId]/drafting` | Responder: hub drafting | 1 |
-| `/r/assess/[entryId]/check` | Responder: check AI draft, and AI can't tell yet | 1 |
+| `/r/assess/[entryId]` | Responder: assess the house. Photos, note, damage class, material, hazards, people and needs on one screen, then Confirm entry. Merges the old photos and note, hub drafting and check AI draft screens | 1 |
 | `/r/assess/[entryId]/confirmed` | Responder: entry confirmed | 1 |
+
+No AI reads a responder's photos or note. The assess screen starts from the family report: its people, hurt, missing and needs, the hazards in the hub's reading of the family's photo, and the class from a staff verdict or that reading. An unclear reading, or a house with no report, leaves the class for the responder to pick. Confirm entry sends the photos and the answers together, and the hub saves the entry as confirmed, or as `needs_review` by the rule in section 5. Nothing waits on a model after the tap. The report page shows the photo reading and its urgency read only, since only staff change them.
 
 The bottom tab bar (To visit, Map, Done, Queue) shows on `/r`, `/r/map`, `/r/done` and `/r/queue`.
 
@@ -104,10 +101,10 @@ Drizzle with SQLite. IDs are UUID strings unless noted. Timestamps are ISO strin
 |---|---|
 | `settings` | `key` primary, `value`. Keys: `town`, `barangays` (JSON list), `map_bbox` (west, south, east, north), `staff_pin_hash`, `simulation` (`true` or `false`), `wifi_name`, `hub_address` |
 | `responders` | `id`, `name`, `team`, `active`, `email` (nullable and unique, stored in lower case), `password_hash` (nullable, scrypt). A responder with no email or no password hash cannot sign in |
-| `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `voice_path` (the family's recording, relative to the uploads folder, set from `voice_id`), `transcript`, `transcript_en`, `language`, `photo_path` (the family's photo, relative to the uploads folder, set from `photo_id`), `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `client_id` (nullable and unique, set by a phone so a resend of the same tap finds the report it already made), `created_at`, `updated_at` |
-| `entries` | `id`, `number` (integer, shown as 0231), `report_id` (nullable), `responder_id`, `barangay`, `purok`, `household_head`, `lat`, `lng`, `gps_accuracy_m`, `families` (default 1, more when families share a house), `people`, `hurt`, `missing`, `needs` (JSON), `material`, `hazards` (JSON), `damage_class` (`none`, `partial`, `total`), `ai_class`, `ai_confidence`, `ai_reason`, `ai_need_more`, `note_path`, `note_transcript`, `note_en`, `status` (`draft`, `needs_review`, `confirmed`), `review_reason`, `confirmed_by`, `confirmed_at`, `created_at` |
+| `reports` | `id`, `code` (4 chars, unique), `source` (`family`, `neighbor`, `desk`), `household_head`, `reporter_name`, `reporter_where`, `barangay`, `purok`, `lat`, `lng`, `people`, `hurt`, `missing`, `what_happened`, `needs` (JSON), `transcript`, `transcript_en` and `language` (a help desk voice note, as words only), `photo_path` (the family's photo, relative to the uploads folder, set from `photo_id`), `ai_status` (`pending`, `done`, `failed`), `ai_class`, `ai_confidence`, `ai_reason`, `ai_hazards` (JSON) and `ai_at` (the hub's reading of the family photo), `verdict_class`, `verdict_urgency`, `verdict_note`, `verdict_by` and `verdict_at` (staff's own reading), `status` (`waiting`, `assigned`, `on_the_way`, `visited`, `cant_assess`, `merged`), `assigned_to`, `cant_reason`, `cant_note`, `merged_into`, `client_id` (nullable and unique, set by a phone so a resend of the same tap finds the report it already made), `created_at`, `updated_at` |
+| `entries` | `id`, `number` (integer, shown as 0231), `report_id` (nullable), `responder_id`, `barangay`, `purok`, `household_head`, `lat`, `lng`, `gps_accuracy_m`, `families` (default 1, more when families share a house), `people`, `hurt`, `missing`, `needs` (JSON), `material`, `hazards` (JSON), `damage_class` (`none`, `partial`, `total`, set by the responder), `note_path` (the responder's voice note, kept as audio and never transcribed), `status` (`needs_review`, `confirmed`), `review_reason`, `confirmed_by`, `confirmed_at`, `created_at` |
 | `photos` | `id`, `entry_id` or `report_id`, `path`, `label`, `taken_at`. A family report photo has the `photo_id` as its `id`, the report as `report_id` and a path under `photo/` |
-| `events` | `id`, `entity` (`report`, `entry`, `update`, `place`, `safe`, `ai`), `entity_id`, `type`, `actor`, `data` (JSON), `at`. This is the audit trail. Model calls log as type `ai.voice`, `ai.text`, `ai.photo` or `ai.translate`, with `.failed` added on a timeout or a schema failure, and the raw output in `data`. Voice, text and translate calls use entity `ai` with a fresh UUID per call. The photo draft belongs to an entry, so it logs as entity `entry` with the entry id and shows in that entry's history |
+| `events` | `id`, `entity` (`report`, `entry`, `update`, `place`, `safe`, `ai`), `entity_id`, `type`, `actor`, `data` (JSON), `at`. This is the audit trail. Model calls log as type `ai.voice`, `ai.photo` or `ai.translate`, with `.failed` added on a timeout or a schema failure, and the raw output in `data`. Voice and translate calls use entity `ai` with a fresh UUID per call. The reading of a family report photo logs as entity `report` with the report id |
 | `places` | `id`, `type` (`relief`, `shelter`, `hazard`), `name`, `details`, `when_text`, `lat`, `lng`, `visible`, `created_at` |
 | `updates` | `id`, `type` (`water_food`, `shelter`, `hazard`, `notice`), `headline`, `message`, `message_ceb`, `message_tl`, `place_id`, `expires_at`, `seen_count`, `posted_at` |
 | `safe_checkins` | `id`, `name`, `barangay`, `staying_at`, `message`, `source` (`phone`, `desk`), `at` |
@@ -129,20 +126,19 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 |---|---|---|
 | `POST /api/auth/responder` | Responder | Email and password, sets session. A miss is 401 `wrong_email_or_password` |
 | `POST /api/auth/staff` | Staff | PIN, sets session |
-| `POST /api/ai/voice` | Family, responder | Audio up to 30 s. Returns `AiVoiceExtract` |
-| `POST /api/ai/text` | Family | Typed note. Returns `AiVoiceExtract` with an empty transcript |
-| `POST /api/reports/voice` | Family | One family recording, no PIN. Multipart with `voice_id` (UUID made on the phone) and `audio`. Same types and size limits as `POST /api/ai/voice`, the length must be declared, and a file under 1 KB (`MIN_VOICE_BYTES`) is refused with 400 `audio_too_small`, since a real note is several KB. Stores it at `data/uploads/voice/<yyyy-mm-dd>/<voice_id>.<ext>` and returns `{ voice_id }` with no URL. Sending the same `voice_id` again stores nothing new. Because it needs no PIN, three caps keep it from filling the disk, and above any of them the route answers 507 `storage_full` before writing. Recordings that no report has taken total at most 200 MB (`MAX_UNLINKED_VOICE_BYTES`) and at most 2000 files (`MAX_UNLINKED_VOICE_FILES`), and the whole voice folder, linked recordings included, holds at most 1 GB (`MAX_VOICE_FOLDER_BYTES`). Every recording counts as whole 4 KiB disk blocks, so a tiny file cannot slip under a byte cap, and the file cap keeps a sweep short. Uploads are stored one at a time, so uploads that arrive together cannot overshoot a cap. The hub keeps running totals in memory, so an upload under both caps does not walk the folder. A sweep walks it at most once a minute, and whenever an upload looks over a cap, so a 507 is judged on exact totals. The sweep deletes recordings no report has taken that are over an hour old and never deletes a linked one. A full hub still takes reports: the phone sends the report without audio when the recording is refused, and the report is saved with `voice_path` null. Nothing serves the audio from this route |
+| `POST /api/ai/voice` | Help desk | Audio up to 30 s. Returns `AiVoiceExtract`. A recording with no speech is refused with 422 `rejected` before the model hears it |
 | `POST /api/reports/photo` | Family | One family report photo, no PIN. Multipart with `photo_id` (UUID made on the phone) and `photo`. JPEG, PNG, WebP or HEIC up to 10 MB (`MAX_PHOTO_BYTES`), the length must be declared, and a file under 1 KB (`MIN_PHOTO_BYTES`) is refused with 400 `photo_too_small`. A wrong type is 400 `photo_type_not_allowed` and a file over the limit is 413 `too_large`. Stores it at `data/uploads/photo/<yyyy-mm-dd>/<photo_id>.<ext>` and returns `{ photo_id }` with no URL. Sending the same `photo_id` again stores nothing new. It uses the same store as the voice route, with its own folder, counts, lock and sweep: photos no report has taken total at most 200 MB (`MAX_UNLINKED_PHOTO_BYTES`) and 2000 files (`MAX_UNLINKED_PHOTO_FILES`), the whole photo folder holds at most 4 GB (`MAX_PHOTO_FOLDER_BYTES`), and above any cap the route answers 507 `storage_full` before writing. The sweep deletes photos no report has taken that are over an hour old. A photo is linked when a `photos` row has its path. A full hub still takes reports: the phone sends the report without the photo when it is refused. Nothing serves the photo from this route |
-| `POST /api/reports` | Family, desk | `NewReport`. Returns the code. A `voice_id` is linked to the stored file and set as `voice_path`, once per recording. One that was never uploaded or that another report already holds is ignored: the report is saved without audio, the same 201 comes back, and the `report.created` audit row records `voice` as `unknown` or `used`. A `photo_id` works the same way: it sets `photo_path` and adds a `photos` row with that id, once per photo, a missing or used one is ignored with the same 201, and the audit row records `photo` as `unknown`, `used` or `attached` |
+| `POST /api/reports` | Family, desk | `NewReport`. Returns the code. A `photo_id` sets `photo_path` and adds a `photos` row with that id, once per photo. One that was never uploaded or that another report already holds is ignored: the report is saved without the photo, the same 201 comes back, and the `report.created` audit row records `photo` as `unknown`, `used` or `attached` |
 | `GET /api/reports/[code]` | Family | `ReportStatus`, minimal fields only |
 | `GET /api/reports` | Responder, staff | List with filters, urgent first |
-| `GET /api/files/[id]` | Responder, staff | A photo by photo id, which includes a family report photo, an entry's voice note by entry id, or a family's voice note by report id. Range requests work. Without a PIN it answers 401 |
+| `GET /api/files/[id]` | Responder, staff | A photo by photo id, which includes a family report photo, or an entry's voice note by entry id. Range requests work. Without a PIN it answers 401 |
 | `POST /api/reports/[code]/assign` | Staff | Assign to a responder |
 | `POST /api/reports/[code]/cant-assess` | Responder | Reason and note |
-| `POST /api/entries` | Responder | Creates a draft from photos, note, GPS and an optional report code, then runs the photo pipeline |
-| `POST /api/entries/[id]/photos` | Responder | Adds a photo to a draft and runs the photo draft again |
-| `GET /api/entries/[id]` | Responder, staff | Entry with photos, AI draft and history |
-| `PATCH /api/entries/[id]` | Responder, staff | `EntryConfirm` to confirm, or field edits. Records changes in `events` |
+| `PATCH /api/reports/[code]/assessment` | Staff | `ReportVerdict`: staff's own damage class and urgency for a family report photo, with an optional note. The latest verdict wins and replaces the AI's on every screen. Audited as `report.verdict` with the values it replaced. 409 `no_photo` or `merged` |
+| `POST /api/reports/[code]/assessment` | Staff | Reads the family photo again after a failed or stalled reading. 409 `reading` while one is still running, otherwise 202 |
+| `POST /api/entries` | Responder | `NewEntryMeta` with one to three photos and an optional note: the house, GPS, an optional report code and the responder's `EntryConfirm` fields. Saves the entry as `confirmed`, marking its report `visited`, or as `needs_review` by the section 5 rule. No AI runs. A repeated `client_id` returns the first entry with 200 |
+| `GET /api/entries/[id]` | Responder, staff | Entry with photos and history |
+| `PATCH /api/entries/[id]` | Staff | `EntryConfirm` to settle a `needs_review` entry, or field edits to a confirmed one. Records changes in `events` |
 | `GET /api/entries` | Staff | Paginated and filtered list |
 | `GET /api/hub/summary` | Staff | Totals, per-barangay rows, priority ranking, needs counts. All SQL |
 | `GET /api/hub/status` | Staff | Phones connected, model loaded, battery, storage |
@@ -159,7 +155,7 @@ All bodies are validated with the Zod schemas in `src/lib/contracts/schemas.ts`.
 
 ### Live events
 
-One `GET /api/events` stream. Each message is a `HubEvent` from the contracts: `report.created`, `report.updated`, `entry.drafted`, `entry.needs_review`, `entry.confirmed`, `update.posted`, `place.saved`, `safe.checked_in`, `hub.status`. Clients refetch what they show when a relevant event arrives. Families only receive events about their own code, updates and places.
+One `GET /api/events` stream. Each message is a `HubEvent` from the contracts: `report.created`, `report.updated`, `report.assessed`, `entry.needs_review`, `entry.confirmed`, `update.posted`, `place.saved`, `safe.checked_in`, `hub.status`. Clients refetch what they show when a relevant event arrives. Families only receive events about their own code, updates and places.
 
 ## 5. AI pipeline
 
@@ -174,25 +170,26 @@ One `GET /api/events` stream. Each message is a `HubEvent` from the contracts: `
 
 All calls first use Ollama's structured output (`format`) with the JSON schema generated from the Zod schema, then validate again with Zod. Some Ollama builds, such as Homebrew 0.40.2 on the MLX runner, lack `libollama_xgrammar` and answer any request with `format` with a 501 "structured output is unavailable". On that answer the call is sent once more without `format`, with the schema and "reply with one JSON object only, no code fence" added to the user message. The hub remembers this until the app restarts, so later calls skip the first try. A code fence around the reply is trimmed before parsing. The Zod check and the unclear and `invalid_output` rules are the same in both modes. Prompts are in `src/lib/ai/prompts.ts`.
 
-1. **Voice note to fields.** Input audio, or a transcript from whisper.cpp. Output `AiVoiceExtract`: language, transcript, English translation, household head, people, hurt, missing, what happened, needs, hazards and a list of fields the model wasn't sure about. Uncertain fields show the "Please check" marker on the check screen.
-2. **Photos to damage class.** Input one to three photos, the note transcript if there is one, and the DSWD definitions. Output `AiPhotoDraft`: damage class (`none`, `partial`, `total` or `unclear`), confidence, material, hazards, a reason of one sentence naming what is visible, and `need_more`, such as "Roof from the side", when the class is unclear.
+1. **Voice note to fields.** Input audio, or a transcript from whisper.cpp. Output `AiVoiceExtract`: language, transcript, English translation, household head, people, hurt, missing, what happened, needs, hazards and a list of fields the model wasn't sure about. The help desk uses it, and uncertain fields show the "Please check" marker there.
+2. **Family photo to damage class.** Input the one photo of a family report and the DSWD definitions, without the family's note, so the reading does not just repeat their words. Output `AiPhotoDraft`: damage class (`none`, `partial`, `total` or `unclear`), confidence, material, hazards, and a reason of one sentence naming what is visible. This is the only damage AI: a responder's photos and notes never go to a model.
 3. **Update translation.** English headline and message to Bisaya and Tagalog drafts. Staff always read them before posting.
 
 ### Rules
 
 - One house or one note per call. Never send several houses together.
 - Never ask for totals. Code computes them.
-- Time out after 60 seconds. A photo falls back to `unclear` with a retry button. Voice, text and translate return 504 `timeout` with `retry: true`.
+- Time out after 60 seconds. A family photo falls back to `unclear`, and staff get Run again. Voice, text and translate return 504 `timeout` with `retry: true`.
 - Validate every model output with the Zod schemas. Only `AiPhotoDraft` has an `unclear` value, so an invalid photo draft becomes `unclear`. Voice, text and translate return 502 `invalid_output` with `retry: true`, and the person retries or types the fields.
 - Store every raw model output in `events` for the audit trail, including output that failed validation.
 - Confidence shows as words: high is "Fairly sure", medium and low are "Not very sure".
-- An entry goes to `needs_review` when the responder picks a different class than the AI, when the AI says `unclear` and the responder picks without a new photo, or when the hurt count differs from the linked family report.
+- An entry goes to `needs_review` when the hurt count differs from the linked family report. The class is the responder's own call and never holds an entry by itself.
 
 ## 6. Hub logic
 
 - **Totals** come from confirmed entries: houses checked, totally, partially, none, families, people, hurt, missing. "Not yet visited" is the count of reports with status `waiting`, `assigned` or `on_the_way`.
 - **Priority per barangay:** sort by hurt plus missing, then totally damaged, then reports waiting. High when hurt plus missing is 2 or more. Medium when it is 1 or more, or totally damaged is 2 or more. Otherwise low.
 - **Needs** count households in confirmed entries that list each need.
+- **Family photo assessment:** when a family or neighbor report with a photo is saved, the hub queues the photo AI on it, one family photo at a time. It stores the class, confidence, hazards and reason on the report, or `unclear` with a fallback reason when the call fails, and sends `report.assessed`. A reading left pending by a restart is queued again when the server starts, and one pending for over 5 minutes offers Run again. Code turns the reading into an urgency label when a screen reads the report: high when anyone is hurt or missing or the class is total, medium when the class is partial or unclear or the AI lists a hazard, otherwise low. A staff verdict replaces the class and the urgency. The responder To visit list and the hub family reports list put high first, then medium, then houses with no reading, then low. Code ranks them, never the model. The urgency never reaches the family and never changes a total.
 - **Duplicates** (tier 3): flag two reports, or a report and an entry, in the same barangay whose household names match after lowercasing and trimming, within 50 m when both have GPS.
 - **Phones connected** counts distinct client IPs seen in the last two minutes. The IP is the first entry of the `X-Forwarded-For` header, which Caddy sets, and loopback addresses are skipped. An open event stream refreshes its IP on every ping, so it is not counted separately. Without Caddy in front, as under plain `pnpm dev`, there is no header and the count reads 0.
 - **Battery** on macOS comes from `pmset -g batt`. Elsewhere it shows "Unknown".
@@ -216,7 +213,7 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 ## 9. Offline behavior on phones
 
 - **Tier 1:** the page keeps the draft in `sessionStorage`. Failed sends show "Try again".
-- **Tier 2:** a service worker caches the app shell, and IndexedDB queues reports and entries with their photos and audio. The queue sends when `/api/health` answers. A family report with a recording uploads the audio first, then posts the report with its `voice_id`, and the queue keeps its copy of the audio until the hub accepts the report, so a retry or a fixed report sends it again, and the same `voice_id` never makes a second file. A family report with a photo does the same with the photo and its `photo_id`: the queue keeps the photo as an attachment, uploads it before the report, and keeps its copy until the hub accepts the report. A report queued before photos existed has no `photo_id` and still sends. The family "Saved on this phone" screen and the responder Queue tab read this queue.
+- **Tier 2:** a service worker caches the app shell, and IndexedDB queues reports and entries with their photos and audio. The queue sends when `/api/health` answers. A family report with a photo keeps it as an attachment with its `photo_id`: the queue keeps the photo as an attachment, uploads it before the report, and keeps its copy until the hub accepts the report. A report queued before photos existed has no `photo_id` and still sends. The family "Saved on this phone" screen and the responder Queue tab read this queue.
 
 ## 10. Simulation mode
 
@@ -234,10 +231,10 @@ All calls first use Ollama's structured output (`format`) with the JSON schema g
 ## 12. Acceptance criteria for the demo loop
 
 1. With the router's internet port empty and phone data off, a phone joins `ULAT-HUB`, opens the hub address, and loads the family home with a valid certificate.
-2. A 20 second Bisaya note turns into a filled check screen in under 60 seconds, with the hurt field flagged when the model is unsure.
+2. A family fills report details by hand and adds a photo. The hub reads the photo in the background, and the family never waits for it.
 3. Sending creates a report with a 4 character code, and a hollow pin appears on the hub map within 2 seconds without a refresh.
-4. The report appears at the top of the responder's To visit list when someone is hurt or missing.
-5. Two photos and a note produce an AI draft with a class and a reason. Confirming it turns the pin solid, updates the hub totals, and changes the family status to the confirmed class.
+4. The report appears at the top of the responder's To visit list when someone is hurt or missing, with the photo reading and its urgency on the report page.
+5. The responder takes photos on the assess screen, which starts from the family report and its photo reading, and confirms in one tap with no wait. That turns the pin solid, updates the hub totals, and changes the family status to the confirmed class.
 6. The hub situation report shows the new totals, and the SMS text fits in 2 texts.
 
 ## 13. Not doing this weekend

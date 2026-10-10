@@ -11,6 +11,7 @@ import { db } from "@/db/client";
 import { reports, responders } from "@/db/schema";
 import { readActiveResponder, SESSION_COOKIE } from "@/lib/auth/session";
 import { routes } from "@/lib/contracts";
+import { reportUrgency } from "@/lib/reports/assessment";
 import { cn } from "@/lib/utils";
 
 // Reads the reports on every request. LiveRefresh asks for a fresh render when
@@ -39,11 +40,20 @@ export default async function ToVisitPage() {
       created_at: reports.created_at,
       assigned_to: reports.assigned_to,
       assignee_name: responders.name,
+      ai_class: reports.ai_class,
+      ai_hazards: reports.ai_hazards,
+      verdict_class: reports.verdict_class,
+      verdict_urgency: reports.verdict_urgency,
     })
     .from(reports)
     .leftJoin(responders, eq(responders.id, reports.assigned_to))
     .where(inArray(reports.status, OPEN_STATUSES))
-    .all();
+    .all()
+    // The urgency from the photo assessment, which code works out. Only the label goes to the phone, and the list puts high first.
+    .map(({ ai_class, ai_hazards, verdict_class, verdict_urgency, ...row }) => ({
+      ...row,
+      urgency: reportUrgency({ hurt: row.hurt, missing: row.missing, ai_class, ai_hazards, verdict_class, verdict_urgency }),
+    }));
 
   const team = db.select({ team: responders.team }).from(responders).where(eq(responders.id, session.responder_id)).get()?.team ?? null;
 

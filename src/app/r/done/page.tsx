@@ -23,19 +23,17 @@ export default async function DonePage() {
       id: entries.id,
       household_head: entries.household_head,
       damage_class: entries.damage_class,
-      ai_need_more: entries.ai_need_more,
       status: entries.status,
       confirmed_at: entries.confirmed_at,
       created_at: entries.created_at,
     })
     .from(entries)
-    .where(and(eq(entries.responder_id, session.responder_id), inArray(entries.status, ["draft", "needs_review", "confirmed"])))
+    .where(and(eq(entries.responder_id, session.responder_id), inArray(entries.status, ["needs_review", "confirmed"])))
     .orderBy(desc(entries.created_at))
     .all();
 
   const today = dayKey(new Date());
-  // Only a draft can still be changed. A held entry waits on staff, so it is not the responder's to check.
-  const needsCheck = mine.filter((e) => e.status === "draft");
+  // A held entry waits on staff, so it is not the responder's to check.
   const held = mine.filter((e) => e.status === "needs_review");
   const confirmed = mine
     .filter((e) => e.status === "confirmed" && e.confirmed_at && dayKey(e.confirmed_at) === today)
@@ -43,7 +41,7 @@ export default async function DonePage() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <DoneList responderName={session.name} needsCheck={needsCheck} held={held} confirmed={confirmed} />
+      <DoneList responderName={session.name} held={held} confirmed={confirmed} />
       <div className="sticky bottom-0 bg-canvas">
         <TabBar active="done" />
       </div>

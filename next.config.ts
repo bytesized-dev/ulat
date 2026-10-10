@@ -10,8 +10,9 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // Families record voice notes, responders take photos and both set a home
-  // location, so this origin may ask. Embedded frames may not.
+  // The help desk and responders record voice notes, families and responders
+  // take photos, and both set a home location, so this origin may ask.
+  // Embedded frames may not.
   { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=(self), browsing-topics=()" },
 ];
 

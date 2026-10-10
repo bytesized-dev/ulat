@@ -30,11 +30,11 @@ const created = (code: string): Reply => ({ status: 201, body: { code } });
 describe("queue", () => {
   it("keeps what was queued, with its attachments", async () => {
     const store = memoryStore();
-    const audio = new Blob(["a"], { type: "audio/webm" });
-    await enqueue(store, report, [{ kind: "audio", name: "note.webm", blob: audio }], new Date("2026-10-09T06:14:00Z"));
+    const photo = new Blob(["a"], { type: "image/jpeg" });
+    await enqueue(store, report, [{ kind: "photo", name: "photo.jpg", blob: photo }], new Date("2026-10-09T06:14:00Z"));
     const [item] = readQueue(await store.list());
     expect(item).toMatchObject({ state: "waiting", saved_at: "2026-10-09T06:14:00.000Z" });
-    expect(item.attachments[0].blob).toBe(audio);
+    expect(item.attachments[0].blob).toBe(photo);
   });
 
   it("uses the client_id from the tap as the item id, and makes one when there is none", async () => {
@@ -147,97 +147,6 @@ describe("flushQueue", () => {
   });
 });
 
-describe("flushQueue with a voice note", () => {
-  const voiceId = "7d5c1e2a-3b4f-4a6d-9c8e-0f1a2b3c4d5e";
-  const spoken: NewReport = { ...report, voice_id: voiceId };
-  const note = { kind: "audio" as const, name: "note.webm", blob: new Blob(["opus"], { type: "audio/webm" }) };
-
-  /** Answers health, the voice route and the report route, and records the order of the calls. */
-  function voiceHub(voice: Reply[], reports: Reply[]) {
-    const voices = [...voice];
-    const posts = [...reports];
-    const calls: string[] = [];
-    const bodies: NewReport[] = [];
-    const send = vi.fn(async (url: string, init?: RequestInit) => {
-      calls.push(url);
-      if (url.startsWith("/api/health")) return { ok: true, status: 200, json: async () => ({}) };
-      const next = url === "/api/reports/voice" ? voices.shift() : posts.shift();
-      if (url === "/api/reports") bodies.push(JSON.parse(init?.body as string));
-      const r = next ?? { status: 500 };
-      if (r === "throw") throw new TypeError("Failed to fetch");
-      return { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => r.body ?? {} };
-    });
-    return { send: send as unknown as typeof fetch, calls, bodies };
-  }
-  const stored: Reply = { status: 201, body: { voice_id: voiceId } };
-
-  it("uploads the audio before the report and sends the voice_id", async () => {
-    const store = memoryStore();
-    await enqueue(store, spoken, [note]);
-    const h = voiceHub([stored], [created("K7M4")]);
-    const result = await flushQueue(store, h.send);
-    expect(h.calls).toEqual(["/api/health", "/api/reports/voice", "/api/reports"]);
-    expect(h.bodies[0].voice_id).toBe(voiceId);
-    expect(result).toMatchObject({ sent: [expect.objectContaining({ code: "K7M4" })], left: 0 });
-  });
-
-  it("keeps the audio until the report is accepted, and sends it again on each try", async () => {
-    const store = memoryStore();
-    await enqueue(store, spoken, [note]);
-    const h = voiceHub([stored, stored], [{ status: 503 }, created("K7M4")]);
-    await flushQueue(store, h.send);
-    // The hub deletes a recording no report has taken within an hour, so the queue holds on to its copy.
-    const [waiting] = await store.list();
-    expect([waiting.state, waiting.attachments.map((a) => a.kind), waiting.report.voice_id]).toEqual(["waiting", ["audio"], voiceId]);
-    const result = await flushQueue(store, h.send);
-    expect(h.calls.filter((c) => c === "/api/reports/voice")).toHaveLength(2);
-    expect(h.bodies.map((b) => b.voice_id)).toEqual([voiceId, voiceId]);
-    expect(result.sent.map((s) => s.code)).toEqual(["K7M4"]);
-    expect(await store.list()).toEqual([]);
-  });
-
-  it("keeps the audio on a report the hub refuses, so the fix can send it", async () => {
-    const store = memoryStore();
-    await enqueue(store, spoken, [note]);
-    const h = voiceHub([stored], [{ status: 400, body: { error: "bad_report" } }]);
-    expect(await flushQueue(store, h.send)).toMatchObject({ refused: 1, left: 1, sent: [] });
-    const [refused] = await store.list();
-    expect(refused.state).toBe("refused");
-    expect(refused.report.voice_id).toBe(voiceId);
-    expect(refused.attachments).toEqual([note]);
-  });
-
-  it("stops and keeps the report and its audio when the hub goes away during the upload", async () => {
-    const store = memoryStore();
-    await enqueue(store, spoken, [note], new Date("2026-10-09T06:00:00Z"));
-    await enqueue(store, report, [], new Date("2026-10-09T06:05:00Z"));
-    const h = voiceHub(["throw"], [created("K7M4")]);
-    const result = await flushQueue(store, h.send);
-    expect(result).toMatchObject({ reachable: false, sent: [], left: 2 });
-    expect(h.calls).toEqual(["/api/health", "/api/reports/voice"]);
-    const [first] = await store.list();
-    expect(first.attachments).toHaveLength(1);
-  });
-
-  it("sends the report without audio when the hub answers but refuses the recording", async () => {
-    const store = memoryStore();
-    await enqueue(store, spoken, [note]);
-    const h = voiceHub([{ status: 413, body: { error: "too_large" } }], [created("K7M4")]);
-    const result = await flushQueue(store, h.send);
-    expect(h.bodies[0].voice_id).toBeNull();
-    expect(result).toMatchObject({ sent: [expect.objectContaining({ code: "K7M4" })], left: 0 });
-  });
-
-  it("sends a typed report with no audio and never calls the voice route", async () => {
-    const store = memoryStore();
-    await enqueue(store, report);
-    const h = voiceHub([], [created("K7M4")]);
-    await flushQueue(store, h.send);
-    expect(h.calls).toEqual(["/api/health", "/api/reports"]);
-    expect(h.bodies[0].voice_id).toBeNull();
-  });
-});
-
 describe("flushQueue with a photo", () => {
   const photoId = "9a1b2c3d-4e5f-4a6b-8c7d-0e1f2a3b4c5d";
   const withPhoto: NewReport = { ...report, photo_id: photoId };
@@ -336,21 +245,6 @@ describe("flushQueue with a photo", () => {
     await flushQueue(store, h.send);
     expect(h.calls).toEqual(["/api/health", "/api/reports"]);
     expect(h.bodies[0].photo_id).toBeNull();
-  });
-
-  it("sends the audio and the photo before one report", async () => {
-    const store = memoryStore();
-    const voiceId = "7d5c1e2a-3b4f-4a6d-9c8e-0f1a2b3c4d5e";
-    const note = { kind: "audio" as const, name: "note.webm", blob: new Blob(["opus"], { type: "audio/webm" }) };
-    await enqueue(store, { ...withPhoto, voice_id: voiceId }, [note, picture]);
-    const calls: string[] = [];
-    const send = (async (url: string) => {
-      calls.push(url);
-      const body = url === "/api/reports/voice" ? { voice_id: voiceId } : url === "/api/reports/photo" ? { photo_id: photoId } : { code: "K7M4" };
-      return { ok: true, status: 201, json: async () => body };
-    }) as unknown as typeof fetch;
-    await flushQueue(store, send);
-    expect(calls).toEqual(["/api/health", "/api/reports/voice", "/api/reports/photo", "/api/reports"]);
   });
 
   it("still reads an item queued before photos existed, whose report has no photo_id", () => {

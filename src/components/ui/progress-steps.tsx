@@ -1,26 +1,24 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-const steps = ["Household", "Details", "Check", "Send"] as const;
+const steps = ["Household", "Details"] as const;
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2;
 
 // Full class names, so Tailwind sees each one.
 const fill: Record<Step, string> = {
-  1: "w-1/4",
-  2: "w-1/2",
-  3: "w-3/4",
-  4: "w-full",
+  1: "w-1/2",
+  2: "w-full",
 };
 
 type ProgressStepsProps = Omit<React.ComponentProps<"div">, "children"> & {
   step: Step;
 };
 
-// A 4px track filled to step/4, then the four labels, each centered under its
-// quarter of the track. The track is decoration.
+// A 4px track filled to step/2, then the two labels, each centered under its
+// half of the track. The track is decoration.
 // The list says where you are: the current label is aria-current="step" and a
-// hidden line gives "Step 3 of 4".
+// hidden line gives "Step 2 of 2".
 function ProgressSteps({ step, className, ...props }: ProgressStepsProps) {
   return (
     <div data-slot="progress-steps" className={cn("flex flex-col gap-2", className)} {...props}>
@@ -28,7 +26,7 @@ function ProgressSteps({ step, className, ...props }: ProgressStepsProps) {
         <div className={cn("h-full rounded-pill bg-primary", fill[step])} />
       </div>
       <p className="sr-only">{`Step ${step} of ${steps.length}.`}</p>
-      <ol className="grid grid-cols-4 text-center text-caption-strong">
+      <ol className="grid grid-cols-2 text-center text-caption-strong">
         {steps.map((label, index) => {
           const position = index + 1;
           const current = position === step;

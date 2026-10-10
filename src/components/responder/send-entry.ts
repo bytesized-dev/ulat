@@ -1,11 +1,12 @@
 import type { NewEntryMeta } from "@/lib/contracts";
 import { newClientId } from "@/lib/client-id";
 import { buildForm, buildMeta, type Gps, type House, sendError } from "./capture";
+import type { EntryForm } from "./entry-form";
 
-// One tap on Send on the online path. Kept apart from the screen so the id rules can be tested.
+// One tap on Confirm entry on the online path. Kept apart from the screen so the id rules can be tested.
 
 /**
- * The client id for one form. It is made on the first Send and every later tap reuses it,
+ * The client id for one form. It is made on the first Confirm and every later tap reuses it,
  * even after the photos or the note changed, until the entry is known to be saved. The hub
  * answers a repeated id with the first entry, so a tap after a lost or unreadable reply
  * cannot make a second one. A different house starts over.
@@ -24,7 +25,7 @@ export function createClientIds(make: () => string = newClientId) {
 }
 export type ClientIds = ReturnType<typeof createClientIds>;
 
-export const UNCLEAR_ANSWER = "The hub may already have this entry, but its answer did not arrive. Tap Send again to check. It will not make a second entry.";
+export const UNCLEAR_ANSWER = "The hub may already have this entry, but its answer did not arrive. Tap Confirm entry again to check. It will not make a second entry.";
 
 export type SendOutcome =
   /** The hub took it, now or on an earlier try. */
@@ -43,11 +44,12 @@ type Input = {
   gps: Gps | null;
   photos: File[];
   note: Blob | null;
+  entry: EntryForm;
   ids: ClientIds;
 };
 
-export async function sendEntry({ house, labels, gps, photos, note, ids }: Input, send: typeof fetch = fetch): Promise<SendOutcome> {
-  const meta = buildMeta(house, labels, gps, ids.get(house.report_code ?? "new-house"));
+export async function sendEntry({ house, labels, gps, photos, note, entry, ids }: Input, send: typeof fetch = fetch): Promise<SendOutcome> {
+  const meta = buildMeta(house, labels, gps, ids.get(house.report_code ?? "new-house"), entry);
   if (!meta.success) return { kind: "invalid" };
   try {
     const res = await send("/api/entries", { method: "POST", body: buildForm(meta.data, photos, note) });

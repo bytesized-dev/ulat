@@ -8,6 +8,7 @@ import { IconPlate } from "@/components/ui/icon-plate";
 import { Pill } from "@/components/ui/pill";
 import { StatusDot } from "@/components/ui/status-dot";
 import { routes } from "@/lib/contracts";
+import { URGENCY_LABELS, URGENCY_TONE } from "@/lib/reports/assessment";
 import {
   assignmentOf,
   assignmentTag,
@@ -55,10 +56,15 @@ function ToVisitRow({ item, responderId }: { item: ToVisitItem; responderId: str
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="truncate text-body-md font-medium text-ink">{item.household_head}</span>
         <span className="truncate text-body-sm text-body">{place(item)}</span>
-        {assignment ? (
-          <Pill dot={assignment.kind === "mine" ? "primary" : undefined} className="mt-1 max-w-full self-start">
-            <span className="truncate">{assignmentTag(assignment)}</span>
-          </Pill>
+        {assignment || item.urgency ? (
+          <span className="mt-1 flex max-w-full flex-wrap gap-1">
+            {item.urgency ? <Pill dot={URGENCY_TONE[item.urgency] ?? undefined}>{URGENCY_LABELS[item.urgency]}</Pill> : null}
+            {assignment ? (
+              <Pill dot={assignment.kind === "mine" ? "primary" : undefined} className="max-w-full">
+                <span className="truncate">{assignmentTag(assignment)}</span>
+              </Pill>
+            ) : null}
+          </span>
         ) : null}
       </span>
       <span className="flex shrink-0 flex-col items-end gap-0.5">

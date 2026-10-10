@@ -14,7 +14,7 @@ export function PosterSheet({ poster }: { poster: PosterData }) {
   const steps = [
     { title: `Join Wi-Fi ${poster.wifiName}`, note: poster.wifiPassword ? `Password ${poster.wifiPassword}` : null },
     { title: "Scan the code", note: poster.hubHost ? `Or open ${poster.hubHost}` : null },
-    { title: "Tell us what happened", note: "Speak or type" },
+    { title: "Tell us what happened", note: "People, damage and a photo" },
   ];
 
   return (

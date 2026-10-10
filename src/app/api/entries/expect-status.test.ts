@@ -46,7 +46,7 @@ function newReport() {
     .get();
 }
 
-function newEntry(status: "draft" | "needs_review" | "confirmed" = "needs_review", reportId: string | null = null) {
+function newEntry(status: "needs_review" | "confirmed" = "needs_review", reportId: string | null = null) {
   return db
     .insert(schema.entries)
     .values({
@@ -55,7 +55,6 @@ function newEntry(status: "draft" | "needs_review" | "confirmed" = "needs_review
       responder_id: responderId,
       barangay: "Sinonoc",
       damage_class: "total",
-      ai_class: "partial",
       status,
       created_at: "2026-10-10T06:51:00.000Z",
     })
@@ -158,16 +157,5 @@ describe("PATCH /api/entries/[id] without the header", () => {
     expect(saved(id)).toMatchObject({ status: "confirmed", damage_class: "none" });
     expect(history(id).filter((e) => e.type === "entry.confirmed")).toHaveLength(0);
     expect(history(id).filter((e) => e.type === "entry.field_changed").length).toBeGreaterThan(0);
-  });
-
-  it("refuses staff on a draft entry: 409 not_in_review, nothing written", async () => {
-    const id = newEntry("draft");
-    const before = saved(id);
-    const res = await patch(id, body("none"));
-    expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: "not_in_review" });
-    expect(saved(id)).toEqual(before);
-    expect(history(id)).toHaveLength(0);
-    expect(published).toHaveLength(0);
   });
 });

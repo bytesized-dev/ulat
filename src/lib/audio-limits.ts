@@ -1,5 +1,4 @@
-// How big a family or responder voice note may be. POST /api/ai/voice and
-// POST /api/reports/voice both take it, so the two routes cannot drift apart.
+// How big a voice note may be. The help desk sends one to POST /api/ai/voice.
 //
 // The client stops recording at 30 seconds, so the server caps by format too.
 // Compressed audio (opus, AAC, mp3) is under 130 KB for 30 seconds at the usual
@@ -17,32 +16,3 @@ const WAV_TYPES = new Set(["audio/wav", "audio/x-wav", "audio/wave"]);
 
 /** The most bytes a voice note of this mime type may have. Parameters such as codecs are ignored. */
 export const maxAudioBytes = (mime: string) => (WAV_TYPES.has(mime.split(";")[0].trim().toLowerCase()) ? MAX_WAV_BYTES : MAX_COMPRESSED_BYTES);
-
-/**
- * How many bytes of family recordings no report has taken may sit on the hub.
- * POST /api/reports/voice has no PIN, so this is what stops one phone from
- * filling the laptop that holds the database. Above it the route answers 507.
- */
-export const MAX_UNLINKED_VOICE_BYTES = 200 * 1024 * 1024;
-/**
- * The most recordings no report has taken that may sit on the hub. A real
- * recording is linked seconds after it is uploaded, so the count stays near
- * zero in normal use. The cap keeps a sweep over the unlinked files short,
- * whatever size the files are.
- */
-export const MAX_UNLINKED_VOICE_FILES = 2000;
-/** The smallest recording the hub keeps. A real one second note is several KB, and a smaller file holds no speech. */
-export const MIN_VOICE_BYTES = 1024;
-/** The disk block size. Every stored file takes at least one, so the caps count each recording as whole blocks. */
-export const VOICE_BLOCK_BYTES = 4096;
-
-/**
- * How many bytes the whole voice folder may hold, linked recordings included.
- * Anyone can send a report that links a recording, so the unlinked cap alone
- * does not stop the folder from growing. Above this the route answers 507.
- */
-export const MAX_VOICE_FOLDER_BYTES = 1024 * 1024 * 1024;
-/** An unlinked recording older than this is deleted by the next sweep. */
-export const UNLINKED_VOICE_MAX_AGE_MS = 60 * 60 * 1000;
-/** The longest the hub goes between two sweeps, which are the only walks of the voice folder. */
-export const VOICE_SWEEP_EVERY_MS = 60 * 1000;

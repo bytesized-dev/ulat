@@ -23,7 +23,7 @@ type HomeLocationFormProps = {
   hubBarangays: readonly string[];
 };
 
-// Step 3 of 4, reached from the check screen. The map starts on the saved home,
+// A side trip from step 2, the details screen. The map starts on the saved home,
 // else on a GPS fix when the phone allows one, else on the town, and the family
 // moves it until the pin is over their house. GPS is one try: a refusal or a
 // timeout leaves the map where it is and shows nothing, since moving the map
@@ -66,7 +66,7 @@ function HomeLocationForm({ bbox, barangays, hubBarangays }: HomeLocationFormPro
   return (
     <FamilyScreen fit="screen">
       <TopBar title="Location" leading={{ kind: "back", href: routes.family.check }} />
-      <ProgressSteps step={3} className="px-gutter pb-1.5" />
+      <ProgressSteps step={2} className="px-gutter pb-1.5" />
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <MapView

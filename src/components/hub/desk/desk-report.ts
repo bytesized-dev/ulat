@@ -111,7 +111,6 @@ export function toNewReport(form: HouseholdForm, heard: HeardNote | null, spot: 
     missing: parseCount(form.missing) ?? 0,
     what_happened: text(form.what),
     needs: form.needs,
-    voice_id: null,
     transcript: heard?.transcript ?? null,
     english: heard?.english ?? null,
     language: heard?.language ?? null,

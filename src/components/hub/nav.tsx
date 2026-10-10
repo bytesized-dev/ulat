@@ -10,19 +10,21 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   TableIcon,
+  UsersIcon,
 } from "lucide-react";
 import type { HubNavSection } from "@/components/ui/hub-shell";
 import { routes } from "@/lib/contracts/routes";
 
 const { hub } = routes;
 
-/** The sidebar sections. The Review item shows how many entries wait for review. */
-export function hubNav(reviewCount: number): HubNavSection[] {
+/** The sidebar sections. Review shows how many entries wait for review, Family reports how many are not assigned. */
+export function hubNav(reviewCount: number, unassignedFamilyReports = 0): HubNavSection[] {
   return [
     {
       items: [
         { label: "Overview", href: hub.overview, icon: <LayoutGridIcon /> },
         { label: "Review", href: hub.review, icon: <InboxIcon />, count: reviewCount, countLabel: "waiting" },
+        { label: "Family reports", href: hub.familyReports, icon: <UsersIcon />, count: unassignedFamilyReports, countLabel: "not assigned" },
         { label: "Map", href: hub.map, icon: <MapIcon /> },
         { label: "Entries", href: hub.entries, icon: <TableIcon /> },
         { label: "Reports", href: hub.reports, icon: <FileTextIcon /> },

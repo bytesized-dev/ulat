@@ -8,8 +8,8 @@ import { routes } from "@/lib/contracts/routes";
 import { askForPhotos, type AskForPhotosResult } from "@/lib/hub/review";
 
 // Anyone can post to a server action, so this one checks for a staff session
-// itself and validates its argument. Approve and Use the AI class do not live
-// here: they go through PATCH /api/entries/[id], which audits and emits.
+// itself and validates its argument. Approve does not live
+// here: it goes through PATCH /api/entries/[id], which audits and emits.
 
 export type AskForPhotosActionResult = AskForPhotosResult | { ok: false; error: "unauthorized" | "invalid" };
 
